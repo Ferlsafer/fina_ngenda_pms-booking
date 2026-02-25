@@ -5,9 +5,7 @@ Run: python -m scripts.seed_staff_roles
 """
 from app import create_app
 from app.extensions import db
-from app.models.user import User
-from app.models.role import Role
-from app.models.hotel import Hotel
+from app.models import User, Role, Hotel
 from werkzeug.security import generate_password_hash
 
 
