@@ -1,0 +1,348 @@
+{% extends "hms/layout/base.html" %}
+{% block title %}Advanced Reports{% endblock %}
+
+{% block content %}
+<div class="container-xl">
+  <div class="page-header d-print-none">
+    <div class="row align-items-center">
+      <div class="col">
+        <h2 class="page-title">Advanced Reports</h2>
+      </div>
+    </div>
+  </div>
+
+  <div class="row">
+    <!-- Export Panel -->
+    <div class="col-md-6">
+      <div class="card">
+        <div class="card-header">
+          <h3 class="card-title">Export Reports</h3>
+        </div>
+        <div class="card-body">
+          <form method="GET" action="{{ url_for('reports.export_report', report_type='occupancy') }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            
+            <div class="mb-3">
+              <label class="form-label">Report Type</label>
+              <select class="form-select" name="report_type" id="report-type">
+                <option value="occupancy">Occupancy Report</option>
+                <option value="revenue">Revenue Report</option>
+                <option value="inventory">Inventory Usage</option>
+              </select>
+            </div>
+            
+            <div class="row">
+              <div class="col-md-6">
+                <label class="form-label">Start Date</label>
+                <input type="date" class="form-control" name="start_date" required>
+              </div>
+              <div class="col-md-6">
+                <label class="form-label">End Date</label>
+                <input type="date" class="form-control" name="end_date" required>
+              </div>
+            </div>
+            
+            <div class="mb-3">
+              <label class="form-label">Format</label>
+              <div class="form-check">
+                <input class="form-check-input" type="radio" name="format" value="excel" checked>
+                <label class="form-check-label">Excel (.xlsx)</label>
+              </div>
+              <div class="form-check">
+                <input class="form-check-input" type="radio" name="format" value="pdf">
+                <label class="form-check-label">PDF</label>
+              </div>
+            </div>
+            
+            <button type="submit" class="btn btn-primary">
+              <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+                <path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2 -2v-2" />
+                <polyline points="7 11 12 16 17 11" />
+                <line x1="12" y1="4" x2="12" y2="16" />
+              </svg>
+              Export Report
+            </button>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <!-- Schedule Panel -->
+    <div class="col-md-6">
+      <div class="card">
+        <div class="card-header">
+          <h3 class="card-title">Schedule Email Reports</h3>
+        </div>
+        <div class="card-body">
+          <form method="POST" action="{{ '#' }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            
+            <div class="mb-3">
+              <label class="form-label">Report Type</label>
+              <select class="form-select" name="report_type">
+                <option value="occupancy">Occupancy Report</option>
+                <option value="revenue">Revenue Report</option>
+                <option value="inventory">Inventory Report</option>
+              </select>
+            </div>
+            
+            <div class="mb-3">
+              <label class="form-label">Email Address</label>
+              <input type="email" class="form-control" name="email" required>
+            </div>
+            
+            <div class="mb-3">
+              <label class="form-label">Frequency</label>
+              <select class="form-select" name="frequency">
+                <option value="daily">Daily</option>
+                <option value="weekly">Weekly (Monday)</option>
+                <option value="monthly">Monthly (1st)</option>
+              </select>
+            </div>
+            
+            <button type="submit" class="btn btn-success">
+              <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+                <rect x="3" y="5" width="18" height="14" rx="2" />
+                <polyline points="3 7 12 13 21 7" />
+              </svg>
+              Schedule Report
+            </button>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Dashboard Widgets Configuration -->
+  <div class="card mt-3">
+    <div class="card-header">
+      <h3 class="card-title">Dashboard Widgets</h3>
+    </div>
+    <div class="card-body">
+      <div class="row" id="widget-grid">
+        <!-- Widgets will be loaded here -->
+      </div>
+    </div>
+  </div>
+  
+  <!-- Real-time Data Section -->
+  <div class="card mt-3">
+    <div class="card-header">
+      <h3 class="card-title">Real-time Data</h3>
+    </div>
+    <div class="card-body">
+      <div class="row">
+        <div class="col-md-3">
+          <div class="card">
+            <div class="card-body text-center">
+              <div class="h1 mb-1" id="today-checkins">Loading...</div>
+              <div class="text-muted">Today's Check-ins</div>
+            </div>
+          </div>
+        </div>
+        <div class="col-md-3">
+          <div class="card">
+            <div class="card-body text-center">
+              <div class="h1 mb-1" id="today-checkouts">Loading...</div>
+              <div class="text-muted">Today's Check-outs</div>
+            </div>
+          </div>
+        </div>
+        <div class="col-md-3">
+          <div class="card">
+            <div class="card-body text-center">
+              <div class="h1 mb-1" id="current-occupancy">Loading...</div>
+              <div class="text-muted">Current Occupancy</div>
+            </div>
+          </div>
+        </div>
+        <div class="col-md-3">
+          <div class="card">
+            <div class="card-body text-center">
+              <div class="h1 mb-1" id="today-revenue">Loading...</div>
+              <div class="text-muted">Today's Revenue</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  loadDashboardWidgets();
+  loadRealTimeData();
+
+  // Update form action when report type changes
+  document.getElementById('report-type').addEventListener('change', function() {
+    const form = this.closest('form');
+    const reportType = this.value;
+    form.action = `{{ url_for('reports.export_report', report_type='') }}${reportType}`;
+  });
+});
+
+async function loadDashboardWidgets() {
+  try {
+    const response = await fetch('{{ url_for("reports.get_dashboard_widgets") }}');
+    console.log('Response status:', response.status);
+    
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    
+    const data = await response.json();
+    console.log('Received data:', data);
+
+    const grid = document.getElementById('widget-grid');
+    grid.innerHTML = ''; // Clear existing content
+
+    // Quick Stats
+    if (data.quick_stats) {
+      data.quick_stats.forEach(stat => {
+        console.log('Processing stat:', stat);
+        grid.innerHTML += `
+          <div class="col-sm-6 col-lg-3">
+            <div class="card">
+              <div class="card-body">
+                <div class="d-flex align-items-center">
+                  <div class="subheader">${stat.title}</div>
+                </div>
+                <div class="h1 mb-3">${stat.value}</div>
+              </div>
+            </div>
+          </div>
+        `;
+      });
+    } else {
+      console.warn('No quick_stats found in response');
+    }
+
+    // Charts
+    if (data.charts) {
+      data.charts.forEach(chart => {
+        console.log('Processing chart:', chart);
+        const chartDiv = document.createElement('div');
+        chartDiv.className = 'col-sm-6 col-lg-6';
+        chartDiv.innerHTML = `
+          <div class="card">
+            <div class="card-header">
+              <h3 class="card-title">${chart.title}</h3>
+            </div>
+            <div class="card-body">
+              <div class="chart-container">
+                <canvas id="chart-${chart.type}" width="400" height="200"></canvas>
+              </div>
+            </div>
+          </div>
+        `;
+        grid.appendChild(chartDiv);
+        
+        // Initialize chart
+        if (chart.data) {
+          const ctx = document.getElementById('chart-' + chart.type).getContext('2d');
+          
+          if (chart.type === 'line') {
+            new Chart(ctx, {
+              type: 'line',
+              data: {
+                labels: chart.data.map(d => d.date),
+                datasets: [{
+                  label: 'Occupancy Rate (%)',
+                  data: chart.data.map(d => d.occupancy),
+                  borderColor: 'rgb(75, 192, 192)',
+                  backgroundColor: 'rgba(75, 192, 192, 0.2)'
+                }]
+              },
+              options: {
+                responsive: true,
+                scales: {
+                  y: {
+                    beginAtZero: true
+                  }
+                }
+              }
+            });
+          } else if (chart.type === 'bar') {
+            new Chart(ctx, {
+              type: 'bar',
+              data: {
+                labels: chart.data.map(d => d.department),
+                datasets: [{
+                  label: 'Revenue',
+                  data: chart.data.map(d => d.revenue),
+                  backgroundColor: [
+                    'rgba(255, 99, 132, 0.2)',
+                    'rgba(54, 162, 235, 0.2)',
+                    'rgba(255, 205, 86, 0.2)'
+                  ],
+                  borderColor: [
+                    'rgb(255, 99, 132)',
+                    'rgb(54, 162, 235)',
+                    'rgb(255, 205, 86)'
+                  ],
+                  borderWidth: 1
+                }]
+              },
+              options: {
+                responsive: true,
+                scales: {
+                  y: {
+                    beginAtZero: true
+                  }
+                }
+              }
+            });
+          }
+        }
+      });
+    } else {
+      console.warn('No charts found in response');
+    }
+  } catch (error) {
+    console.error('Failed to load dashboard widgets:', error);
+    console.error('Error details:', error.message);
+  }
+}
+
+async function loadRealTimeData() {
+  try {
+    const response = await fetch('{{ url_for("reports.get_dashboard_widgets") }}');
+    console.log('Real-time data response status:', response.status);
+    
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    
+    const data = await response.json();
+    console.log('Real-time data received:', data);
+
+    // Update real-time data elements
+    if (data.quick_stats) {
+      const checkinsStat = data.quick_stats.find(stat => stat.title.includes('Check-ins'));
+      const checkoutsStat = data.quick_stats.find(stat => stat.title.includes('Check-outs'));
+      const occupancyStat = data.quick_stats.find(stat => stat.title.includes('Occupancy'));
+      const revenueStat = data.quick_stats.find(stat => stat.title.includes('Revenue'));
+
+      console.log('Check-ins stat:', checkinsStat);
+      console.log('Check-outs stat:', checkoutsStat);
+      console.log('Occupancy stat:', occupancyStat);
+      console.log('Revenue stat:', revenueStat);
+
+      if (checkinsStat) document.getElementById('today-checkins').textContent = checkinsStat.value;
+      if (checkoutsStat) document.getElementById('today-checkouts').textContent = checkoutsStat.value;
+      if (occupancyStat) document.getElementById('current-occupancy').textContent = occupancyStat.value;
+      if (revenueStat) document.getElementById('today-revenue').textContent = revenueStat.value;
+    } else {
+      console.warn('No quick_stats found in real-time data');
+    }
+  } catch (error) {
+    console.error('Failed to load real-time data:', error);
+    console.error('Error details:', error.message);
+  }
+}
+</script>
+{% endblock %}

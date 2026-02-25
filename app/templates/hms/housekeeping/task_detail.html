@@ -1,0 +1,541 @@
+{% extends "hms/layout/base.html" %}
+{% block title %}Task #{{ task.id }} - {{ task.task_type|replace('_', ' ')|title }}{% endblock %}
+
+{% block content %}
+<div class="container-xl">
+  <div class="page-header d-print-none">
+    <div class="row align-items-center">
+      <div class="col">
+        <h2 class="page-title">
+          Task #{{ task.id }}
+          <span class="badge bg-{{ 'success' if task.status == 'completed' else 'primary' if task.status == 'in_progress' else 'secondary' }}">
+            {{ task.status|replace('_', ' ')|title }}
+          </span>
+        </h2>
+        <div class="text-muted mt-1">
+          {{ task.task_type|replace('_', ' ')|title }} - Room {{ task.room.room_number }}
+        </div>
+      </div>
+      <div class="col-auto ms-auto">
+        <div class="btn-list">
+          <a href="{{ '#' }}" class="btn btn-outline-secondary">
+            <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+              <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+              <path d="M9 13l-4 -4l4 -4m-4 4h11a4 4 0 0 1 0 8h-1" />
+            </svg>
+            Back to Board
+          </a>
+          {% if task.status != 'completed' %}
+          <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#updateStatusModal">
+            <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+              <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+              <path d="M4 20h4l10.5 -10.5a1.5 1.5 0 0 0 -4 -4l-10.5 10.5v4" />
+              <line x1="13.5" y1="6.5" x2="17.5" y2="10.5" />
+            </svg>
+            Update Status
+          </button>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="row row-cards">
+    <div class="col-md-8">
+      <!-- Task Details Card -->
+      <div class="card mb-3">
+        <div class="card-header">
+          <h3 class="card-title">Task Details</h3>
+        </div>
+        <div class="card-body">
+          <div class="row mb-3">
+            <div class="col-md-6">
+              <div class="mb-3">
+                <label class="form-label">Room</label>
+                <div>
+                  <a href="{{ url_for('hms.roomsview_room', room_id=task.room.id) }}" class="text-reset">
+                    {{ task.room.room_number }} - {{ task.room.room_type.name }}
+                  </a>
+                </div>
+              </div>
+              <div class="mb-3">
+                <label class="form-label">Task Type</label>
+                <div>{{ task.task_type|replace('_', ' ')|title }}</div>
+              </div>
+              <div class="mb-3">
+                <label class="form-label">Priority</label>
+                <div>
+                  {% if task.priority == 'urgent' %}
+                    <span class="badge bg-danger">Urgent</span>
+                  {% elif task.priority == 'high' %}
+                    <span class="badge bg-warning">High</span>
+                  {% elif task.priority == 'medium' %}
+                    <span class="badge bg-info">Medium</span>
+                  {% else %}
+                    <span class="badge bg-secondary">Low</span>
+                  {% endif %}
+                </div>
+              </div>
+            </div>
+            <div class="col-md-6">
+              <div class="mb-3">
+                <label class="form-label">Status</label>
+                <div>
+                  <span class="badge bg-{{ 'success' if task.status == 'completed' else 'primary' if task.status == 'in_progress' else 'secondary' }}">
+                    {{ task.status|replace('_', ' ')|title }}
+                  </span>
+                </div>
+              </div>
+              <div class="mb-3">
+                <label class="form-label">Assigned To</label>
+                <div>
+                  {% if task.assigned_to %}
+                  <div class="d-flex align-items-center">
+                    <span class="avatar avatar-xs me-2" style="background-image: url(https://ui-avatars.com/api/?name={{ task.assigned.name|urlencode }}&background=random)"></span>
+                    {{ task.assigned.name }}
+                  </div>
+                  {% else %}
+                  <span class="text-muted">Unassigned</span>
+                  {% endif %}
+                </div>
+              </div>
+              <div class="mb-3">
+                <label class="form-label">Created</label>
+                <div>{{ task.created_at.strftime('%Y-%m-%d %H:%M') }}</div>
+              </div>
+              {% if task.completed_at %}
+              <div class="mb-3">
+                <label class="form-label">Completed</label>
+                <div>{{ task.completed_at.strftime('%Y-%m-%d %H:%M') }}</div>
+              </div>
+              {% endif %}
+            </div>
+          </div>
+          
+          {% if task.notes %}
+          <div class="mb-3">
+            <label class="form-label">Notes</label>
+            <div class="p-3 bg-light rounded">
+              {{ task.notes|nl2br }}
+            </div>
+          </div>
+          {% endif %}
+          
+          {% if task.supplies_used %}
+          <div class="mb-3">
+            <label class="form-label">Supplies Used</label>
+            <div class="table-responsive">
+              <table class="table table-sm">
+                <thead>
+                  <tr>
+                    <th>Item</th>
+                    <th>Quantity</th>
+                    <th>Unit</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {% for supply in task.supplies_used %}
+                  <tr>
+                    <td>{{ supply.item.name }}</td>
+                    <td>{{ supply.quantity_used|round(2) }}</td>
+                    <td>{{ supply.item.unit }}</td>
+                  </tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+            </div>
+          </div>
+          {% endif %}
+        </div>
+      </div>
+      
+      <!-- Task History -->
+      <div class="card">
+        <div class="card-header">
+          <h3 class="card-title">Task History</h3>
+        </div>
+        <div class="list-group list-group-flush">
+          {% for log in task.history|sort(attribute='created_at', reverse=true) %}
+          <div class="list-group-item">
+            <div class="row">
+              <div class="col-auto">
+                <span class="avatar" style="background-image: url(https://ui-avatars.com/api/?name={{ log.user.name|urlencode }}&background=random)"></span>
+              </div>
+              <div class="col">
+                <div class="text-truncate">
+                  <strong>{{ log.user.name }}</strong> {{ log.action }}
+                </div>
+                <div class="text-muted">{{ log.created_at.strftime('%Y-%m-%d %H:%M') }}</div>
+                {% if log.notes %}
+                <div class="mt-1">{{ log.notes }}</div>
+                {% endif %}
+              </div>
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+    
+    <div class="col-md-4">
+      <!-- Room Status -->
+      <div class="card mb-3">
+        <div class="card-header">
+          <h3 class="card-title">Room Status</h3>
+        </div>
+        <div class="card-body">
+          <div class="d-flex align-items-center">
+            <div class="me-3">
+              <span class="status-indicator status-{{ task.room.status }}"></span>
+            </div>
+            <div>
+              <div class="h4 mb-0">{{ task.room.status|replace('_', ' ')|title }}</div>
+              <div class="text-muted">
+                {% if task.room.current_booking %}
+                  Occupied by {{ task.room.current_booking.guest.name }}
+                {% else %}
+                  No current booking
+                {% endif %}
+              </div>
+            </div>
+          </div>
+          
+          <div class="mt-4">
+            <a href="{{ url_for('hms.roomsview_room', room_id=task.room.id) }}" class="btn btn-outline-primary w-100">
+              View Room Details
+            </a>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Quick Actions -->
+      <div class="card">
+        <div class="card-header">
+          <h3 class="card-title">Quick Actions</h3>
+        </div>
+        <div class="list-group list-group-flush">
+          {% if task.status == 'pending' %}
+          <form action="{{ url_for('housekeeping.update_task_status', task_id=task.id) }}" method="POST" class="list-group-item">
+            <input type="hidden" name="status" value="in_progress">
+            <button type="submit" class="btn btn-outline-primary w-100">
+              <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+                <path d="M7 4v16l13 -8z" />
+              </svg>
+              Start Task
+            </button>
+          </form>
+          {% elif task.status == 'in_progress' %}
+          <button type="button" class="list-group-item" data-bs-toggle="modal" data-bs-target="#completeTaskModal">
+            <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+              <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+              <path d="M5 12l5 5l10 -10" />
+            </svg>
+            Mark as Complete
+          </button>
+          {% endif %}
+          
+          <a href="#" class="list-group-item" data-bs-toggle="modal" data-bs-target="#addNoteModal">
+            <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+              <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+              <line x1="12" y1="5" x2="12" y2="19" />
+              <line x1="5" y1="12" x2="19" y2="12" />
+            </svg>
+            Add Note
+          </a>
+          
+          <a href="#" class="list-group-item" data-bs-toggle="modal" data-bs-target="#reassignModal">
+            <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+              <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+              <path d="M9 7m-4 0a4 4 0 1 0 8 0a4 4 0 1 0 -8 0" />
+              <path d="M3 21v-2a4 4 0 0 1 4 -4h4a4 4 0 0 1 4 4v2" />
+              <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+              <path d="M21 21v-2a4 4 0 0 0 -3 -3.85" />
+            </svg>
+            Reassign Task
+          </a>
+          
+          {% if task.status != 'completed' %}
+          <a href="#" class="list-group-item text-danger" data-bs-toggle="modal" data-bs-target="#cancelTaskModal">
+            <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+              <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+              <path d="M4 7l16 0" />
+              <path d="M10 11l0 6" />
+              <path d="M14 11l0 6" />
+              <path d="M5 7l1 12a2 2 0 0 0 2 2h8a2 2 0 0 0 2 -2l1 -12" />
+              <path d="M9 7v-3a1 1 0 0 1 1 -1h4a1 1 0 0 1 1 1v3" />
+            </svg>
+            Cancel Task
+          </a>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Update Status Modal -->
+<div class="modal modal-blur fade" id="updateStatusModal" tabindex="-1" role="dialog" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered" role="document">
+    <div class="modal-content">
+      <form action="{{ url_for('housekeeping.update_task_status', task_id=task.id) }}" method="POST">
+        <div class="modal-header">
+          <h5 class="modal-title">Update Task Status</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <div class="mb-3">
+            <label class="form-label">Status</label>
+            <select class="form-select" name="status">
+              <option value="pending" {% if task.status == 'pending' %}selected{% endif %}>Pending</option>
+              <option value="in_progress" {% if task.status == 'in_progress' %}selected{% endif %}>In Progress</option>
+              <option value="completed" {% if task.status == 'completed' %}selected{% endif %}>Completed</option>
+              <option value="cancelled" {% if task.status == 'cancelled' %}selected{% endif %}>Cancelled</option>
+            </select>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Notes</label>
+            <textarea class="form-control" name="notes" rows="3" placeholder="Add any additional notes"></textarea>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-link link-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-primary">Update Status</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- Complete Task Modal -->
+<div class="modal modal-blur fade" id="completeTaskModal" tabindex="-1" role="dialog" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered" role="document">
+    <div class="modal-content">
+      <form action="{{ url_for('housekeeping.complete_task', task_id=task.id) }}" method="POST">
+        <div class="modal-header">
+          <h5 class="modal-title">Complete Task</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <div class="mb-3">
+            <label class="form-label">Notes</label>
+            <textarea class="form-control" name="notes" rows="3" placeholder="Add any notes about the task completion"></textarea>
+          </div>
+          
+          <div class="mb-3">
+            <label class="form-label">Supplies Used (Optional)</label>
+            <div id="supplies-container">
+              <div class="row g-2 mb-2">
+                <div class="col-6">
+                  <select class="form-select form-select-sm" name="supply_item_id[]">
+                    <option value="">Select Item</option>
+                    {% for item in inventory_items %}
+                    <option value="{{ item.id }}">{{ item.name }} ({{ item.unit }})</option>
+                    {% endfor %}
+                  </select>
+                </div>
+                <div class="col-4">
+                  <input type="number" class="form-control form-control-sm" name="supply_quantity[]" step="0.01" min="0" placeholder="Qty">
+                </div>
+                <div class="col-2">
+                  <button type="button" class="btn btn-sm btn-outline-danger" onclick="removeSupplyRow(this)">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                      <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+                      <path d="M4 7l16 0" />
+                      <path d="M10 11l0 6" />
+                      <path d="M14 11l0 6" />
+                      <path d="M5 7l1 12a2 2 0 0 0 2 2h8a2 2 0 0 0 2 -2l1 -12" />
+                      <path d="M9 7v-3a1 1 0 0 1 1 -1h4a1 1 0 0 1 1 1v3" />
+                    </svg>
+                  </button>
+                </div>
+              </div>
+            </div>
+            <button type="button" class="btn btn-sm btn-outline-secondary mt-2" onclick="addSupplyRow()">
+              <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+                <line x1="12" y1="5" x2="12" y2="19" />
+                <line x1="5" y1="12" x2="19" y2="12" />
+              </svg>
+              Add Supply
+            </button>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-link link-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-primary">
+            <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+              <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+              <path d="M5 12l5 5l10 -10" />
+            </svg>
+            Mark as Complete
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- Add Note Modal -->
+<div class="modal modal-blur fade" id="addNoteModal" tabindex="-1" role="dialog" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered" role="document">
+    <div class="modal-content">
+      <form action="{{ url_for('housekeeping.add_task_note', task_id=task.id) }}" method="POST">
+        <div class="modal-header">
+          <h5 class="modal-title">Add Note</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <div class="mb-3">
+            <label class="form-label">Note</label>
+            <textarea class="form-control" name="notes" rows="5" placeholder="Enter your note here..." required></textarea>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-link link-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-primary">
+            <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+              <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+              <path d="M5 12l5 5l10 -10" />
+            </svg>
+            Add Note
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- Reassign Modal -->
+<div class="modal modal-blur fade" id="reassignModal" tabindex="-1" role="dialog" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered" role="document">
+    <div class="modal-content">
+      <form action="{{ url_for('housekeeping.reassign_task', task_id=task.id) }}" method="POST">
+        <div class="modal-header">
+          <h5 class="modal-title">Reassign Task</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <div class="mb-3">
+            <label class="form-label">Assign To</label>
+            <select class="form-select" name="assigned_to" required>
+              <option value="">Select Staff Member</option>
+              {% for staff in staff_members %}
+              <option value="{{ staff.id }}" {% if task.assigned_to == staff.id %}selected{% endif %}>
+                {{ staff.name }}
+              </option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Notes</label>
+            <textarea class="form-control" name="notes" rows="3" placeholder="Add any notes about the reassignment"></textarea>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-link link-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-primary">
+            <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+              <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+              <path d="M9 7m-4 0a4 4 0 1 0 8 0a4 4 0 1 0 -8 0" />
+              <path d="M3 21v-2a4 4 0 0 1 4 -4h4a4 4 0 0 1 4 4v2" />
+              <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+              <path d="M21 21v-2a4 4 0 0 0 -3 -3.85" />
+            </svg>
+            Reassign
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- Cancel Task Modal -->
+<div class="modal modal-blur fade" id="cancelTaskModal" tabindex="-1" role="dialog" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered" role="document">
+    <div class="modal-content">
+      <form action="{{ url_for('housekeeping.cancel_task', task_id=task.id) }}" method="POST">
+        <div class="modal-header">
+          <h5 class="modal-title">Cancel Task</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <p>Are you sure you want to cancel this task? This action cannot be undone.</p>
+          <div class="mb-3">
+            <label class="form-label">Reason for Cancellation</label>
+            <textarea class="form-control" name="notes" rows="3" placeholder="Please specify the reason for cancellation" required></textarea>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-link link-secondary" data-bs-dismiss="modal">Go Back</button>
+          <button type="submit" class="btn btn-danger">
+            <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+              <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+              <path d="M4 7l16 0" />
+              <path d="M10 11l0 6" />
+              <path d="M14 11l0 6" />
+              <path d="M5 7l1 12a2 2 0 0 0 2 2h8a2 2 0 0 0 2 -2l1 -12" />
+              <path d="M9 7v-3a1 1 0 0 1 1 -1h4a1 1 0 0 1 1 1v3" />
+            </svg>
+            Confirm Cancellation
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Add supply row for task completion
+function addSupplyRow() {
+  const container = document.getElementById('supplies-container');
+  const newRow = document.createElement('div');
+  newRow.className = 'row g-2 mb-2';
+  newRow.innerHTML = `
+    <div class="col-6">
+      <select class="form-select form-select-sm" name="supply_item_id[]">
+        <option value="">Select Item</option>
+        {% for item in inventory_items %}
+        <option value="{{ item.id }}">{{ item.name }} ({{ item.unit }})</option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="col-4">
+      <input type="number" class="form-control form-control-sm" name="supply_quantity[]" step="0.01" min="0" placeholder="Qty">
+    </div>
+    <div class="col-2">
+      <button type="button" class="btn btn-sm btn-outline-danger" onclick="removeSupplyRow(this)">
+        <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+          <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+          <path d="M4 7l16 0" />
+          <path d="M10 11l0 6" />
+          <path d="M14 11l0 6" />
+          <path d="M5 7l1 12a2 2 0 0 0 2 2h8a2 2 0 0 0 2 -2l1 -12" />
+          <path d="M9 7v-3a1 1 0 0 1 1 -1h4a1 1 0 0 1 1 1v3" />
+        </svg>
+      </button>
+    </div>
+  `;
+  container.appendChild(newRow);
+}
+
+// Remove supply row
+function removeSupplyRow(button) {
+  const row = button.closest('.row');
+  if (row) {
+    row.remove();
+  }
+}
+
+// Initialize tooltips
+document.addEventListener('DOMContentLoaded', function() {
+  var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+  var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+    return new bootstrap.Tooltip(tooltipTriggerEl);
+  });
+});
+</script>
+{% endblock %}

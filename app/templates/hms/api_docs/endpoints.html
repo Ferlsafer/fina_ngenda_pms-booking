@@ -1,0 +1,198 @@
+{% extends "hms/layout/base.html" %}
+{% block title %}API Endpoints - Hotel PMS{% endblock %}
+
+{% block head %}
+<style>
+  .endpoint-block { border: 1px solid var(--tblr-border-color); border-radius: 8px; margin-bottom: 1rem; overflow: hidden; }
+  .endpoint-block .method { font-weight: 700; }
+  .endpoint-block .method.get { color: #22c55e; }
+  .endpoint-block .method.post { color: #3b82f6; }
+  .endpoint-block .method.put { color: #eab308; }
+  .endpoint-block .method.delete { color: #dc2626; }
+  pre { margin: 0; white-space: pre-wrap; }
+  .try-it { border-top: 1px solid var(--tblr-border-color); }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-header d-print-none">
+  <div class="row align-items-center">
+    <div class="col">
+      <h2 class="page-title">Endpoint reference</h2>
+      <div class="text-muted mt-1">All available endpoints with examples</div>
+    </div>
+    <div class="col-auto">
+      <a href="{{ '#' if url_for is defined else '#' }}" class="btn btn-outline-secondary">Overview</a>
+    </div>
+  </div>
+</div>
+
+<div class="card mb-3">
+  <div class="card-body">
+    <input type="text" class="form-control" id="filter-endpoints" placeholder="Filter endpoints...">
+  </div>
+</div>
+
+<!-- Bookings -->
+<div class="endpoint-block" data-endpoint="bookings">
+  <div class="card-header bg-secondary-lt">
+    <h3 class="card-title mb-0">Bookings</h3>
+  </div>
+  <div class="card-body">
+    <div class="d-flex align-items-center mb-2">
+      <span class="method get me-2">GET</span>
+      <code>/v1/bookings</code>
+    </div>
+    <p class="text-muted small mb-2">List bookings. Query: <code>from</code>, <code>to</code>, <code>status</code>.</p>
+    <p class="mb-1 small"><strong>Response example:</strong></p>
+    <pre class="bg-dark text-light p-3 rounded small">{"data": [{"id": 1, "guest_name": "John", "check_in": "2025-02-20", "check_out": "2025-02-22", "status": "confirmed"}]}</pre>
+    <div class="try-it p-3">
+      <button type="button" class="btn btn-sm btn-outline-primary try-btn" data-method="GET" data-url="/v1/bookings">Try it out</button>
+    </div>
+  </div>
+</div>
+
+<div class="endpoint-block" data-endpoint="bookings">
+  <div class="card-body border-top">
+    <div class="d-flex align-items-center mb-2">
+      <span class="method post me-2">POST</span>
+      <code>/v1/bookings</code>
+    </div>
+    <p class="text-muted small mb-2">Create a booking.</p>
+    <p class="mb-1 small"><strong>Request body:</strong></p>
+    <pre class="bg-dark text-light p-3 rounded small">{"guest_name": "Jane", "room_id": 5, "check_in": "2025-02-20", "check_out": "2025-02-22"}</pre>
+    <div class="try-it p-3">
+      <button type="button" class="btn btn-sm btn-outline-primary try-btn" data-method="POST" data-url="/v1/bookings">Try it out</button>
+    </div>
+  </div>
+</div>
+
+<div class="endpoint-block" data-endpoint="bookings">
+  <div class="card-body border-top">
+    <div class="d-flex align-items-center mb-2">
+      <span class="method get me-2">GET</span>
+      <code>/v1/bookings/{id}</code>
+    </div>
+    <p class="text-muted small mb-2">Get a single booking.</p>
+    <div class="try-it p-3">
+      <button type="button" class="btn btn-sm btn-outline-primary try-btn" data-method="GET" data-url="/v1/bookings/1">Try it out</button>
+    </div>
+  </div>
+</div>
+
+<!-- Rooms -->
+<div class="endpoint-block" data-endpoint="rooms">
+  <div class="card-header bg-secondary-lt">
+    <h3 class="card-title mb-0">Rooms</h3>
+  </div>
+  <div class="card-body">
+    <div class="d-flex align-items-center mb-2">
+      <span class="method get me-2">GET</span>
+      <code>/v1/rooms</code>
+    </div>
+    <p class="text-muted small mb-2">List rooms. Query: <code>status</code>, <code>type_id</code>.</p>
+    <p class="mb-1 small"><strong>Response example:</strong></p>
+    <pre class="bg-dark text-light p-3 rounded small">{"data": [{"id": 1, "room_number": "101", "type": "Standard", "status": "available"}]}</pre>
+    <div class="try-it p-3">
+      <button type="button" class="btn btn-sm btn-outline-primary try-btn" data-method="GET" data-url="/v1/rooms">Try it out</button>
+    </div>
+  </div>
+</div>
+
+<!-- Restaurant -->
+<div class="endpoint-block" data-endpoint="restaurant">
+  <div class="card-header bg-secondary-lt">
+    <h3 class="card-title mb-0">Restaurant</h3>
+  </div>
+  <div class="card-body">
+    <div class="d-flex align-items-center mb-2">
+      <span class="method get me-2">GET</span>
+      <code>/v1/restaurant/menu</code>
+    </div>
+    <p class="text-muted small mb-2">List menu items and categories.</p>
+    <div class="try-it p-3">
+      <button type="button" class="btn btn-sm btn-outline-primary try-btn" data-method="GET" data-url="/v1/restaurant/menu">Try it out</button>
+    </div>
+  </div>
+</div>
+
+<div class="endpoint-block" data-endpoint="restaurant">
+  <div class="card-body border-top">
+    <div class="d-flex align-items-center mb-2">
+      <span class="method post me-2">POST</span>
+      <code>/v1/restaurant/orders</code>
+    </div>
+    <p class="text-muted small mb-2">Create an order (table_id, items[]).</p>
+    <div class="try-it p-3">
+      <button type="button" class="btn btn-sm btn-outline-primary try-btn" data-method="POST" data-url="/v1/restaurant/orders">Try it out</button>
+    </div>
+  </div>
+</div>
+
+<!-- Code samples -->
+<div class="card mt-4">
+  <div class="card-header">
+    <h3 class="card-title">Code samples</h3>
+  </div>
+  <div class="card-body">
+    <ul class="nav nav-tabs mb-2" role="tablist">
+      <li class="nav-item"><a class="nav-link active" data-bs-toggle="tab" href="#sample-curl">cURL</a></li>
+      <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#sample-js">JavaScript</a></li>
+      <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#sample-python">Python</a></li>
+    </ul>
+    <div class="tab-content">
+      <div class="tab-pane show active" id="sample-curl">
+        <pre class="bg-dark text-light p-3 rounded">curl -X GET "https://api.yourhotel.com/v1/bookings" \
+  -H "Authorization: Bearer YOUR_API_KEY"</pre>
+      </div>
+      <div class="tab-pane" id="sample-js">
+        <pre class="bg-dark text-light p-3 rounded">const res = await fetch('https://api.yourhotel.com/v1/bookings', {
+  headers: { 'Authorization': 'Bearer YOUR_API_KEY' }
+});
+const data = await res.json();</pre>
+      </div>
+      <div class="tab-pane" id="sample-python">
+        <pre class="bg-dark text-light p-3 rounded">import requests
+r = requests.get('https://api.yourhotel.com/v1/bookings',
+    headers={'Authorization': 'Bearer YOUR_API_KEY'})
+data = r.json()</pre>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Try it out result -->
+<div class="modal modal-blur fade" id="tryResultModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Response</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <pre class="bg-dark text-light p-3 rounded" id="try-result">Backend: implement try-it-out or show placeholder.</pre>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.getElementById('filter-endpoints')?.addEventListener('input', function() {
+  var q = this.value.toLowerCase().trim();
+  document.querySelectorAll('.endpoint-block').forEach(function(block) {
+    var show = !q || block.dataset.endpoint.toLowerCase().includes(q) || block.textContent.toLowerCase().includes(q);
+    block.style.display = show ? '' : 'none';
+  });
+});
+document.querySelectorAll('.try-btn').forEach(function(btn) {
+  btn.addEventListener('click', function() {
+    var method = this.dataset.method;
+    var url = this.dataset.url;
+    document.getElementById('try-result').textContent = method + ' ' + url + '\n\n(Backend: call API and display response, or use CORS/proxy.)';
+    new bootstrap.Modal(document.getElementById('tryResultModal')).show();
+  });
+});
+</script>
+{% endblock %}

@@ -1,0 +1,206 @@
+{% extends "hms/layout/base.html" %}
+{% block title %}Night Audit - Hotel PMS{% endblock %}
+
+{% block content %}
+<div class="container-xl">
+  <div class="page-header d-print-none">
+    <div class="row align-items-center">
+      <div class="col">
+        <h2 class="page-title">Night Audit</h2>
+        <div class="text-muted mt-1">Close business day, post revenue, and advance to next day</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Today's Performance Summary -->
+  <div class="row mb-4">
+    <div class="col-sm-6 col-lg-3">
+      <div class="card">
+        <div class="card-body">
+          <div class="d-flex align-items-center">
+            <div class="subheader">Revenue Today</div>
+          </div>
+          <div class="h1 mb-3">${{ "%.2f"|format(today_revenue if today_revenue is defined else 0) }}</div>
+          <div class="text-muted small">Room revenue posted</div>
+        </div>
+      </div>
+    </div>
+    <div class="col-sm-6 col-lg-3">
+      <div class="card">
+        <div class="card-body">
+          <div class="d-flex align-items-center">
+            <div class="subheader">Occupancy Rate</div>
+          </div>
+          <div class="h1 mb-3">{{ occupancy_rate if occupancy_rate is defined else 0 }}%</div>
+          <div class="text-muted small">{{ occupied_rooms if occupied_rooms is defined else 0 }}/{{ total_rooms if total_rooms is defined else 0 }} rooms occupied</div>
+        </div>
+      </div>
+    </div>
+    <div class="col-sm-6 col-lg-3">
+      <div class="card">
+        <div class="card-body">
+          <div class="d-flex align-items-center">
+            <div class="subheader">Payments</div>
+          </div>
+          <div class="h1 mb-3">${{ "%.2f"|format(total_payments_amount if total_payments_amount is defined else 0) }}</div>
+          <div class="text-muted small">{{ payments_today if payments_today is defined else 0 }} transactions</div>
+        </div>
+      </div>
+    </div>
+    <div class="col-sm-6 col-lg-3">
+      <div class="card">
+        <div class="card-body">
+          <div class="d-flex align-items-center">
+            <div class="subheader">Arrivals / Departures</div>
+          </div>
+          <div class="h1 mb-3">{{ arrivals_today if arrivals_today is defined else 0 }} / {{ departures_today if departures_today is defined else 0 }}</div>
+          <div class="text-muted small">Today's movements</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Business Date Status -->
+  <div class="card mb-4">
+    <div class="card-header">
+      <h3 class="card-title">Current Business Date</h3>
+    </div>
+    <div class="card-body text-center">
+      {% if biz_date %}
+        <div class="row">
+          <div class="col-md-6">
+            <h4>📅 {{ biz_date.current_business_date.strftime('%B %d, %Y') }}</h4>
+            <p class="text-muted mt-2">Status: 
+              {% if biz_date.is_closed %}
+                <span class="badge bg-danger">🔒 LOCKED (Previous Day)</span>
+              {% else %}
+                <span class="badge bg-success">✅ OPEN</span>
+              {% endif %}
+            </p>
+          </div>
+          <div class="col-md-6 text-end">
+            {% if not biz_date.is_closed %}
+            <form method="POST" action="{{ url_for('hms.run_night_audit') }}">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <button type="submit" class="btn btn-danger btn-lg" onclick="return confirm('Are you sure you want to close the business day? This will: 1) Post room charges, 2) Lock all transactions, 3) Advance to next day.'); document.forms[0].submit();">
+                <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                  <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+                  <circle cx="12" cy="12" r="9" />
+                  <line x1="12" y1="8" x2="12" y2="12" />
+                  <line x1="12" y1="16" x2="12.01" y2="16" />
+                </svg>
+                Close Business Day & Advance
+              </button>
+            </form>
+            <p class="text-muted small mt-2">Posts revenue, closes today, advances to tomorrow</p>
+            {% else %}
+            <div class="alert alert-success">
+              <h5>✅ Business Day Open</h5>
+              <p class="mb-0">Ready to accept transactions for {{ biz_date.current_business_date.strftime('%B %d, %Y') }}</p>
+            </div>
+            {% endif %}
+          </div>
+        </div>
+      {% else %}
+      <p class="text-muted">No business date configured. Will be created on first night audit run.</p>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- Night Audit Instructions -->
+  <div class="card mb-4">
+    <div class="card-header">
+      <h3 class="card-title">📋 Night Audit Process</h3>
+    </div>
+    <div class="card-body">
+      <div class="row">
+        <div class="col-md-4">
+          <h5>Before Running:</h5>
+          <ul class="text-muted">
+            <li>✅ Verify all bookings checked in/out</li>
+            <li>✅ Process all pending payments</li>
+            <li>✅ Complete all restaurant orders</li>
+            <li>✅ Review high-balance accounts</li>
+          </ul>
+        </div>
+        <div class="col-md-4">
+          <h5>What Happens:</h5>
+          <ul class="text-muted">
+            <li>💰 Post room charges to occupied rooms</li>
+            <li>📊 Create journal entries for revenue</li>
+            <li>🔒 Current day is locked</li>
+            <li>📅 Business date advances to tomorrow</li>
+          </ul>
+        </div>
+        <div class="col-md-4">
+          <h5>After Running:</h5>
+          <ul class="text-muted">
+            <li>❌ No transactions for locked date</li>
+            <li>✅ New transactions use new date</li>
+            <li>📝 Audit trail preserved</li>
+            <li>📈 Reports available below</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Recent Audit Logs -->
+  <div class="card">
+    <div class="card-header">
+      <h3 class="card-title">📜 Recent Audit Logs</h3>
+    </div>
+    <div class="card-body">
+      {% set audit_logs = audit_logs if audit_logs is defined else [] %}
+      {% if audit_logs %}
+      <div class="table-responsive">
+        <table class="table table-vcenter">
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Run By</th>
+              <th>Started</th>
+              <th>Completed</th>
+              <th>Status</th>
+              <th>Revenue Posted</th>
+              <th>Notes</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for log in audit_logs %}
+            <tr>
+              <td>{{ log.audit_date.strftime('%Y-%m-%d') }}</td>
+              <td>{{ log.runner.name if log.runner else 'Unknown' }}</td>
+              <td>{{ log.started_at.strftime('%H:%M') }}</td>
+              <td>{{ log.completed_at.strftime('%H:%M') if log.completed_at else '-' }}</td>
+              <td>
+                {% if log.status == 'success' %}
+                  <span class="badge bg-success">✅ Success</span>
+                {% elif log.status == 'failed' %}
+                  <span class="badge bg-danger">❌ Failed</span>
+                {% elif log.status == 'partial' %}
+                  <span class="badge bg-warning">⚠️ Partial</span>
+                {% else %}
+                  <span class="badge bg-secondary">Running</span>
+                {% endif %}
+              </td>
+              <td>
+                {% if log.summary and log.summary.revenue_posted %}
+                  ${{ "%.2f"|format(log.summary.revenue_posted) }}
+                {% else %}
+                  -
+                {% endif %}
+              </td>
+              <td class="text-muted small">{{ log.notes or '-' }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% else %}
+      <p class="text-muted text-center">No audit logs yet. Run night audit to create the first log.</p>
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endblock %}

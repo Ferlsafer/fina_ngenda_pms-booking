@@ -1,0 +1,160 @@
+{% extends "hms/layout/base.html" %}
+{% block title %}Restaurant Menu - Ngenda Hotel{% endblock %}
+
+{% block content %}
+<div class="container-xl">
+  <!-- Page header -->
+  <div class="page-header d-print-none">
+    <div class="row align-items-center">
+      <div class="col">
+        <h2 class="page-title">Restaurant Menu</h2>
+        <div class="text-muted mt-1">Manage your menu categories and items</div>
+      </div>
+      <div class="col-auto ms-auto d-print-none">
+        <div class="btn-list">
+          <a href="{{ url_for('hms.category_create') }}" class="btn btn-primary">
+            <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+              <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+              <line x1="12" y1="5" x2="12" y2="19" />
+              <line x1="5" y1="12" x2="19" y2="12" />
+            </svg>
+            Add Category
+          </a>
+          <a href="{{ url_for('hms.menu_item_add') }}" class="btn btn-success">
+            <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+              <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+              <path d="M12 5v14" />
+              <path d="M5 12h14" />
+            </svg>
+            Add Menu Item
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Menu Categories -->
+  <div class="card mb-4">
+    <div class="card-header">
+      <h3 class="card-title">Menu Categories</h3>
+    </div>
+    <div class="card-body">
+      {% if categories %}
+      <div class="row">
+        {% for category in categories %}
+        <div class="col-md-6 col-lg-4 mb-3">
+          <div class="card">
+            <div class="card-body">
+              <div class="d-flex justify-content-between align-items-center mb-2">
+                <h4 class="card-title mb-0">{{ category.name }}</h4>
+                <span class="badge bg-blue">{{ category.item_count }} items</span>
+              </div>
+              <p class="text-muted small mb-3">{{ category.description or 'No description' }}</p>
+              <div class="btn-list">
+                <a href="{{ url_for('hms.category_edit', category_id=category.id) }}" class="btn btn-sm btn-outline-primary">
+                  <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="16" height="16" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                    <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+                    <path d="M9 7h-3a2 2 0 0 0 -2 2v9a2 2 0 0 0 2 2h9a2 2 0 0 0 2 -2v-3" />
+                    <path d="M9 15h3l8.5 -8.5a1.5 1.5 0 0 0 -3 -3l-8.5 8.5v3" />
+                  </svg>
+                  Edit
+                </a>
+                <form action="{{ url_for('hms.category_delete', category_id=category.id) }}" method="POST" class="d-inline" onsubmit="return confirm('Are you sure? Items will become uncategorized.');">
+                  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                  <button type="submit" class="btn btn-sm btn-outline-danger">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="16" height="16" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                      <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+                      <line x1="4" y1="7" x2="20" y2="7" />
+                      <line x1="10" y1="11" x2="10" y2="17" />
+                      <line x1="14" y1="11" x2="14" y2="17" />
+                      <path d="M5 7l1 14a2 2 0 0 0 2 2h8a2 2 0 0 0 2 -2l1 -14" />
+                      <path d="M9 7v-3a1 1 0 0 1 1 -1h4a1 1 0 0 1 1 1v3" />
+                    </svg>
+                    Delete
+                  </button>
+                </form>
+              </div>
+            </div>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+      {% else %}
+      <div class="text-center py-4">
+        <div class="text-muted mb-3">No categories yet</div>
+        <a href="{{ url_for('hms.category_create') }}" class="btn btn-primary">Create First Category</a>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- Menu Items -->
+  <div class="card">
+    <div class="card-header">
+      <h3 class="card-title">Menu Items</h3>
+    </div>
+    <div class="card-body">
+      {% if items %}
+      <div class="table-responsive">
+        <table class="table table-vcenter card-table">
+          <thead>
+            <tr>
+              <th>Item</th>
+              <th>Category</th>
+              <th>Price</th>
+              <th>Status</th>
+              <th class="w-1"></th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for item in items %}
+            <tr>
+              <td>
+                <div class="d-flex align-items-center">
+                  {% if item.image_url %}
+                  <span class="avatar avatar-sm me-3" style="background-image: url({{ item.image_url }})"></span>
+                  {% else %}
+                  <span class="avatar avatar-sm me-3 bg-blue-lt">{{ item.name[0]|upper }}</span>
+                  {% endif %}
+                  <div>
+                    <div class="font-weight-medium">{{ item.name }}</div>
+                    <div class="text-muted small">{{ item.description|truncate(50) if item.description else '' }}</div>
+                  </div>
+                </div>
+              </td>
+              <td>
+                {% if item.category %}
+                <span class="badge bg-blue">{{ item.category.name }}</span>
+                {% else %}
+                <span class="text-muted">Uncategorized</span>
+                {% endif %}
+              </td>
+              <td>${{ "%.2f"|format(item.price) }}</td>
+              <td>
+                <span class="badge bg-{% if item.is_available %}success{% else %}danger{% endif %}-lt">
+                  {{ 'Available' if item.is_available else 'Unavailable' }}
+                </span>
+              </td>
+              <td>
+                <div class="btn-list-sm">
+                  <form action="{{ url_for('hms.menu_item_delete', item_id=item.id) }}" method="POST" class="d-inline" onsubmit="return confirm('Are you sure you want to delete this item?');">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <button type="submit" class="btn btn-sm btn-outline-danger">Delete</button>
+                  </form>
+                </div>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% else %}
+      <div class="text-center py-4">
+        <div class="text-muted mb-3">No menu items yet</div>
+        <a href="{{ url_for('hms.menu_item_add') }}" class="btn btn-success">Add First Item</a>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,377 @@
+{% extends "hms/layout/base.html" %}
+{% block title %}{{ item.name }} - Inventory Details{% endblock %}
+
+{% block head %}
+<!-- Chart.js for stock history graph -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+{% endblock %}
+
+{% block content %}
+<div class="container-xl">
+  <!-- Page header -->
+  <div class="page-header d-print-none">
+    <div class="row align-items-center">
+      <div class="col">
+        <div class="d-flex align-items-center">
+          <h2 class="page-title">{{ item.name }}</h2>
+          <span class="badge bg-{% if item.current_stock <= 0 %}danger{% elif item.current_stock <= item.reorder_level %}warning{% else %}success{% endif %} ms-3">
+            {% if item.current_stock <= 0 %}Out of Stock{% elif item.current_stock <= item.reorder_level %}Low Stock{% else %}In Stock{% endif %}
+          </span>
+        </div>
+        <div class="text-muted mt-1">
+          SKU: <code>{{ item.sku }}</code> • 
+          Category: {{ item.category.name }} • 
+          Unit: {{ item.unit }}
+        </div>
+      </div>
+      <div class="col-auto ms-auto d-print-none">
+        <div class="btn-list">
+          <a href="#" class="btn btn-primary">
+            <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+              <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+              <path d="M9 7h-3a2 2 0 0 0 -2 2v9a2 2 0 0 0 2 2h9a2 2 0 0 0 2 -2v-3" />
+              <path d="M9 15h3l8.5 -8.5a1.5 1.5 0 0 0 -3 -3l-8.5 8.5v3" />
+              <line x1="16" y1="5" x2="19" y2="8" />
+            </svg>
+            Edit
+          </a>
+          <a href="{{ url_for('hms.adjust_stock') }}?item_id={{ item.id }}" class="btn btn-warning">
+            <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+              <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+              <path d="M12 5v14" />
+              <path d="M5 12h14" />
+            </svg>
+            Adjust Stock
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Stats Cards -->
+  <div class="row row-deck row-cards mb-3">
+    <div class="col-sm-6 col-lg-3">
+      <div class="card">
+        <div class="card-body">
+          <div class="d-flex align-items-center">
+            <div class="subheader">Current Stock</div>
+          </div>
+          <div class="h1 mb-2">{{ "%.2f"|format(item.current_stock) }} <small class="text-muted h4">{{ item.unit }}</small></div>
+          <div class="d-flex">
+            <div>Reorder Level: {{ item.reorder_level }} {{ item.unit }}</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="col-sm-6 col-lg-3">
+      <div class="card">
+        <div class="card-body">
+          <div class="d-flex align-items-center">
+            <div class="subheader">Average Cost</div>
+          </div>
+          <div class="h1 mb-2">${{ "%.2f"|format(item.average_cost) }}</div>
+          <div class="d-flex">
+            <div>Total Value: ${{ "%.2f"|format(item.current_stock * item.average_cost) }}</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="col-sm-6 col-lg-3">
+      <div class="card">
+        <div class="card-body">
+          <div class="d-flex align-items-center">
+            <div class="subheader">Selling Price</div>
+          </div>
+          <div class="h1 mb-2">${{ "%.2f"|format(item.selling_price or 0) }}</div>
+          <div class="d-flex">
+            <div>Margin: 
+              {% if item.selling_price and item.average_cost %}
+                {{ "%.1f"|format((item.selling_price - item.average_cost) / item.selling_price * 100) }}%
+              {% else %}
+                N/A
+              {% endif %}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="col-sm-6 col-lg-3">
+      <div class="card">
+        <div class="card-body">
+          <div class="d-flex align-items-center">
+            <div class="subheader">Movement (30 days)</div>
+          </div>
+          <div class="h1 mb-2">
+            {% if stats.thirty_day_consumption %}
+              {{ "%.0f"|format(stats.thirty_day_consumption) }} {{ item.unit }}
+            {% else %}
+              0
+            {% endif %}
+          </div>
+          <div class="d-flex">
+            <div>Est. Days Left: 
+              {% if stats.days_left %}
+                {{ stats.days_left }} days
+              {% else %}
+                N/A
+              {% endif %}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Stock History Graph -->
+  <div class="card mb-3">
+    <div class="card-header">
+      <h3 class="card-title">Stock History (Last 30 Days)</h3>
+    </div>
+    <div class="card-body">
+      <canvas id="stockHistoryChart" style="height: 250px;"></canvas>
+    </div>
+  </div>
+
+  <!-- Item Details -->
+  <div class="row">
+    <div class="col-md-6">
+      <div class="card">
+        <div class="card-header">
+          <h3 class="card-title">Item Details</h3>
+        </div>
+        <div class="card-body">
+          <div class="datagrid">
+            <div class="datagrid-item">
+              <div class="datagrid-title">SKU</div>
+              <div class="datagrid-content"><code>{{ item.sku }}</code></div>
+            </div>
+            <div class="datagrid-item">
+              <div class="datagrid-title">Barcode</div>
+              <div class="datagrid-content">{{ item.barcode or 'Not set' }}</div>
+            </div>
+            <div class="datagrid-item">
+              <div class="datagrid-title">Category</div>
+              <div class="datagrid-content">{{ item.category.name }}</div>
+            </div>
+            <div class="datagrid-item">
+              <div class="datagrid-title">Unit</div>
+              <div class="datagrid-content">{{ item.unit }}</div>
+            </div>
+            <div class="datagrid-item">
+              <div class="datagrid-title">Tax Rate</div>
+              <div class="datagrid-content">{{ item.tax_rate or 0 }}%</div>
+            </div>
+            <div class="datagrid-item">
+              <div class="datagrid-title">Created</div>
+              <div class="datagrid-content">{{ item.created_at.strftime('%Y-%m-%d') }}</div>
+            </div>
+          </div>
+          {% if item.description %}
+          <div class="mt-3">
+            <strong>Description:</strong>
+            <p class="text-muted">{{ item.description }}</p>
+          </div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+
+    <div class="col-md-6">
+      <div class="card">
+        <div class="card-header">
+          <h3 class="card-title">Stock Information</h3>
+        </div>
+        <div class="card-body">
+          <div class="datagrid">
+            <div class="datagrid-item">
+              <div class="datagrid-title">Current Stock</div>
+              <div class="datagrid-content">{{ "%.2f"|format(item.current_stock) }} {{ item.unit }}</div>
+            </div>
+            <div class="datagrid-item">
+              <div class="datagrid-title">Reorder Level</div>
+              <div class="datagrid-content">{{ item.reorder_level }} {{ item.unit }}</div>
+            </div>
+            <div class="datagrid-item">
+              <div class="datagrid-title">Target Stock</div>
+              <div class="datagrid-content">{{ item.target_stock or 'Not set' }} {{ item.unit }}</div>
+            </div>
+            <div class="datagrid-item">
+              <div class="datagrid-title">Average Cost</div>
+              <div class="datagrid-content">${{ "%.2f"|format(item.average_cost) }}</div>
+            </div>
+            <div class="datagrid-item">
+              <div class="datagrid-title">Selling Price</div>
+              <div class="datagrid-content">${{ "%.2f"|format(item.selling_price or 0) }}</div>
+            </div>
+            <div class="datagrid-item">
+              <div class="datagrid-title">Last Updated</div>
+              <div class="datagrid-content">{{ item.updated_at.strftime('%Y-%m-%d %H:%M') if item.updated_at else 'Never' }}</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Recent Movements -->
+  <div class="card mt-3">
+    <div class="card-header">
+      <h3 class="card-title">Recent Stock Movements</h3>
+      <div class="card-actions">
+        <a href="{{ url_for('hms.inventory') }}?item_id={{ item.id }}" class="btn btn-outline-primary btn-sm">View All</a>
+      </div>
+    </div>
+    <div class="table-responsive">
+      <table class="table table-vcenter card-table">
+        <thead>
+          <tr>
+            <th>Date/Time</th>
+            <th>Type</th>
+            <th class="text-end">Quantity</th>
+            <th class="text-end">Unit Cost</th>
+            <th class="text-end">Previous</th>
+            <th class="text-end">New</th>
+            <th>Reference</th>
+            <th>User</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for movement in recent_movements %}
+          <tr>
+            <td>{{ movement.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
+            <td>
+              {% if movement.movement_type == 'purchase' %}
+              <span class="badge bg-success">Purchase</span>
+              {% elif movement.movement_type == 'consumption' %}
+              <span class="badge bg-danger">Consumption</span>
+              {% elif 'adjustment' in movement.movement_type %}
+              <span class="badge bg-warning">Adjustment</span>
+              {% endif %}
+            </td>
+            <td class="text-end">
+              {% if '+' in movement.movement_type or movement.movement_type == 'purchase' %}
+              <span class="text-success">+{{ "%.2f"|format(movement.quantity) }}</span>
+              {% else %}
+              <span class="text-danger">-{{ "%.2f"|format(movement.quantity) }}</span>
+              {% endif %}
+            </td>
+            <td class="text-end">${{ "%.2f"|format(movement.unit_cost) if movement.unit_cost else '-' }}</td>
+            <td class="text-end">{{ "%.2f"|format(movement.previous_stock) }}</td>
+            <td class="text-end">{{ "%.2f"|format(movement.new_stock) }}</td>
+            <td>
+              {% if movement.reference_type == 'purchase_order' %}
+              <a href="{{ url_for('hms.view_po', po_id=movement.reference_id) }}">PO #{{ movement.reference_id }}</a>
+              {% elif movement.reference_type == 'housekeeping' %}
+              <a href="{{ url_for('housekeeping.task_detail', task_id=movement.reference_id) }}">Task #{{ movement.reference_id }}</a>
+              {% else %}
+              {{ movement.reference_type|title }}
+              {% endif %}
+            </td>
+            <td>{{ movement.created_by_user.name if movement.created_by_user else 'System' }}</td>
+          </tr>
+          {% else %}
+          <tr>
+            <td colspan="8" class="text-center text-muted py-4">No movements found</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Purchase Orders -->
+  <div class="card mt-3">
+    <div class="card-header">
+      <h3 class="card-title">Pending Purchase Orders</h3>
+      <div class="card-actions">
+        <a href="#?item_id={{ item.id }}" class="btn btn-primary btn-sm">
+          <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+            <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+            <path d="M6 19m-2 0a2 2 0 1 0 4 0a2 2 0 1 0 -4 0" />
+            <path d="M17 19m-2 0a2 2 0 1 0 4 0a2 2 0 1 0 -4 0" />
+            <path d="M17 17h-11v-11h-2" />
+            <path d="M9 5l9 0l-2 4h-7" />
+          </svg>
+          Create PO
+        </a>
+      </div>
+    </div>
+    <div class="table-responsive">
+      <table class="table table-vcenter card-table">
+        <thead>
+          <tr>
+            <th>PO Number</th>
+            <th>Supplier</th>
+            <th>Order Date</th>
+            <th class="text-end">Ordered Qty</th>
+            <th class="text-end">Received</th>
+            <th class="text-end">Balance</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for po_item in pending_pos %}
+          <tr>
+            <td><a href="{{ url_for('hms.view_po', po_id=po_item.purchase_order.id) }}">PO-{{ po_item.purchase_order.po_number }}</a></td>
+            <td>{{ po_item.purchase_order.supplier.name }}</td>
+            <td>{{ po_item.purchase_order.order_date.strftime('%Y-%m-%d') }}</td>
+            <td class="text-end">{{ "%.2f"|format(po_item.quantity) }} {{ item.unit }}</td>
+            <td class="text-end">{{ "%.2f"|format(po_item.received_quantity) }} {{ item.unit }}</td>
+            <td class="text-end">{{ "%.2f"|format(po_item.quantity - po_item.received_quantity) }} {{ item.unit }}</td>
+            <td>
+              <span class="badge bg-{% if po_item.purchase_order.status == 'ordered' %}primary{% else %}secondary{% endif %}">
+                {{ po_item.purchase_order.status|title }}
+              </span>
+            </td>
+          </tr>
+          {% else %}
+          <tr>
+            <td colspan="7" class="text-center text-muted py-4">No pending purchase orders</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  // Stock history chart
+  const ctx = document.getElementById('stockHistoryChart').getContext('2d');
+  
+  new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: {{ chart_labels|tojson }},
+      datasets: [{
+        label: 'Stock Level',
+        data: {{ chart_data|tojson }},
+        borderColor: '#4299e1',
+        backgroundColor: 'rgba(66, 153, 225, 0.1)',
+        tension: 0.4,
+        fill: true
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: {
+          display: false
+        }
+      },
+      scales: {
+        y: {
+          beginAtZero: true,
+          title: {
+            display: true,
+            text: 'Stock ({{ item.unit }})'
+          }
+        }
+      }
+    }
+  });
+});
+</script>
+{% endblock %}

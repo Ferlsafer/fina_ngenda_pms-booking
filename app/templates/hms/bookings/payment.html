@@ -1,0 +1,40 @@
+{% extends "hms/layout/base.html" %}
+{% block title %}Payment - Hotel PMS{% endblock %}
+{% block content %}
+<div class="page-header d-print-none">
+  <h2 class="page-title">Add payment — Booking #{{ booking.id }}</h2>
+</div>
+<div class="row">
+  <div class="col-md-6">
+    <div class="card">
+      <div class="card-body">
+        <p><strong>Guest:</strong> {{ booking.guest.name }}</p>
+        <p><strong>Invoice total:</strong> {{ invoice.total }}</p>
+        <p><strong>Paid so far:</strong> {{ paid_total }}</p>
+        <p><strong>Status:</strong> {{ invoice.status }}</p>
+      </div>
+    </div>
+    <div class="card mt-3">
+      <div class="card-body">
+        <form method="post" action="{{ url_for('hms.bookings_payment', booking_id=booking.id) }}">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+          <div class="mb-3">
+            <label class="form-label">Amount</label>
+            <input type="number" name="amount" class="form-control" step="0.01" min="0.01" required>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Payment method</label>
+            <select name="payment_method" class="form-select">
+              <option value="Cash">Cash</option>
+              <option value="Card">Card</option>
+              <option value="Transfer">Transfer</option>
+            </select>
+          </div>
+          <button type="submit" class="btn btn-primary">Record payment</button>
+          <a href="{{ url_for('hms.bookings') }}" class="btn btn-link">Back</a>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

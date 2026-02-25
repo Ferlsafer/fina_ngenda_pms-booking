@@ -1,0 +1,123 @@
+{% extends "hms/layout/base.html" %}
+{% block title %}Journal Entry #{{ entry.id }} - Accounting{% endblock %}
+
+{% block content %}
+<div class="container-xl">
+  <!-- Page header -->
+  <div class="page-header d-print-none">
+    <div class="row align-items-center">
+      <div class="col">
+        <h2 class="page-title">Journal Entry #{{ entry.id }}</h2>
+        <div class="text-muted mt-1">Transaction details</div>
+      </div>
+      <div class="col-auto ms-auto d-print-none">
+        <a href="{{ '#' }}" class="btn btn-secondary">Back to Entries</a>
+      </div>
+    </div>
+  </div>
+
+  <!-- Entry Summary -->
+  <div class="row row-deck row-cards mb-3">
+    <div class="col-sm-6 col-lg-3">
+      <div class="card">
+        <div class="card-body">
+          <div class="d-flex align-items-center">
+            <div class="subheader">Date</div>
+          </div>
+          <div class="h1 mb-3">{{ entry.date.strftime('%Y-%m-%d') }}</div>
+        </div>
+      </div>
+    </div>
+    <div class="col-sm-6 col-lg-3">
+      <div class="card">
+        <div class="card-body">
+          <div class="d-flex align-items-center">
+            <div class="subheader">Reference</div>
+          </div>
+          <div class="h1 mb-3">{{ entry.reference or 'Manual Entry' }}</div>
+        </div>
+      </div>
+    </div>
+    <div class="col-sm-6 col-lg-3">
+      <div class="card">
+        <div class="card-body">
+          <div class="d-flex align-items-center">
+            <div class="subheader">Total Debits</div>
+          </div>
+          <div class="h1 mb-3">${{ "%.2f"|format(entry.lines|map(attribute='debit')|reject('none')|sum) }}</div>
+        </div>
+      </div>
+    </div>
+    <div class="col-sm-6 col-lg-3">
+      <div class="card">
+        <div class="card-body">
+          <div class="d-flex align-items-center">
+            <div class="subheader">Total Credits</div>
+          </div>
+          <div class="h1 mb-3">${{ "%.2f"|format(entry.lines|map(attribute='credit')|reject('none')|sum) }}</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Entry Description -->
+  {% if entry.description %}
+  <div class="card mb-3">
+    <div class="card-body">
+      <h3 class="card-title">Description</h3>
+      <p class="card-text">{{ entry.description }}</p>
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- Journal Lines -->
+  <div class="card">
+    <div class="card-header">
+      <h3 class="card-title">Journal Lines</h3>
+    </div>
+    <div class="table-responsive">
+      <table class="table table-vcenter card-table">
+        <thead>
+          <tr>
+            <th>Account</th>
+            <th>Type</th>
+            <th class="text-end">Debit</th>
+            <th class="text-end">Credit</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for line in entry.lines %}
+          <tr>
+            <td>{{ line.account.name }}</td>
+            <td><span class="badge bg-blue">{{ line.account.type }}</span></td>
+            <td class="text-end">
+              {% if line.debit %}
+                <span class="text-danger">${{ "%.2f"|format(line.debit) }}</span>
+              {% else %}
+                <span class="text-muted">-</span>
+              {% endif %}
+            </td>
+            <td class="text-end">
+              {% if line.credit %}
+                <span class="text-success">${{ "%.2f"|format(line.credit) }}</span>
+              {% else %}
+                <span class="text-muted">-</span>
+              {% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+          <tr class="border-top">
+            <td colspan="2" class="text-end"><strong>Totals</strong></td>
+            <td class="text-end">
+              <strong>${{ "%.2f"|format(entry.lines|map(attribute='debit')|reject('none')|sum) }}</strong>
+            </td>
+            <td class="text-end">
+              <strong>${{ "%.2f"|format(entry.lines|map(attribute='credit')|reject('none')|sum) }}</strong>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}

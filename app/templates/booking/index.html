@@ -1,0 +1,237 @@
+{% extends "booking/base.html" %}
+
+{% block title %}Ngenda Hotel | Home - Luxury Hotel in Mbeya, Tanzania{% endblock %}
+
+{% block content %}
+
+<!-- HERO SECTION START -->
+<div class="hero-section" style="position: relative; height: 100vh; overflow: hidden;">
+    <img src="{{ url_for('static', filename='booking/images/main-slider/slider.jpg') }}" alt="Ngenda Hotel" style="width: 100%; height: 100%; object-fit: cover; object-position: center;">
+    <div style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0, 0, 0, 0.5); display: flex; align-items: center; justify-content: center;">
+        <div style="text-align: center; color: white; max-width: 800px; padding: 20px;">
+            <h1 style="font-size: 3.5rem; font-weight: 900; margin-bottom: 20px; font-family: 'DM Serif Text', serif; text-transform: uppercase;">
+                <span style="color: white;">Welcome to <br>Ngenda Hotel & Apartments</span>
+            </h1>
+            <p style="font-size: 1.2rem; margin-bottom: 30px; line-height: 1.6; font-family: 'Roboto', sans-serif;">
+                <strong style="color: #f0ad4e;">Where comfort meets calm.</strong> Wake up in peace, live in style.
+                <br><br>
+                <em style="font-style: italic; color: rgba(255, 255, 255, 0.9);">Mahali tulivu pa kufurahia maisha kwa utulivu na starehe.</em>
+            </p>
+            <a href="{{ url_for('booking.rooms') }}" class="site-button slider-btn-left btn-half" style="display: inline-block; padding: 15px 40px; background: #f0ad4e; color: white; text-decoration: none; text-transform: uppercase; font-weight: bold; border-radius: 5px; transition: all 0.3s ease;">
+                <span>View Rooms</span>
+            </a>
+        </div>
+    </div>
+</div>
+<!-- HERO SECTION END -->
+
+<!-- BOOKING SECTION START -->
+<div class="section-full bg-white overflow-hide">
+    <div class="container">
+        <div class="section-head text-center">
+            <div class="wt-tilte-inner">
+                <h2 class="m-t0">Book Your Stay</h2>
+                <p>Reserve your perfect room at Ngenda Hotel</p>
+            </div>
+        </div>
+        
+        <div class="wt-booking-form">
+            <form action="{{ url_for('booking.book') }}" method="GET" id="booking-form">
+                <div class="row">
+                    <div class="col-md-3">
+                        <div class="form-group">
+                            <label>Check In</label>
+                            <input type="date" name="check_in" class="form-control" required min="{{ date.today().strftime('%Y-%m-%d') }}">
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="form-group">
+                            <label>Check Out</label>
+                            <input type="date" name="check_out" class="form-control" required min="{{ date.today().strftime('%Y-%m-%d') }}">
+                        </div>
+                    </div>
+                    <div class="col-md-2">
+                        <div class="form-group">
+                            <label>Adults</label>
+                            <select name="adults" class="form-control">
+                                <option value="1">1 Adult</option>
+                                <option value="2" selected>2 Adults</option>
+                                <option value="3">3 Adults</option>
+                                <option value="4">4 Adults</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="col-md-2">
+                        <div class="form-group">
+                            <label>Children</label>
+                            <select name="children" class="form-control">
+                                <option value="0">0 Children</option>
+                                <option value="1">1 Child</option>
+                                <option value="2">2 Children</option>
+                                <option value="3">3 Children</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="col-md-2">
+                        <div class="form-group">
+                            <label>&nbsp;</label>
+                            <button type="submit" class="site-button btn-block">Book Now</button>
+                        </div>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+<!-- BOOKING SECTION END -->
+
+<!-- ROOMS SECTION START -->
+<div class="section-full p-tb90 bg-gray">
+    <div class="container">
+        <div class="section-head text-center">
+            <h2 class="m-b5" data-title="Suites">Our Rooms & Suites</h2>
+            <div class="wt-separator-outer">
+                <div class="wt-separator site-bg-primary"></div>
+            </div>
+        </div>
+        
+        <div class="text-center">
+            <ul class="btn-filter-wrap2">
+                <li class="btn-filter btn-active" data-filter="*">All Rooms</li>
+                {% for category in categories %}
+                <li class="btn-filter" data-filter=".{{ category }}">{{ category|title }}</li>
+                {% endfor %}
+            </ul>
+        </div>
+    </div>
+    
+    <div class="container-fluid">
+        <div class="section-content">
+            <div class="row" id="rooms-grid">
+                {% for room_type in room_types %}
+                <div class="col-lg-4 col-md-6 {{ room_type.category }}">
+                    <div class="room-rent-section-outer">
+                        <div class="room-rent-section">
+                            <div class="rooms-pic-section">
+                                <div class="wt-media">
+                                    {% if room_type.primary_image %}
+                                    <img src="{{ url_for('static', filename='uploads/rooms/' + room_type.primary_image) }}" alt="{{ room_type.name }}" onerror="this.src='{{ url_for('static', filename='booking/images/rooms/roomview.jpg') }}'">
+                                    {% else %}
+                                    <img src="{{ url_for('static', filename='booking/images/rooms/roomview.jpg') }}" alt="{{ room_type.name }}">
+                                    {% endif %}
+                                    <div class="overlay-bx-3"></div>
+                                    <h3 class="m-b0 wt-title">{{ room_type.name }}</h3>
+                                </div>
+                            </div>
+                            <div class="room-info-section text-black">
+                                <span>{{ currency_symbol }} {{ room_type.display_price|format_number }} per night</span>
+                                <ul class="clearfix">
+                                    <li><i class="fa fa-expand"></i> <strong>Size:</strong> {{ room_type.size_sqm or 'N/A' }} </li>
+                                    <li><i class="fa fa-user"></i> <strong>Adult:</strong> {{ room_type.capacity or 2 }} </li>
+                                    <li><i class="fa fa-bed"></i> <strong>Bed:</strong> {{ room_type.bed_type or 'Double' }} </li>
+                                </ul>
+                            </div>
+                        </div>
+                        <a href="{{ url_for('booking.room_detail', room_id=room_type.id) }}" class="btn-half site-button button-lg"><span>View Details</span><em></em></a>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</div>
+<!-- ROOMS SECTION END -->
+
+<!-- ABOUT SECTION START -->
+<div class="section-full p-tb90">
+    <div class="container">
+        <div class="row align-items-center">
+            <div class="col-lg-6 col-md-12">
+                <div class="home-about-block-outer bg-repeat bg-white">
+                    <div class="home-about-block-inner">
+                        <div class="home-about-slider owl-carousel owl-btn-vertical-center">
+                            <div class="item">
+                                <div class="home-about-slider-pic">
+                                    <img src="{{ url_for('static', filename='booking/images/about/about.jpg') }}" alt="About Ngenda Hotel">
+                                </div>
+                            </div>
+                            <div class="item">
+                                <div class="home-about-slider-pic">
+                                    <img src="{{ url_for('static', filename='booking/images/about/about1.jpg') }}" alt="Ngenda Hotel">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-lg-6 col-md-12">
+                <div class="home-about-content">
+                    <h2 class="m-b5">Welcome to Ngenda Hotel & Apartments</h2>
+                    <div class="wt-separator-outer m-b20">
+                        <div class="wt-separator site-bg-primary"></div>
+                    </div>
+                    <p>Located in the heart of Mbeya, Tanzania, Ngenda Hotel & Apartments offers premium accommodation with exceptional hospitality. Whether you're traveling for business or leisure, our comfortable rooms and excellent amenities ensure a memorable stay.</p>
+                    <p class="m-t20"><strong>Where comfort meets calm.</strong> Wake up in peace, live in style.</p>
+                    <a href="{{ url_for('booking.about') }}" class="site-button">Learn More</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<!-- ABOUT SECTION END -->
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Close notification banner (removed but keeping function for compatibility)
+function closeNotificationBanner() {
+    var banner = document.getElementById('notification-banner');
+    if (banner) banner.style.display = 'none';
+}
+
+// Initialize Owl Carousel for rooms
+$(document).ready(function() {
+    if ($.fn.owlCarousel !== undefined) {
+        $('.owl-carousel-filter2').owlCarousel({
+            loop: false,
+            margin: 30,
+            nav: true,
+            dots: true,
+            autoplay: false,
+            autoplayTimeout: 5000,
+            responsive: {
+                0: { items: 1 },
+                600: { items: 2 },
+                1000: { items: 3 }
+            }
+        });
+    }
+    
+    // Room filter functionality
+    $('.btn-filter').on('click', function() {
+        $('.btn-filter').removeClass('btn-active');
+        $(this).addClass('btn-active');
+        
+        var filter = $(this).attr('data-filter');
+        
+        if (filter === '*') {
+            $('#rooms-grid > div').fadeIn();
+        } else {
+            $('#rooms-grid > div').hide();
+            $('#rooms-grid > div' + filter).fadeIn();
+        }
+    });
+});
+
+// Date validation
+const checkInInput = document.querySelector('input[name="check_in"]');
+const checkOutInput = document.querySelector('input[name="check_out"]');
+
+checkInInput.addEventListener('change', function() {
+    const minCheckOut = new Date(this.value);
+    minCheckOut.setDate(minCheckOut.getDate() + 1);
+    checkOutInput.min = minCheckOut.toISOString().split('T')[0];
+});
+</script>
+{% endblock %}

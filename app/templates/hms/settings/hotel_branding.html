@@ -1,0 +1,191 @@
+{% extends "hms/layout/base.html" %}
+{% block title %}Hotel Branding{% endblock %}
+
+{% block content %}
+<div class="container-xl">
+  <div class="page-header d-print-none">
+    <div class="row align-items-center">
+      <div class="col">
+        <h2 class="page-title">Hotel Branding</h2>
+        <div class="text-muted mt-1">Customize your hotel's appearance</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="row">
+    <div class="col-md-8">
+      <div class="card">
+        <div class="card-header">
+          <h3 class="card-title">Branding Settings</h3>
+        </div>
+        <div class="card-body">
+          <form method="POST" enctype="multipart/form-data">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            
+            <!-- Hotel Info -->
+            <h4 class="mb-3">Basic Information</h4>
+            <div class="row g-3 mb-4">
+              <div class="col-md-6">
+                <label class="form-label required">Hotel Name</label>
+                <input type="text" class="form-control" name="name" value="{{ hotel.name }}" required>
+              </div>
+              <div class="col-md-6">
+                <label class="form-label required">Display Name</label>
+                <input type="text" class="form-control" name="display_name" value="{{ hotel.display_name or hotel.name }}" required>
+                <small class="form-hint">Name shown to guests</small>
+              </div>
+            </div>
+
+            <!-- Logos -->
+            <h4 class="mb-3">Logos & Images</h4>
+            <div class="row g-3 mb-4">
+              <div class="col-md-4">
+                <label class="form-label">Main Logo</label>
+                <div class="mb-2">
+                  {% if hotel.logo_url %}
+                  <img src="{{ hotel.logo_url }}" class="img-fluid mb-2" style="max-height: 80px;">
+                  {% endif %}
+                </div>
+                <input type="file" class="form-control" name="logo" accept="image/*">
+                <small class="form-hint">PNG, JPG up to 2MB</small>
+              </div>
+              <div class="col-md-4">
+                <label class="form-label">Favicon</label>
+                <div class="mb-2">
+                  {% if hotel.favicon_url %}
+                  <img src="{{ hotel.favicon_url }}" class="img-fluid mb-2" style="max-height: 32px;">
+                  {% endif %}
+                </div>
+                <input type="file" class="form-control" name="favicon" accept="image/*">
+                <small class="form-hint">ICO or PNG, 32x32</small>
+              </div>
+              <div class="col-md-4">
+                <label class="form-label">Cover Image</label>
+                <div class="mb-2">
+                  {% if hotel.cover_image_url %}
+                  <img src="{{ hotel.cover_image_url }}" class="img-fluid mb-2" style="max-height: 60px;">
+                  {% endif %}
+                </div>
+                <input type="file" class="form-control" name="cover" accept="image/*">
+              </div>
+            </div>
+
+            <!-- Email Branding -->
+            <h4 class="mb-3">Email Branding</h4>
+            <div class="row g-3 mb-4">
+              <div class="col-md-6">
+                <label class="form-label">Email Logo</label>
+                <div class="mb-2">
+                  {% if hotel.email_logo_url %}
+                  <img src="{{ hotel.email_logo_url }}" class="img-fluid mb-2" style="max-height: 40px;">
+                  {% endif %}
+                </div>
+                <input type="file" class="form-control" name="email_logo" accept="image/*">
+              </div>
+              <div class="col-md-6">
+                <label class="form-label">Header Color</label>
+                <input type="color" class="form-control form-control-color" name="email_header_color" value="{{ hotel.email_header_color or '#2c3e50' }}">
+              </div>
+              <div class="col-md-12">
+                <label class="form-label">Email Footer Text</label>
+                <textarea class="form-control" name="email_footer_text" rows="3">{{ hotel.email_footer_text }}</textarea>
+              </div>
+            </div>
+
+            <!-- Social Media -->
+            <h4 class="mb-3">Social Media</h4>
+            <div class="row g-3 mb-4">
+              <div class="col-md-6">
+                <label class="form-label">Website URL</label>
+                <input type="url" class="form-control" name="website_url" value="{{ hotel.website_url }}" placeholder="https://yourhotel.com">
+              </div>
+              <div class="col-md-6">
+                <label class="form-label">Facebook</label>
+                <input type="url" class="form-control" name="facebook_url" value="{{ hotel.facebook_url }}" placeholder="https://facebook.com/...">
+              </div>
+              <div class="col-md-6">
+                <label class="form-label">Instagram</label>
+                <input type="url" class="form-control" name="instagram_url" value="{{ hotel.instagram_url }}" placeholder="https://instagram.com/...">
+              </div>
+              <div class="col-md-6">
+                <label class="form-label">Twitter/X</label>
+                <input type="url" class="form-control" name="twitter_url" value="{{ hotel.twitter_url }}" placeholder="https://twitter.com/...">
+              </div>
+            </div>
+
+            <!-- Business Details -->
+            <h4 class="mb-3">Business Details</h4>
+            <div class="row g-3 mb-4">
+              <div class="col-md-6">
+                <label class="form-label">Tax Number / VAT</label>
+                <input type="text" class="form-control" name="tax_number" value="{{ hotel.tax_number }}">
+              </div>
+              <div class="col-md-6">
+                <label class="form-label">Registration Number</label>
+                <input type="text" class="form-control" name="registration_number" value="{{ hotel.registration_number }}">
+              </div>
+            </div>
+
+            <!-- Policies -->
+            <h4 class="mb-3">Hotel Policies</h4>
+            <div class="row g-3">
+              <div class="col-md-6">
+                <label class="form-label">Check-in Time</label>
+                <input type="time" class="form-control" name="check_in_time" value="{{ hotel.check_in_time or '14:00' }}">
+              </div>
+              <div class="col-md-6">
+                <label class="form-label">Check-out Time</label>
+                <input type="time" class="form-control" name="check_out_time" value="{{ hotel.check_out_time or '11:00' }}">
+              </div>
+              <div class="col-md-12">
+                <label class="form-label">Cancellation Policy</label>
+                <textarea class="form-control" name="cancellation_policy" rows="3">{{ hotel.cancellation_policy }}</textarea>
+              </div>
+              <div class="col-md-12">
+                <label class="form-label">Children Policy</label>
+                <textarea class="form-control" name="children_policy" rows="2">{{ hotel.children_policy }}</textarea>
+              </div>
+              <div class="col-md-12">
+                <label class="form-label">Pet Policy</label>
+                <textarea class="form-control" name="pet_policy" rows="2">{{ hotel.pet_policy }}</textarea>
+              </div>
+            </div>
+
+            <div class="mt-4">
+              <button type="submit" class="btn btn-primary">Save Branding Settings</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <!-- Preview Panel -->
+    <div class="col-md-4">
+      <div class="card">
+        <div class="card-header">
+          <h3 class="card-title">Live Preview</h3>
+        </div>
+        <div class="card-body">
+          <div class="border rounded p-3 text-center">
+            {% if hotel.logo_url %}
+            <img src="{{ hotel.logo_url }}" class="img-fluid mb-3" style="max-height: 60px;">
+            {% else %}
+            <div class="bg-light p-3 mb-3">{{ hotel.name }}</div>
+            {% endif %}
+            
+            <h5>{{ hotel.display_name or hotel.name }}</h5>
+            <p class="text-muted small">{{ hotel.city }}, {{ hotel.country }}</p>
+            
+            <hr>
+            
+            <div class="text-start small">
+              <strong>Check-in:</strong> {{ hotel.check_in_time or '14:00' }}<br>
+              <strong>Check-out:</strong> {{ hotel.check_out_time or '11:00' }}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

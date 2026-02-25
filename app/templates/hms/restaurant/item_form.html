@@ -1,0 +1,188 @@
+{% extends "hms/layout/base.html" %}
+{% block title %}{{ title }} - Ngenda Hotel{% endblock %}
+
+{% block content %}
+<div class="container-xl">
+  <div class="page-header d-print-none">
+    <div class="row align-items-center">
+      <div class="col">
+        <h2 class="page-title">{{ title }}</h2>
+        <div class="text-muted mt-1">
+          <a href="{{ url_for('hms.restaurant_menu') }}" class="text-decoration-none">Menu</a>
+          / {{ item.name if item else 'New Item' }}
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <form method="POST" enctype="multipart/form-data" class="card">
+    <div class="card-body">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      
+      <div class="row">
+        <div class="col-md-8">
+          <div class="mb-3">
+            <label class="form-label required">Item Name</label>
+            <input type="text" name="name" class="form-control" value="{{ item.name if item else '' }}" placeholder="e.g., Grilled Chicken" required>
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label">Description</label>
+            <textarea name="description" class="form-control" rows="3" placeholder="Describe the dish...">{{ item.description if item and item.description else '' }}</textarea>
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label">Category</label>
+            <select name="category_id" class="form-select">
+              <option value="">-- No Category --</option>
+              {% for category in categories %}
+              <option value="{{ category.id }}" {{ 'selected' if item and item.category_id == category.id else '' }}>{{ category.name }}</option>
+              {% endfor %}
+            </select>
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label">Inventory Links (Optional)</label>
+            <div id="inventory-links">
+              {% if item and item.inventory_items %}
+                {% for link in item.inventory_items %}
+                <div class="inventory-row row mb-2">
+                  <div class="col-md-8">
+                    <select name="inventory_item_id[]" class="form-select">
+                      <option value="">-- Select Ingredient --</option>
+                      {% for inv in inventory_items %}
+                      <option value="{{ inv.id }}" {{ 'selected' if inv.id == link.inventory_item_id else '' }}>{{ inv.name }} ({{ inv.unit }})</option>
+                      {% endfor %}
+                    </select>
+                  </div>
+                  <div class="col-md-3">
+                    <input type="number" name="quantity_needed[]" class="form-control" placeholder="Quantity" step="0.01" min="0" value="{{ link.quantity_needed }}">
+                  </div>
+                  <div class="col-md-1">
+                    <button type="button" class="btn btn-outline-danger w-100 remove-row">-</button>
+                  </div>
+                </div>
+                {% endfor %}
+              {% endif %}
+              <div class="inventory-row row mb-2">
+                <div class="col-md-8">
+                  <select name="inventory_item_id[]" class="form-select">
+                    <option value="">-- Select Ingredient --</option>
+                    {% for inv in inventory_items %}
+                    <option value="{{ inv.id }}">{{ inv.name }} ({{ inv.unit }})</option>
+                    {% endfor %}
+                  </select>
+                </div>
+                <div class="col-md-3">
+                  <input type="number" name="quantity_needed[]" class="form-control" placeholder="Quantity" step="0.01" min="0">
+                </div>
+                <div class="col-md-1">
+                  <button type="button" class="btn btn-outline-primary w-100 add-row">+</button>
+                </div>
+              </div>
+            </div>
+            <div class="form-text">Link ingredients for inventory tracking</div>
+          </div>
+        </div>
+
+        <div class="col-md-4">
+          <div class="mb-3">
+            <label class="form-label required">Price ($)</label>
+            <input type="number" name="price" class="form-control" value="{{ "%.2f"|format(item.price) if item and item.price else '' }}" step="0.01" min="0" required>
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label">Cost ($)</label>
+            <input type="number" name="cost" class="form-control" value="{{ "%.2f"|format(item.cost) if item and item.cost else '' }}" step="0.01" min="0">
+            <div class="form-text">For profit margin calculation</div>
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label">Tax Rate (%)</label>
+            <input type="number" name="tax_rate" class="form-control" value="{{ item.tax_rate if item and item.tax_rate else '0' }}" step="0.01" min="0" max="100">
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label">Preparation Time (min)</label>
+            <input type="number" name="preparation_time" class="form-control" value="{{ item.preparation_time if item and item.preparation_time else '' }}" min="0">
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label">Image</label>
+            {% if item and item.image_url %}
+            <div class="mb-2">
+              <img src="{{ item.image_url }}" alt="Current image" class="img-thumbnail" style="max-width: 100%; height: auto; max-height: 150px;">
+            </div>
+            <div class="form-check mb-2">
+              <input type="checkbox" class="form-check-input" name="remove_image" id="remove_image">
+              <label class="form-check-label" for="remove_image">Remove current image</label>
+            </div>
+            {% endif %}
+            <input type="file" name="image" class="form-control" accept="image/*">
+          </div>
+
+          <div class="mb-3">
+            <label class="form-check form-switch">
+              <input type="checkbox" name="is_available" class="form-check-input" {{ 'checked' if not item or item.is_available else '' }}>
+              <span class="form-check-label">Available for ordering</span>
+            </label>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card-footer text-end">
+      <a href="{{ url_for('hms.restaurant_menu') }}" class="btn btn-link link-secondary">Cancel</a>
+      <button type="submit" class="btn btn-primary">
+        <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="16" height="16" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+          <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+          <path d="M6 12m-3 0a3 3 0 1 0 6 0a3 3 0 1 0 -6 0" />
+          <path d="M6 12v7.5a2.5 2.5 0 0 0 5 0v-7.5" />
+          <path d="M18 12m-3 0a3 3 0 1 0 6 0a3 3 0 1 0 -6 0" />
+          <path d="M18 12v7.5a2.5 2.5 0 0 0 5 0v-7.5" />
+        </svg>
+        {{ 'Update Item' if item else 'Create Item' }}
+      </button>
+    </div>
+  </form>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  // Add inventory row
+  document.querySelectorAll('.add-row').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      const container = document.getElementById('inventory-links');
+      const newRow = document.createElement('div');
+      newRow.className = 'inventory-row row mb-2';
+      newRow.innerHTML = `
+        <div class="col-md-8">
+          <select name="inventory_item_id[]" class="form-select">
+            <option value="">-- Select Ingredient --</option>
+            {% for inv in inventory_items %}
+            <option value="{{ inv.id }}">{{ inv.name }} ({{ inv.unit }})</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-md-3">
+          <input type="number" name="quantity_needed[]" class="form-control" placeholder="Quantity" step="0.01" min="0">
+        </div>
+        <div class="col-md-1">
+          <button type="button" class="btn btn-outline-danger w-100 remove-row">-</button>
+        </div>
+      `;
+      container.appendChild(newRow);
+    });
+  });
+
+  // Remove inventory row
+  document.querySelectorAll('.remove-row').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      this.closest('.inventory-row').remove();
+    });
+  });
+});
+</script>
+{% endblock %}

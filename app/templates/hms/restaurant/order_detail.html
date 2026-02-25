@@ -1,0 +1,177 @@
+{% extends "hms/layout/base.html" %}
+{% block title %}Order #{{ order.id if order is defined else '—' }} - Restaurant - Hotel PMS{% endblock %}
+
+{% block content %}
+<div class="page-header d-print-none">
+  <div class="row align-items-center">
+    <div class="col">
+      <nav class="mb-2">
+        <a href="{{ url_for('hms.restaurant_pos') if url_for is defined else '#' }}" class="text-muted">POS</a>
+        <span class="text-muted mx-1">/</span>
+        <span>Order #{{ order.id if order is defined else '—' }}</span>
+      </nav>
+      <h2 class="page-title">Order #{{ order.id if order is defined else '—' }}</h2>
+      <div class="text-muted mt-1">
+        {% if order is defined %}
+        Table {{ order.table_number }} — {{ order.customer_name or 'Guest' }} — {{ order.created_at.strftime('%Y-%m-%d %H:%M') if order.created_at else '—' }}
+        {% else %}
+        Placeholder: load order from backend by ID
+        {% endif %}
+      </div>
+    </div>
+    <div class="col-auto">
+      <div class="btn-list">
+        <button type="button" class="btn btn-success" id="btn-send-kitchen">Send to Kitchen</button>
+        <button type="button" class="btn btn-primary" id="btn-mark-ready">Mark Ready</button>
+        <button type="button" class="btn btn-outline-danger" data-bs-toggle="modal" data-bs-target="#confirmCancelModal">Cancel order</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="row">
+  <div class="col-lg-8">
+    <div class="card">
+      <div class="card-header">
+        <h3 class="card-title">Items</h3>
+        <span class="badge bg-{{ 'secondary' if (order and order.status == 'draft') else 'primary' if (order and order.status == 'sent') else 'success' }}">{{ order.status|default('draft')|title }}</span>
+      </div>
+      <div class="table-responsive">
+        <table class="table table-vcenter card-table">
+          <thead>
+            <tr>
+              <th>Item</th>
+              <th>Modifiers</th>
+              <th class="text-end">Qty</th>
+              <th class="text-end">Price</th>
+              <th class="text-end">Total</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% if order and order.items is defined %}
+              {% for line in order.items %}
+              <tr>
+                <td>{{ line.menu_item.name if line.menu_item else line.name|default('—') }}</td>
+                <td class="text-muted">{{ line.notes or '—' }}</td>
+                <td class="text-end">{{ line.quantity }}</td>
+                <td class="text-end">${{ "%.2f"|format(line.unit_price) }}</td>
+                <td class="text-end">${{ "%.2f"|format(line.quantity * line.unit_price) }}</td>
+              </tr>
+              {% endfor %}
+            {% else %}
+            <!-- Placeholder rows for development -->
+            <tr>
+              <td>Grilled Salmon</td>
+              <td class="text-muted">No lemon</td>
+              <td class="text-end">2</td>
+              <td class="text-end">$24.00</td>
+              <td class="text-end">$48.00</td>
+            </tr>
+            <tr>
+              <td>Caesar Salad</td>
+              <td class="text-muted">—</td>
+              <td class="text-end">1</td>
+              <td class="text-end">$12.00</td>
+              <td class="text-end">$12.00</td>
+            </tr>
+            <tr>
+              <td>Espresso</td>
+              <td class="text-muted">Double shot</td>
+              <td class="text-end">2</td>
+              <td class="text-end">$3.50</td>
+              <td class="text-end">$7.00</td>
+            </tr>
+            {% endif %}
+          </tbody>
+        </table>
+      </div>
+      {% if order and order.special_instructions %}
+      <div class="card-body border-top">
+        <strong>Special instructions:</strong>
+        <p class="mb-0 text-muted">{{ order.special_instructions }}</p>
+      </div>
+      {% else %}
+      <div class="card-body border-top">
+        <strong>Special instructions:</strong>
+        <p class="mb-0 text-muted">Allergic to nuts. Table 3.</p>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+  <div class="col-lg-4">
+    <div class="card">
+      <div class="card-header">
+        <h3 class="card-title">Details</h3>
+      </div>
+      <div class="list-group list-group-flush">
+        <div class="list-group-item d-flex justify-content-between">
+          <span class="text-muted">Customer</span>
+          <span>{{ order.customer_name if order is defined else 'Guest' }}</span>
+        </div>
+        <div class="list-group-item d-flex justify-content-between">
+          <span class="text-muted">Table</span>
+          <span>{{ order.table_number if order is defined else '3' }}</span>
+        </div>
+        <div class="list-group-item d-flex justify-content-between">
+          <span class="text-muted">Time ordered</span>
+          <span>{{ order.created_at.strftime('%H:%M') if order and order.created_at else '10:05' }}</span>
+        </div>
+        <div class="list-group-item d-flex justify-content-between">
+          <span class="text-muted">Status</span>
+          <span class="badge bg-primary">{{ order.status|default('sent')|title }}</span>
+        </div>
+      </div>
+    </div>
+    <div class="card mt-3">
+      <div class="card-body">
+        <div class="d-flex justify-content-between mb-2">
+          <span>Subtotal</span>
+          <span>${{ "67.00" if not (order and order.subtotal) else "%.2f"|format(order.subtotal) }}</span>
+        </div>
+        <div class="d-flex justify-content-between mb-2">
+          <span>Tax</span>
+          <span>$6.70</span>
+        </div>
+        <div class="d-flex justify-content-between fw-bold">
+          <span>Total</span>
+          <span>$73.70</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Cancel order confirmation -->
+<div class="modal modal-blur fade" id="confirmCancelModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-sm modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-body text-center py-4">
+        <p class="mb-0">Cancel this order? This action cannot be undone.</p>
+      </div>
+      <div class="modal-footer flex-nowrap">
+        <form method="post" action="{{ url_for('hms.cancel_order', order_id=order.id) }}">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <button type="button" class="btn btn-link link-secondary" data-bs-dismiss="modal">Keep order</button>
+          <button type="submit" class="btn btn-danger">Cancel order</button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.getElementById('btn-send-kitchen')?.addEventListener('click', function() {
+  // Backend: POST order to kitchen
+  this.disabled = true;
+  this.classList.add('btn-success');
+  this.textContent = 'Sent';
+});
+document.getElementById('btn-mark-ready')?.addEventListener('click', function() {
+  // Backend: PATCH order status to ready
+  this.disabled = true;
+  this.textContent = 'Ready';
+});
+</script>
+{% endblock %}

@@ -1,0 +1,67 @@
+{% extends "hms/layout/base.html" %}
+{% block title %}{{ title }} - Ngenda Hotel{% endblock %}
+
+{% block content %}
+<div class="container-xl">
+  <div class="page-header d-print-none">
+    <div class="row align-items-center">
+      <div class="col">
+        <h2 class="page-title">{{ title }}</h2>
+        <div class="text-muted mt-1">
+          <a href="{{ url_for('hms.restaurant_menu') }}" class="text-decoration-none">Menu</a>
+          / {{ category.name if category else 'New Category' }}
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <form method="POST" class="card">
+    <div class="card-body">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      
+      <div class="row">
+        <div class="col-md-8">
+          <div class="mb-3">
+            <label class="form-label required">Category Name</label>
+            <input type="text" name="name" class="form-control" value="{{ category.name if category else '' }}" placeholder="e.g., Appetizers, Main Course, Desserts" required>
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label">Description</label>
+            <textarea name="description" class="form-control" rows="3" placeholder="Describe this category...">{{ category.description if category and category.description else '' }}</textarea>
+          </div>
+        </div>
+
+        <div class="col-md-4">
+          <div class="mb-3">
+            <label class="form-label">Display Order</label>
+            <input type="number" name="display_order" class="form-control" value="{{ category.display_order if category and category.display_order else '0' }}" min="0">
+            <div class="form-text">Lower numbers appear first</div>
+          </div>
+
+          <div class="mb-3">
+            <label class="form-check form-switch">
+              <input type="checkbox" name="is_active" class="form-check-input" {{ 'checked' if not category or category.is_active else '' }}>
+              <span class="form-check-label">Active</span>
+            </label>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card-footer text-end">
+      <a href="{{ url_for('hms.restaurant_menu') }}" class="btn btn-link link-secondary">Cancel</a>
+      <button type="submit" class="btn btn-primary">
+        <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="16" height="16" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+          <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+          <path d="M6 12m-3 0a3 3 0 1 0 6 0a3 3 0 1 0 -6 0" />
+          <path d="M6 12v7.5a2.5 2.5 0 0 0 5 0v-7.5" />
+          <path d="M18 12m-3 0a3 3 0 1 0 6 0a3 3 0 1 0 -6 0" />
+          <path d="M18 12v7.5a2.5 2.5 0 0 0 5 0v-7.5" />
+        </svg>
+        {{ 'Update Category' if category else 'Create Category' }}
+      </button>
+    </div>
+  </form>
+</div>
+{% endblock %}

@@ -1,0 +1,83 @@
+{% extends "hms/layout/base.html" %}
+{% block title %}Add Supplier{% endblock %}
+
+{% block content %}
+<div class="container-xl">
+  <div class="page-header d-print-none">
+    <div class="row align-items-center">
+      <div class="col">
+        <h2 class="page-title">Add Supplier</h2>
+        <div class="text-muted mt-1">Add a new supplier to your inventory system</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="row row-cards">
+    <div class="col-md-8">
+      <form class="card" method="POST" action="{{ url_for('hms.supplier_add') }}">
+        <div class="card-body">
+          
+          <h3 class="card-title mb-3">Basic Information</h3>
+          <div class="row mb-3">
+            <div class="col-md-8">
+              <label class="form-label required">Company Name *</label>
+              <input type="text" name="name" class="form-control" placeholder="Enter company name" required>
+            </div>
+            <div class="col-md-4">
+              <label class="form-label">Tax ID</label>
+              <input type="text" name="tax_id" class="form-control" placeholder="Tax ID or VAT number">
+            </div>
+          </div>
+
+          <div class="row mb-3">
+            <div class="col-md-6">
+              <label class="form-label">Contact Person</label>
+              <input type="text" name="contact_person" class="form-control" placeholder="Contact person name">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Payment Terms</label>
+              <input type="text" name="payment_terms" class="form-control" placeholder="e.g., Net 30, COD">
+            </div>
+          </div>
+
+          <h3 class="card-title mb-3 mt-4">Contact Information</h3>
+          <div class="row mb-3">
+            <div class="col-md-6">
+              <label class="form-label">Email</label>
+              <input type="email" name="email" class="form-control" placeholder="email@example.com">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Phone</label>
+              <input type="tel" name="phone" class="form-control" placeholder="Phone number">
+            </div>
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label">Address</label>
+            <textarea name="address" class="form-control" rows="3" placeholder="Supplier address"></textarea>
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label">Notes</label>
+            <textarea name="notes" class="form-control" rows="3" placeholder="Additional notes about this supplier"></textarea>
+          </div>
+
+          <div class="d-flex">
+            <button type="submit" class="btn btn-primary me-2">
+              <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+                <path d="M12 5v14" />
+                <path d="M5 12h14" />
+              </svg>
+              Add Supplier
+            </button>
+            <a href="{{ url_for('hms.inventory_suppliers') }}" class="btn btn-outline-secondary">
+              Cancel
+            </a>
+          </div>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

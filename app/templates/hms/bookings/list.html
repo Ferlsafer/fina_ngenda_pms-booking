@@ -1,0 +1,78 @@
+{% extends "hms/layout/base.html" %}
+{% block title %}Bookings - Hotel PMS{% endblock %}
+{% block content %}
+<div class="page-header d-print-none">
+  <div class="row align-items-center">
+    <div class="col">
+      <h2 class="page-title">Bookings</h2>
+    </div>
+    <div class="col-auto">
+      <a href="{{ url_for('hms.bookings_new') }}" class="btn btn-primary">New booking</a>
+    </div>
+  </div>
+</div>
+<div class="card">
+  <div class="table-responsive">
+    <table class="table table-vcenter card-table table-striped">
+      <thead>
+        <tr>
+          <th>Guest</th>
+          <th>Room</th>
+          <th>Check-in</th>
+          <th>Check-out</th>
+          <th>Status</th>
+          <th>Total</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for b in bookings %}
+        <tr>
+          <td>{{ b.guest.name }}</td>
+          <td>{{ b.room.room_number }}</td>
+          <td>{{ b.check_in_date }}</td>
+          <td>{{ b.check_out_date }}</td>
+          <td><span class="badge bg-{% if b.status == 'Reserved' %}warning{% elif b.status == 'CheckedIn' %}success{% elif b.status == 'CheckedOut' %}secondary{% elif b.status == 'Cancelled' %}danger{% else %}info{% endif %}">{{ b.status }}</span></td>
+          <td>{{ b.total_amount }}</td>
+          <td>
+            {% if b.status == 'Reserved' %}
+            <div class="btn-group" role="group">
+              <form method="post" action="{{ url_for('hms.bookings_check_in', booking_id=b.id) }}" class="d-inline">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                <button type="submit" class="btn btn-sm btn-primary">Check in</button>
+              </form>
+              <button type="button" class="btn btn-sm btn-outline-danger dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
+                More
+              </button>
+              <ul class="dropdown-menu">
+                <li>
+                  <form method="post" action="{{ url_for('hms.bookings_cancel', booking_id=b.id) }}" class="d-inline w-100">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                    <input type="hidden" name="cancellation_reason" value="Guest requested cancellation"/>
+                    <button type="submit" class="dropdown-item">Cancel Booking</button>
+                  </form>
+                </li>
+                <li><hr class="dropdown-divider"/></li>
+                <li>
+                  <form method="post" action="{{ url_for('hms.bookings_no_show', booking_id=b.id) }}" class="d-inline w-100">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                    <button type="submit" class="dropdown-item">Mark No-Show</button>
+                  </form>
+                </li>
+              </ul>
+            </div>
+            {% endif %}
+            {% if b.status == 'CheckedIn' %}
+            <form method="post" action="{{ url_for('hms.bookings_check_out', booking_id=b.id) }}" class="d-inline"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/><button type="submit" class="btn btn-sm btn-success">Check out</button></form>
+            {% endif %}
+            <a href="{{ url_for('hms.bookings_payment', booking_id=b.id) }}" class="btn btn-sm btn-outline-secondary">Payment</a>
+          </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="7" class="text-muted">No bookings.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

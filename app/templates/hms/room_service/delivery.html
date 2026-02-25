@@ -1,0 +1,119 @@
+{% extends "hms/layout/base.html" %}
+{% block title %}Room Service Delivery{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h2 class="page-title">Room Service Delivery</h2>
+</div>
+
+<div class="row">
+  <!-- Ready for Delivery -->
+  <div class="col-md-6">
+    <div class="card border-warning">
+      <div class="card-header bg-warning text-white">
+        <h3 class="card-title">Ready for Delivery ({{ ready_orders|length }})</h3>
+      </div>
+      <div class="card-body">
+        {% for order in ready_orders %}
+        <div class="card mb-2">
+          <div class="card-body">
+            <div class="row">
+              <div class="col-8">
+                <strong>Order #{{ order.id }}</strong><br>
+                Room {{ order.room.room_number if order.room else 'N/A' }}<br>
+                <span class="text-muted">{{ order.guest_name or 'N/A' }}</span>
+              </div>
+              <div class="col-4 text-end">
+                <div class="mb-1">
+                  <strong>${{ "%.2f"|format(order.total) }}</strong>
+                </div>
+                <a href="{{ url_for('hms.room_service_order_detail', order_id=order.id) }}" class="btn btn-sm btn-outline-primary">
+                  Details
+                </a>
+              </div>
+            </div>
+            <div class="mt-2">
+              <button class="btn btn-sm btn-success" onclick="updateStatus({{ order.id }}, 'out_for_delivery')">
+                Send for Delivery
+              </button>
+            </div>
+          </div>
+        </div>
+        {% else %}
+        <p class="text-muted text-center">No orders ready for delivery</p>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+  
+  <!-- Out for Delivery -->
+  <div class="col-md-6">
+    <div class="card border-info">
+      <div class="card-header bg-info text-white">
+        <h3 class="card-title">Out for Delivery ({{ delivery_orders|length }})</h3>
+      </div>
+      <div class="card-body">
+        {% for order in delivery_orders %}
+        <div class="card mb-2">
+          <div class="card-body">
+            <div class="row">
+              <div class="col-8">
+                <strong>Order #{{ order.id }}</strong><br>
+                Room {{ order.room.room_number if order.room else 'N/A' }}<br>
+                <span class="text-muted">{{ order.guest_name or 'N/A' }}</span>
+              </div>
+              <div class="col-4 text-end">
+                <div class="mb-1">
+                  <strong>${{ "%.2f"|format(order.total) }}</strong>
+                </div>
+                <a href="{{ url_for('hms.room_service_order_detail', order_id=order.id) }}" class="btn btn-sm btn-outline-primary">
+                  Details
+                </a>
+              </div>
+            </div>
+            <div class="mt-2">
+              <button class="btn btn-sm btn-success" onclick="updateStatus({{ order.id }}, 'delivered')">
+                Mark Delivered
+              </button>
+            </div>
+          </div>
+        </div>
+        {% else %}
+        <p class="text-muted text-center">No orders out for delivery</p>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="mt-3">
+  <a href="{{ url_for('hms.room_service_kitchen') }}" class="btn btn-outline-secondary">Kitchen View</a>
+  <a href="{{ url_for('hms.room_service_orders') }}" class="btn btn-outline-secondary">All Orders</a>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function updateStatus(orderId, status) {
+  if (!confirm('Mark order as ' + status.replace('_', ' ') + '?')) return;
+  
+  fetch('/hms/room-service/order/' + orderId + '/status', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({status: status})
+  })
+  .then(r => r.json())
+  .then(result => {
+    if (result.success) {
+      location.reload();
+    } else {
+      alert('Error: ' + result.error);
+    }
+  })
+  .catch(err => alert('Network error'));
+}
+
+// Auto-refresh every 30 seconds
+setTimeout(() => location.reload(), 30000);
+</script>
+{% endblock %}

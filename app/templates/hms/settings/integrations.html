@@ -1,0 +1,199 @@
+{% extends "hms/layout/base.html" %}
+{% block title %}API & Integrations - Hotel PMS{% endblock %}
+
+{% block content %}
+<div class="page-header d-print-none">
+  <div class="row align-items-center">
+    <div class="col">
+      <h2 class="page-title">API & integrations</h2>
+      <div class="text-muted mt-1">API keys, webhooks, and integration status</div>
+    </div>
+    <div class="col-auto">
+      <a href="{{ url_for('api_docs.index') if url_for is defined else '#' }}" class="btn btn-outline-secondary">API docs</a>
+    </div>
+  </div>
+</div>
+
+<div class="card mb-3">
+  <div class="card-header">
+    <h3 class="card-title">API key management</h3>
+    <div class="card-actions">
+      <button type="button" class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#apiKeyModal">Create API key</button>
+    </div>
+  </div>
+  <div class="table-responsive">
+    <table class="table table-vcenter card-table">
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Key (masked)</th>
+          <th>Last used</th>
+          <th>Status</th>
+          <th class="w-1">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Production</td>
+          <td><code>hk_live_••••••••••••••••••••</code></td>
+          <td>2025-02-15 09:12</td>
+          <td><span class="badge bg-success">Active</span></td>
+          <td><button type="button" class="btn btn-sm btn-outline-secondary">Regenerate</button></td>
+        </tr>
+        <tr>
+          <td>Development</td>
+          <td><code>hk_test_••••••••••••••••••••</code></td>
+          <td>—</td>
+          <td><span class="badge bg-success">Active</span></td>
+          <td><button type="button" class="btn btn-sm btn-outline-danger">Revoke</button></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div class="card mb-3">
+  <div class="card-header">
+    <h3 class="card-title">Webhook configuration</h3>
+    <div class="card-actions">
+      <button type="button" class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#webhookModal">Add webhook</button>
+    </div>
+  </div>
+  <div class="table-responsive">
+    <table class="table table-vcenter card-table">
+      <thead>
+        <tr>
+          <th>URL</th>
+          <th>Events</th>
+          <th>Status</th>
+          <th>Last triggered</th>
+          <th class="w-1">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>https://api.example.com/webhooks/bookings</td>
+          <td><span class="badge bg-primary me-1">booking.created</span><span class="badge bg-primary">booking.updated</span></td>
+          <td><span class="badge bg-success">Active</span></td>
+          <td>2025-02-15 08:30</td>
+          <td><button type="button" class="btn btn-sm btn-outline-primary">Test</button></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-header">
+    <h3 class="card-title">Integration status</h3>
+  </div>
+  <div class="card-body">
+    <div class="row">
+      <div class="col-md-6">
+        <div class="d-flex align-items-center mb-3">
+          <span class="avatar avatar-sm me-2 bg-success-lt">P</span>
+          <div class="flex-fill">
+            <strong>Payment gateway</strong>
+            <div class="text-muted small">Stripe</div>
+          </div>
+          <span class="badge bg-success">Connected</span>
+          <button type="button" class="btn btn-sm btn-outline-primary ms-2">Test</button>
+        </div>
+      </div>
+      <div class="col-md-6">
+        <div class="d-flex align-items-center mb-3">
+          <span class="avatar avatar-sm me-2 bg-secondary-lt">C</span>
+          <div class="flex-fill">
+            <strong>Channel manager</strong>
+            <div class="text-muted small">Not configured</div>
+          </div>
+          <span class="badge bg-secondary">Disconnected</span>
+          <button type="button" class="btn btn-sm btn-outline-primary ms-2">Connect</button>
+        </div>
+      </div>
+      <div class="col-md-6">
+        <div class="d-flex align-items-center mb-3">
+          <span class="avatar avatar-sm me-2 bg-success-lt">E</span>
+          <div class="flex-fill">
+            <strong>Email (SMTP)</strong>
+            <div class="text-muted small">Configured</div>
+          </div>
+          <span class="badge bg-success">Connected</span>
+          <button type="button" class="btn btn-sm btn-outline-primary ms-2">Test</button>
+        </div>
+      </div>
+      <div class="col-md-6">
+        <div class="d-flex align-items-center mb-3">
+          <span class="avatar avatar-sm me-2 bg-secondary-lt">A</span>
+          <div class="flex-fill">
+            <strong>Accounting export</strong>
+            <div class="text-muted small">Optional</div>
+          </div>
+          <span class="badge bg-secondary">Not set</span>
+          <button type="button" class="btn btn-sm btn-outline-primary ms-2">Configure</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Create API Key Modal -->
+<div class="modal modal-blur fade" id="apiKeyModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <form method="post" action="{{ url_for('hms.settings_integrations') }}">
+        <input type="hidden" name="action" value="create_key">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <div class="modal-header">
+          <h5 class="modal-title">Create API key</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <div class="mb-3">
+            <label class="form-label required">Name</label>
+            <input type="text" name="name" class="form-control" required placeholder="e.g. Production">
+          </div>
+          <div class="alert alert-warning small mb-0">The key will be shown once. Store it securely. Backend: generate and return key on create.</div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-link link-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-primary">Create</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- Add Webhook Modal -->
+<div class="modal modal-blur fade" id="webhookModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <form method="post" action="{{ url_for('hms.settings_integrations') }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <div class="modal-header">
+          <h5 class="modal-title">Add webhook</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <div class="mb-3">
+            <label class="form-label required">URL</label>
+            <input type="url" name="url" class="form-control" required placeholder="https://...">
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Events</label>
+            <div>
+              <label class="form-check"><input type="checkbox" name="events" class="form-check-input" value="booking.created"> booking.created</label>
+              <label class="form-check"><input type="checkbox" name="events" class="form-check-input" value="booking.updated"> booking.updated</label>
+              <label class="form-check"><input type="checkbox" name="events" class="form-check-input" value="booking.cancelled"> booking.cancelled</label>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-link link-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-primary">Add</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

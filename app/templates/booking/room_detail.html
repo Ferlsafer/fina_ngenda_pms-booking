@@ -1,0 +1,336 @@
+{% extends "booking/base.html" %}
+
+{% block title %}{{ room.name }} - Ngenda Hotel{% endblock %}
+
+{% block content %}
+
+<!-- Room Detail Hero Section -->
+<div class="room-detail-hero" style="position: relative; height: 60vh; overflow: hidden; background: #000;">
+    {% if room.images and room.images|length > 0 %}
+    <!-- Simple image display without carousel for reliability -->
+    <div style="height: 100%;">
+        <img src="{{ url_for('static', filename='uploads/rooms/' + room.images[0]) }}" alt="{{ room.name }}" style="width: 100%; height: 100%; object-fit: cover;">
+    </div>
+    {% if room.images|length > 1 %}
+    <!-- Additional images as thumbnails -->
+    <div style="position: absolute; bottom: 80px; left: 0; right: 0; display: flex; justify-content: center; gap: 10px; padding: 0 20px;">
+        {% for image in room.images[1:4] %}
+        <img src="{{ url_for('static', filename='uploads/rooms/' + image) }}" alt="Room view {{ loop.index }}" style="width: 80px; height: 60px; object-fit: cover; border: 2px solid white; border-radius: 5px; cursor: pointer;" onclick="changeHeroImage('{{ url_for('static', filename='uploads/rooms/' + image) }}')">
+        {% endfor %}
+    </div>
+    {% endif %}
+    {% else %}
+    <img src="{{ url_for('static', filename='booking/images/rooms/roomview.jpg') }}" alt="{{ room.name }}" style="width: 100%; height: 100%; object-fit: cover;">
+    {% endif %}
+    
+    <div style="position: absolute; bottom: 0; left: 0; right: 0; background: linear-gradient(transparent, rgba(0,0,0,0.8)); padding: 40px 20px;">
+        <div class="container">
+            <h1 style="color: white; font-size: 3rem; font-weight: 700; margin-bottom: 10px; text-shadow: 2px 2px 4px rgba(0,0,0,0.5);">{{ room.name }}</h1>
+            <p style="color: rgba(255,255,255,0.9); font-size: 1.2rem; text-shadow: 1px 1px 2px rgba(0,0,0,0.5);">{{ room.short_description or 'Luxury accommodation at Ngenda Hotel' }}</p>
+        </div>
+    </div>
+</div>
+
+<script>
+function changeHeroImage(src) {
+    const heroImg = document.querySelector('.room-detail-hero > div > img');
+    if (heroImg) {
+        heroImg.src = src;
+    }
+}
+</script>
+
+<!-- Debug Info (remove after testing) -->
+{% if room.images|length == 0 %}
+<div class="alert alert-warning m-3">
+    <strong>No images found for this room.</strong> Please add images in HMS Admin.
+    <br>Room ID: {{ room.id }}
+    <br>Images count: {{ room.images|length }}
+</div>
+{% endif %}
+
+<!-- Room Details Content -->
+<div class="section-full p-tb90">
+    <div class="container">
+        <div class="row">
+            <!-- Main Content -->
+            <div class="col-lg-8">
+                <!-- Room Overview -->
+                <div class="card mb-4 border-0 shadow-sm">
+                    <div class="card-body p-4">
+                        <h3 class="mb-4" style="color: #1a1a1a; font-weight: 600;">Room Overview</h3>
+                        <p style="line-height: 1.8; color: #555;">{{ room.description or 'Experience comfort and elegance in our beautifully appointed room, designed to provide you with the perfect retreat after a day of business or leisure.' }}</p>
+                        
+                        <!-- Room Features Grid -->
+                        <div class="row mt-4">
+                            <div class="col-md-4 mb-3">
+                                <div class="feature-box text-center p-3" style="background: #f8f9fa; border-radius: 10px;">
+                                    <i class="fa fa-expand" style="font-size: 2rem; color: #f0ad4e; margin-bottom: 10px;"></i>
+                                    <h5 style="margin-bottom: 5px; font-weight: 600;">Size</h5>
+                                    <p style="color: #666; margin: 0;">{{ room.size_sqm or '30m²' }}</p>
+                                </div>
+                            </div>
+                            <div class="col-md-4 mb-3">
+                                <div class="feature-box text-center p-3" style="background: #f8f9fa; border-radius: 10px;">
+                                    <i class="fa fa-users" style="font-size: 2rem; color: #f0ad4e; margin-bottom: 10px;"></i>
+                                    <h5 style="margin-bottom: 5px; font-weight: 600;">Capacity</h5>
+                                    <p style="color: #666; margin: 0;">{{ room.capacity or 2 }} Guests</p>
+                                </div>
+                            </div>
+                            <div class="col-md-4 mb-3">
+                                <div class="feature-box text-center p-3" style="background: #f8f9fa; border-radius: 10px;">
+                                    <i class="fa fa-bed" style="font-size: 2rem; color: #f0ad4e; margin-bottom: 10px;"></i>
+                                    <h5 style="margin-bottom: 5px; font-weight: 600;">Bed Type</h5>
+                                    <p style="color: #666; margin: 0;">{{ room.bed_type or 'Double Bed' }}</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Amenities -->
+                <div class="card mb-4 border-0 shadow-sm">
+                    <div class="card-body p-4">
+                        <h3 class="mb-4" style="color: #1a1a1a; font-weight: 600;">Room Amenities</h3>
+                        <div class="row">
+                            {% if room.amenities and room.amenities|length > 0 %}
+                                {% for amenity in room.amenities %}
+                                <div class="col-md-6 mb-3">
+                                    <div class="amenity-item d-flex align-items-center">
+                                        <i class="fa fa-check-circle" style="color: #28a745; font-size: 1.2rem; margin-right: 10px;"></i>
+                                        <span style="color: #555;">{{ amenity }}</span>
+                                    </div>
+                                </div>
+                                {% endfor %}
+                            {% else %}
+                                <div class="col-md-6 mb-3">
+                                    <div class="amenity-item d-flex align-items-center">
+                                        <i class="fa fa-wifi" style="color: #28a745; font-size: 1.2rem; margin-right: 10px;"></i>
+                                        <span style="color: #555;">Free WiFi</span>
+                                    </div>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <div class="amenity-item d-flex align-items-center">
+                                        <i class="fa fa-snowflake" style="color: #28a745; font-size: 1.2rem; margin-right: 10px;"></i>
+                                        <span style="color: #555;">Air Conditioning</span>
+                                    </div>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <div class="amenity-item d-flex align-items-center">
+                                        <i class="fa fa-tv" style="color: #28a745; font-size: 1.2rem; margin-right: 10px;"></i>
+                                        <span style="color: #555;">Flat-screen TV</span>
+                                    </div>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <div class="amenity-item d-flex align-items-center">
+                                        <i class="fa fa-coffee" style="color: #28a745; font-size: 1.2rem; margin-right: 10px;"></i>
+                                        <span style="color: #555;">Mini Bar</span>
+                                    </div>
+                                </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Booking Sidebar -->
+            <div class="col-lg-4">
+                <div class="booking-sidebar" style="position: sticky; top: 20px;">
+                    <div class="card border-0 shadow-lg" style="border-radius: 15px; overflow: hidden;">
+                        <div class="card-body p-4">
+                            <div class="text-center mb-4">
+                                <h3 class="text-primary mb-1" style="font-size: 2rem; font-weight: 700;">{{ room.currency_symbol }} {{ room.display_price|format_number }}</h3>
+                                <p style="color: #666;">per night</p>
+                            </div>
+
+                            <a href="{{ url_for('booking.book') }}?room_type_id={{ room.id }}" class="btn btn-primary btn-lg w-100 mb-3" style="background: #f0ad4e; border: none; font-weight: 600; padding: 15px; border-radius: 10px; display: inline-block; text-decoration: none; color: white;" id="book-now-btn">
+                                    <i class="fa fa-calendar-check me-2"></i>Book Now
+                                </a>
+
+                                <div class="text-center">
+                                    <a href="https://wa.me/255123456789?text=I'm interested in booking {{ room.name }}" target="_blank" class="btn btn-outline-success" style="border-radius: 10px;">
+                                        <i class="fa fa-whatsapp me-2"></i>Book via WhatsApp
+                                    </a>
+                                </div>
+
+                            <!-- Booking Benefits -->
+                            <div class="booking-benefits mt-4 pt-4" style="border-top: 1px solid #eee;">
+                                <div class="d-flex align-items-center mb-3">
+                                    <i class="fa fa-check-circle text-success me-2"></i>
+                                    <span style="color: #666; font-size: 0.9rem;">Free Cancellation</span>
+                                </div>
+                                <div class="d-flex align-items-center mb-3">
+                                    <i class="fa fa-check-circle text-success me-2"></i>
+                                    <span style="color: #666; font-size: 0.9rem;">Best Price Guarantee</span>
+                                </div>
+                                <div class="d-flex align-items-center mb-3">
+                                    <i class="fa fa-check-circle text-success me-2"></i>
+                                    <span style="color: #666; font-size: 0.9rem;">Instant Confirmation</span>
+                                </div>
+                                <div class="d-flex align-items-center">
+                                    <i class="fa fa-check-circle text-success me-2"></i>
+                                    <span style="color: #666; font-size: 0.9rem;">No Booking Fees</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Similar Rooms -->
+{% if similar_rooms and similar_rooms|length > 0 %}
+<div class="section-full p-tb90 bg-gray">
+    <div class="container">
+        <div class="section-head text-center mb-5">
+            <h2 class="m-b5" style="color: #1a1a1a; font-weight: 700;">Similar Rooms</h2>
+            <div class="wt-separator-outer">
+                <div class="wt-separator site-bg-primary"></div>
+            </div>
+            <p style="color: #666;">Explore other rooms that might interest you</p>
+        </div>
+
+        <div class="row">
+            {% for similar_room in similar_rooms %}
+            <div class="col-md-4 mb-4">
+                <div class="room-card" style="border-radius: 15px; overflow: hidden; box-shadow: 0 5px 15px rgba(0,0,0,0.1); transition: transform 0.3s ease;" onmouseover="this.style.transform='translateY(-5px)'" onmouseout="this.style.transform='translateY(0)'">
+                    <div style="position: relative; height: 250px; overflow: hidden;">
+                        <img src="{{ url_for('static', filename='uploads/rooms/' + (similar_room.primary_image or 'roomview.jpg')) }}" alt="{{ similar_room.name }}" style="width: 100%; height: 100%; object-fit: cover; transition: transform 0.3s ease;" onmouseover="this.style.transform='scale(1.1)'" onmouseout="this.style.transform='scale(1)'">
+                        <div style="position: absolute; top: 15px; right: 15px; background: #f0ad4e; color: white; padding: 5px 15px; border-radius: 20px; font-size: 0.85rem; font-weight: 600;">
+                            {{ similar_room.category|title }}
+                        </div>
+                    </div>
+                    <div class="p-4">
+                        <h4 style="margin-bottom: 10px; font-weight: 600; color: #1a1a1a;">{{ similar_room.name }}</h4>
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <div>
+                                <span style="color: #f0ad4e; font-size: 1.3rem; font-weight: 700;">{{ currency_symbol }} {{ similar_room.display_price|format_number }}</span>
+                                <span style="color: #666; font-size: 0.9rem;">/night</span>
+                            </div>
+                        </div>
+                        <a href="{{ url_for('booking.room_detail', room_id=similar_room.id) }}" class="btn btn-outline-primary w-100" style="border-radius: 10px; border-color: #f0ad4e; color: #f0ad4e;">
+                            View Details
+                        </a>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- Call to Action -->
+<div class="section-full p-tb90" style="background: linear-gradient(135deg, #f0ad4e 0%, #d4953c 100%);">
+    <div class="container text-center">
+        <h2 style="color: white; font-weight: 700; margin-bottom: 20px;">Ready to Book Your Stay?</h2>
+        <p style="color: rgba(255,255,255,0.9); font-size: 1.1rem; margin-bottom: 30px; max-width: 600px; margin-left: auto; margin-right: auto;">
+            Experience luxury and comfort at Ngenda Hotel & Apartments. Book now and enjoy exceptional hospitality.
+        </p>
+        <div class="d-flex justify-content-center gap-3 flex-wrap">
+            <a href="{{ url_for('booking.book', room_type=room.id) }}" class="btn btn-light btn-lg px-5" style="border-radius: 10px; font-weight: 600;">
+                <i class="fa fa-calendar-check me-2"></i>Book Online
+            </a>
+            <a href="https://wa.me/255123456789" target="_blank" class="btn btn-outline-light btn-lg px-5" style="border-radius: 10px; font-weight: 600;">
+                <i class="fa fa-whatsapp me-2"></i>WhatsApp Us
+            </a>
+            <a href="{{ url_for('booking.contact') }}" class="btn btn-outline-light btn-lg px-5" style="border-radius: 10px; font-weight: 600;">
+                <i class="fa fa-phone me-2"></i>Call Us
+            </a>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Initialize Owl Carousel for room images
+$(document).ready(function() {
+    console.log('Document ready, checking for room-image-slider');
+    console.log('Slider element exists:', $('.room-image-slider').length > 0);
+    console.log('Owl Carousel loaded:', $.fn.owlCarousel !== undefined);
+    
+    if ($.fn.owlCarousel !== undefined && $('.room-image-slider').length > 0) {
+        console.log('Initializing Owl Carousel...');
+        $('.room-image-slider').owlCarousel({
+            loop: true,
+            margin: 0,
+            nav: true,
+            dots: true,
+            autoplay: true,
+            autoplayTimeout: 5000,
+            animateOut: 'fadeOut',
+            items: 1
+        });
+        console.log('Owl Carousel initialized');
+    } else {
+        console.log('Owl Carousel not initialized - conditions not met');
+    }
+
+    // Date validation and availability check
+    const checkInInput = document.getElementById('check_in');
+    const checkOutInput = document.getElementById('check_out');
+    const bookNowBtn = document.getElementById('book-now-btn');
+    const availabilityMsg = document.getElementById('availability-message');
+    const roomId = {{ room.id }};
+
+    function checkAvailability() {
+        const checkIn = checkInInput.value;
+        const checkOut = checkOutInput.value;
+        
+        if (!checkIn || !checkOut) return;
+        
+        if (new Date(checkOut) <= new Date(checkIn)) {
+            availabilityMsg.className = 'alert alert-warning';
+            availabilityMsg.innerHTML = '<i class="fa fa-exclamation-triangle me-2"></i>Check-out date must be after check-in date.';
+            availabilityMsg.style.display = 'block';
+            bookNowBtn.disabled = true;
+            return;
+        }
+        
+        // Check availability via AJAX
+        fetch(`/check-availability?room_type_id=${roomId}&check_in=${checkIn}&check_out=${checkOut}`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.success && data.available) {
+                    availabilityMsg.className = 'alert alert-success';
+                    availabilityMsg.innerHTML = '<i class="fa fa-check-circle me-2"></i>Rooms available for selected dates!';
+                    availabilityMsg.style.display = 'block';
+                    bookNowBtn.disabled = false;
+                } else {
+                    availabilityMsg.className = 'alert alert-danger';
+                    availabilityMsg.innerHTML = '<i class="fa fa-times-circle me-2"></i>Sorry, no rooms available for selected dates. Please try different dates.';
+                    availabilityMsg.style.display = 'block';
+                    bookNowBtn.disabled = true;
+                }
+            })
+            .catch(error => {
+                console.error('Error checking availability:', error);
+                availabilityMsg.className = 'alert alert-info';
+                availabilityMsg.innerHTML = '<i class="fa fa-info-circle me-2"></i>Unable to check availability. Please proceed to book.';
+                availabilityMsg.style.display = 'block';
+                bookNowBtn.disabled = false;
+            });
+    }
+
+    if (checkInInput && checkOutInput) {
+        checkInInput.addEventListener('change', function() {
+            const minCheckOut = new Date(this.value);
+            minCheckOut.setDate(minCheckOut.getDate() + 1);
+            checkOutInput.min = minCheckOut.toISOString().split('T')[0];
+            checkAvailability();
+        });
+
+        checkOutInput.addEventListener('change', function() {
+            const maxCheckIn = new Date(this.value);
+            maxCheckIn.setDate(maxCheckIn.getDate() - 1);
+            checkInInput.max = maxCheckIn.toISOString().split('T')[0];
+            checkAvailability();
+        });
+    }
+});
+</script>
+{% endblock %}

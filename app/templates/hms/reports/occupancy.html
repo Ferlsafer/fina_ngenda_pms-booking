@@ -1,0 +1,172 @@
+{% extends "hms/layout/base.html" %}
+{% block title %}Occupancy Report - Hotel PMS{% endblock %}
+
+{% block head %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+{% endblock %}
+
+{% block content %}
+<div class="page-header d-print-none">
+  <div class="row align-items-center">
+    <div class="col">
+      <h2 class="page-title">Occupancy report</h2>
+      <div class="text-muted mt-1">Occupancy percentage and room type breakdown</div>
+    </div>
+    <div class="col-auto">
+      <div class="btn-list">
+        <button type="button" class="btn btn-outline-danger" id="btn-export-pdf">Export PDF</button>
+        <button type="button" class="btn btn-outline-success" id="btn-export-excel">Export Excel</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="card mb-3">
+  <div class="card-body">
+    <form method="get" action="#" class="row g-2 align-items-end" id="date-form">
+      <div class="col-md-3">
+        <label class="form-label">From</label>
+        <input type="date" name="from" class="form-control" value="{{ from_date|default('2025-02-01') }}" id="date-from">
+      </div>
+      <div class="col-md-3">
+        <label class="form-label">To</label>
+        <input type="date" name="to" class="form-control" value="{{ to_date|default('2025-02-14') }}" id="date-to">
+      </div>
+      <div class="col-md-2">
+        <button type="submit" class="btn btn-primary">Apply</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div class="row row-deck row-cards mb-3">
+  <div class="col-sm-6 col-lg-3">
+    <div class="card">
+      <div class="card-body">
+        <div class="subheader">Average occupancy</div>
+        <div class="h1 mb-0">{{ occupancy_avg|default(78) }}%</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-sm-6 col-lg-3">
+    <div class="card">
+      <div class="card-body">
+        <div class="subheader">Total room nights</div>
+        <div class="h1 mb-0">{{ total_room_nights|default(1240) }}</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-sm-6 col-lg-3">
+    <div class="card">
+      <div class="card-body">
+        <div class="subheader">Available</div>
+        <div class="h1 mb-0">{{ available_nights|default(340) }}</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-sm-6 col-lg-3">
+    <div class="card">
+      <div class="card-body">
+        <div class="subheader">Peak day</div>
+        <div class="h1 mb-0">{{ peak_occupancy|default(92) }}%</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="row">
+  <div class="col-lg-8">
+    <div class="card">
+      <div class="card-header">
+        <h3 class="card-title">Occupancy by day</h3>
+      </div>
+      <div class="card-body">
+        <canvas id="occupancyChart" height="80"></canvas>
+      </div>
+    </div>
+  </div>
+  <div class="col-lg-4">
+    <div class="card">
+      <div class="card-header">
+        <h3 class="card-title">By room type</h3>
+      </div>
+      <div class="card-body">
+        <canvas id="roomTypeChart" height="200"></canvas>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="row mt-3">
+  <div class="col-12">
+    <div class="card">
+      <div class="card-header">
+        <h3 class="card-title">Room type breakdown</h3>
+      </div>
+      <div class="table-responsive">
+        <table class="table table-vcenter card-table">
+          <thead>
+            <tr>
+              <th>Room type</th>
+              <th>Rooms</th>
+              <th>Occupied nights</th>
+              <th>Available nights</th>
+              <th>Occupancy %</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for row in (occupancy_by_type if occupancy_by_type is defined else [
+              {'name': 'Standard', 'rooms': 40, 'occupied': 320, 'available': 80},
+              {'name': 'Deluxe', 'rooms': 20, 'occupied': 180, 'available': 100},
+              {'name': 'Suite', 'rooms': 10, 'occupied': 100, 'available': 40},
+            ]) %}
+            <tr>
+              <td>{{ row.name }}</td>
+              <td>{{ row.rooms }}</td>
+              <td>{{ row.occupied }}</td>
+              <td>{{ row.available }}</td>
+              <td>{{ "%.1f"|format((row.occupied / (row.occupied + row.available) * 100) if (row.occupied + row.available) else 0) }}%</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function() {
+  var ctx1 = document.getElementById('occupancyChart');
+  if (ctx1) {
+    new Chart(ctx1, {
+      type: 'line',
+      data: {
+        labels: {{ occupancy_labels|default(['Feb 1','Feb 2','Feb 3','Feb 4','Feb 5','Feb 6','Feb 7','Feb 8','Feb 9','Feb 10','Feb 11','Feb 12','Feb 13','Feb 14'])|tojson }},
+        datasets: [{ label: 'Occupancy %', data: {{ occupancy_data|default([72,75,78,80,82,88,90,85,78,76,80,82,85,78])|tojson }}, borderColor: 'rgb(34, 197, 94)', backgroundColor: 'rgba(34, 197, 94, 0.1)', fill: true, tension: 0.3 }]
+      },
+      options: { responsive: true, scales: { y: { min: 0, max: 100 } } }
+    });
+  }
+  var ctx2 = document.getElementById('roomTypeChart');
+  if (ctx2) {
+    new Chart(ctx2, {
+      type: 'doughnut',
+      data: {
+        labels: ['Standard', 'Deluxe', 'Suite'],
+        datasets: [{ data: [80, 64, 71], backgroundColor: ['#3b82f6', '#22c55e', '#eab308'] }]
+      },
+      options: { responsive: true }
+    });
+  }
+  document.getElementById('btn-export-pdf')?.addEventListener('click', function() {
+    window.print();
+  });
+  document.getElementById('btn-export-excel')?.addEventListener('click', function() {
+    alert('Backend: generate Excel and download.');
+  });
+})();
+</script>
+{% endblock %}

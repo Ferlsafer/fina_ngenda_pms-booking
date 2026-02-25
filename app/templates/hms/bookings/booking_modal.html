@@ -1,0 +1,291 @@
+<!-- Booking Modal - Multi-step flow -->
+<div class="modal fade" id="bookingModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-lg">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="bookingModalTitle">New Booking</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      
+      <div class="modal-body">
+        <!-- Progress Steps -->
+        <div class="steps mb-4">
+          <div class="row">
+            <div class="col-3">
+              <div class="step active" id="step1-indicator">
+                <span class="step-icon">1</span>
+                <span class="step-text">Guest</span>
+              </div>
+            </div>
+            <div class="col-3">
+              <div class="step" id="step2-indicator">
+                <span class="step-icon">2</span>
+                <span class="step-text">Room</span>
+              </div>
+            </div>
+            <div class="col-3">
+              <div class="step" id="step3-indicator">
+                <span class="step-icon">3</span>
+                <span class="step-text">Payment</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Step 1: Guest Selection -->
+        <div id="step1" class="step-content active">
+          <h4 class="mb-3">Select Guest</h4>
+          
+          <!-- Search Existing Guest -->
+          <div class="mb-4">
+            <label class="form-label">Search Existing Guest</label>
+            <div class="input-group">
+              <span class="input-group-text">
+                <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                  <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+                  <circle cx="10" cy="10" r="7" />
+                  <line x1="21" y1="21" x2="15" y2="15" />
+                </svg>
+              </span>
+              <input type="text" class="form-control" id="guest-search" placeholder="Search by name, email or phone...">
+            </div>
+          </div>
+          
+          <!-- Existing Guests List -->
+          <div class="mb-4" id="existing-guests" style="max-height: 200px; overflow-y: auto;">
+            <div class="list-group">
+              {% for guest in recent_guests %}
+              <button type="button" class="list-group-item list-group-item-action guest-item" 
+                      data-guest-id="{{ guest.id }}"
+                      data-guest-name="{{ guest.name }}"
+                      data-guest-email="{{ guest.email }}"
+                      data-guest-phone="{{ guest.phone }}">
+                <div class="d-flex justify-content-between align-items-center">
+                  <div>
+                    <strong>{{ guest.name }}</strong><br>
+                    <small class="text-muted">{{ guest.email }} | {{ guest.phone }}</small>
+                  </div>
+                  <span class="badge bg-primary">Select</span>
+                </div>
+              </button>
+              {% else %}
+              <div class="text-center text-muted py-3">No recent guests</div>
+              {% endfor %}
+            </div>
+          </div>
+          
+          <!-- Or Create New Guest -->
+          <div class="mb-3">
+            <button class="btn btn-outline-primary w-100" type="button" id="show-new-guest">
+              <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+                <line x1="12" y1="5" x2="12" y2="19" />
+                <line x1="5" y1="12" x2="19" y2="12" />
+              </svg>
+              Add New Guest
+            </button>
+          </div>
+          
+          <!-- New Guest Form (hidden by default) -->
+          <div id="new-guest-form" style="display: none;">
+            <h5 class="mb-3">New Guest Information</h5>
+            <div class="row g-3">
+              <div class="col-md-6">
+                <label class="form-label required">Full Name</label>
+                <input type="text" class="form-control" id="new-guest-name" required>
+              </div>
+              <div class="col-md-6">
+                <label class="form-label required">Email</label>
+                <input type="email" class="form-control" id="new-guest-email" required>
+              </div>
+              <div class="col-md-6">
+                <label class="form-label required">Phone Number</label>
+                <input type="tel" class="form-control" id="new-guest-phone" required>
+              </div>
+              <div class="col-md-6">
+                <label class="form-label">Address</label>
+                <input type="text" class="form-control" id="new-guest-address">
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Step 2: Room Selection -->
+        <div id="step2" class="step-content">
+          <h4 class="mb-3">Select Room & Dates</h4>
+          
+          <!-- Dates Selection -->
+          <div class="row g-3 mb-4">
+            <div class="col-md-6">
+              <label class="form-label required">Check-in Date</label>
+              <input type="date" class="form-control" id="check-in-date" min="{{ today }}" required>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label required">Check-out Date</label>
+              <input type="date" class="form-control" id="check-out-date" min="{{ today }}" required>
+            </div>
+          </div>
+          
+          <!-- Guests Count -->
+          <div class="row g-3 mb-4">
+            <div class="col-md-6">
+              <label class="form-label required">Adults</label>
+              <select class="form-select" id="adults">
+                {% for i in range(1, 5) %}
+                <option value="{{ i }}">{{ i }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Children</label>
+              <select class="form-select" id="children">
+                {% for i in range(0, 4) %}
+                <option value="{{ i }}">{{ i }}</option>
+                {% endfor %}
+              </select>
+            </div>
+          </div>
+          
+          <!-- Available Rooms -->
+          <div id="available-rooms" class="mb-3">
+            <h5>Available Rooms</h5>
+            <div class="row" id="rooms-list">
+              <!-- Rooms loaded dynamically -->
+              <div class="text-center py-4">
+                <div class="spinner-border text-primary" role="status">
+                  <span class="visually-hidden">Loading...</span>
+                </div>
+                <p class="mt-2">Select dates to see available rooms</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Step 3: Payment -->
+        <div id="step3" class="step-content">
+          <h4 class="mb-3">Payment</h4>
+          
+          <!-- Booking Summary -->
+          <div class="card bg-light mb-4">
+            <div class="card-body">
+              <h5 class="card-title">Booking Summary</h5>
+              <table class="table table-sm">
+                <tr>
+                  <td>Room:</td>
+                  <td id="summary-room">-</td>
+                </tr>
+                <tr>
+                  <td>Dates:</td>
+                  <td id="summary-dates">-</td>
+                </tr>
+                <tr>
+                  <td>Nights:</td>
+                  <td id="summary-nights">-</td>
+                </tr>
+                <tr>
+                  <td>Guests:</td>
+                  <td id="summary-guests">-</td>
+                </tr>
+                <tr>
+                  <th>Total Amount:</th>
+                  <th id="summary-total">- TZS</th>
+                </tr>
+              </table>
+            </div>
+          </div>
+          
+          <!-- Payment Options -->
+          <div class="mb-4">
+            <h5>Select Payment Method</h5>
+            
+            <!-- Mobile Money (Tanzania) -->
+            <div class="card mb-3">
+              <div class="card-header">
+                <div class="form-check">
+                  <input class="form-check-input" type="radio" name="payment_method" id="mobile-money" value="mobile_money" checked>
+                  <label class="form-check-label" for="mobile-money">
+                    <strong>Mobile Money</strong>
+                  </label>
+                </div>
+              </div>
+              <div class="card-body" id="mobile-money-options">
+                <div class="row g-3">
+                  <div class="col-md-8">
+                    <label class="form-label">Phone Number</label>
+                    <input type="tel" class="form-control" id="mobile-phone" placeholder="0712345678" required>
+                    <small class="form-hint">Enter the phone number registered with mobile money</small>
+                  </div>
+                  <div class="col-md-4">
+                    <label class="form-label">Network</label>
+                    <select class="form-select" id="mobile-network">
+                      <option value="TIGOPESA">Tigo Pesa</option>
+                      <option value="AIRTEL">Airtel Money</option>
+                      <option value="HALOPESA">Halopesa</option>
+                      <option value="EZYPESA">Ezy Pesa</option>
+                      <option value="MPESA">M-Pesa</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            <!-- Card Payment -->
+            <div class="card mb-3">
+              <div class="card-header">
+                <div class="form-check">
+                  <input class="form-check-input" type="radio" name="payment_method" id="card-payment" value="card">
+                  <label class="form-check-label" for="card-payment">
+                    <strong>Card Payment</strong>
+                  </label>
+                </div>
+              </div>
+              <div class="card-body" id="card-payment-options" style="display: none;">
+                <p class="text-muted">Card payment will be processed securely via Selcom</p>
+              </div>
+            </div>
+            
+            <!-- Pay Later -->
+            <div class="card mb-3">
+              <div class="card-header">
+                <div class="form-check">
+                  <input class="form-check-input" type="radio" name="payment_method" id="pay-later" value="pay_later">
+                  <label class="form-check-label" for="pay-later">
+                    <strong>Pay at Hotel</strong>
+                  </label>
+                </div>
+              </div>
+              <div class="card-body" id="pay-later-options" style="display: none;">
+                <p class="text-muted">You can pay upon arrival at the hotel. No payment required now.</p>
+              </div>
+            </div>
+          </div>
+          
+          <!-- Payment Status -->
+          <div id="payment-status"></div>
+        </div>
+      </div>
+
+      <!-- Modal Footer -->
+      <div class="modal-footer">
+        <button type="button" class="btn btn-link link-secondary" id="prev-step" style="display: none;">
+          <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+            <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+            <polyline points="15 6 9 12 15 18" />
+          </svg>
+          Back
+        </button>
+        <button type="button" class="btn btn-primary" id="next-step">Next</button>
+        <button type="button" class="btn btn-success" id="complete-booking" style="display: none;">
+          <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+            <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+            <path d="M5 12l5 5l10 -10" />
+          </svg>
+          Confirm Booking
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Include Selcom Payment Modal -->
+{% include 'payments/selcom_modal.html' %}

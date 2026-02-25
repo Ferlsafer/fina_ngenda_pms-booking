@@ -1,0 +1,199 @@
+{% extends "hms/layout/base.html" %}
+{% block title %}Superadmin Dashboard{% endblock %}
+
+{% block content %}
+<div class="container-xl">
+  <!-- Page header -->
+  <div class="page-header d-print-none">
+    <div class="row align-items-center">
+      <div class="col">
+        <h2 class="page-title">Superadmin Dashboard</h2>
+        <div class="text-muted mt-1">System-wide administration and management</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Stats Cards -->
+  <div class="row row-deck row-cards mb-3">
+    <div class="col-sm-6 col-lg-3">
+      <div class="card card-sm">
+        <div class="card-body">
+          <div class="d-flex align-items-center">
+            <div class="subheader">Total Hotels</div>
+          </div>
+          <div class="h1 mb-3">{{ hotels|length }}</div>
+          <div class="d-flex mb-2">
+            <div class="text-muted">Managed properties</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="col-sm-6 col-lg-3">
+      <div class="card card-sm">
+        <div class="card-body">
+          <div class="d-flex align-items-center">
+            <div class="subheader">Total Users</div>
+          </div>
+          <div class="h1 mb-3">{{ users|length }}</div>
+          <div class="d-flex mb-2">
+            <div class="text-muted">System users</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="col-sm-6 col-lg-3">
+      <div class="card card-sm">
+        <div class="card-body">
+          <div class="d-flex align-items-center">
+            <div class="subheader">Total Owners</div>
+          </div>
+          <div class="h1 mb-3">{{ owners|length }}</div>
+          <div class="d-flex mb-2">
+            <div class="text-muted">Hotel owners</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="col-sm-6 col-lg-3">
+      <div class="card card-sm">
+        <div class="card-body">
+          <div class="d-flex align-items-center">
+            <div class="subheader">Active Hotels</div>
+          </div>
+          <div class="h1 mb-3">{{ hotels|selectattr('is_active', 'equalto', true)|list|length }}</div>
+          <div class="d-flex mb-2">
+            <div class="text-muted">Currently operational</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Quick Actions -->
+  <div class="row mb-3">
+    <div class="col-12">
+      <div class="card">
+        <div class="card-body">
+          <h3 class="card-title">Quick Actions</h3>
+          <div class="row g-2">
+            <div class="col-auto">
+              <a href="{{ '#' }}" class="btn btn-primary">
+                <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                  <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+                  <line x1="12" y1="5" x2="12" y2="19" />
+                  <line x1="5" y1="12" x2="19" y2="12" />
+                </svg>
+                Add New Hotel
+              </a>
+            </div>
+            <div class="col-auto">
+              <a href="{{ '#' }}" class="btn btn-outline-primary">
+                <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                  <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+                  <circle cx="9" cy="7" r="4" />
+                  <path d="M3 21v-1a2 2 0 0 1 2 -2h4a2 2 0 0 1 2 2v1" />
+                  <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+                  <path d="M21 21v-10l-6 -4" />
+                </svg>
+                Add New Owner
+              </a>
+            </div>
+            <div class="col-auto">
+              <a href="{{ '#' }}" class="btn btn-outline-secondary">
+                <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                  <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+                  <path d="M3 21h18" />
+                  <path d="M5 21v-14l8 -4v18" />
+                  <path d="M19 21v-10l-6 -4" />
+                </svg>
+                Manage Hotels
+              </a>
+            </div>
+            <div class="col-auto">
+              <a href="{{ '#' }}" class="btn btn-outline-secondary">
+                <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                  <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+                  <circle cx="12" cy="7" r="4" />
+                  <path d="M6 21v-2a4 4 0 0 1 4 -4h4a4 4 0 0 1 4 4v2" />
+                </svg>
+                Manage Owners
+              </a>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Recent Hotels -->
+  <div class="row">
+    <div class="col-md-6">
+      <div class="card">
+        <div class="card-header">
+          <h3 class="card-title">Recent Hotels</h3>
+          <div class="card-actions">
+            <a href="{{ '#' }}" class="btn btn-outline-primary btn-sm">View All</a>
+          </div>
+        </div>
+        <div class="list-group list-group-flush">
+          {% for hotel in hotels[:5] %}
+          <div class="list-group-item">
+            <div class="row align-items-center">
+              <div class="col-auto">
+                <span class="avatar bg-blue">{{ hotel.name[0]|upper }}</span>
+              </div>
+              <div class="col">
+                <div class="font-weight-medium">{{ hotel.name }}</div>
+                <div class="text-muted small">{{ hotel.location or 'Location not set' }}</div>
+              </div>
+              <div class="col-auto">
+                <a href="{{ '#' }}#hotel-{{ hotel.id }}" class="btn btn-outline-primary btn-sm">Manage</a>
+              </div>
+            </div>
+          </div>
+          {% else %}
+          <div class="list-group-item text-center">
+            <div class="text-muted">No hotels created yet</div>
+            <a href="{{ '#' }}" class="btn btn-primary btn-sm mt-2">Create Hotel</a>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+
+    <div class="col-md-6">
+      <div class="card">
+        <div class="card-header">
+          <h3 class="card-title">Recent Owners</h3>
+          <div class="card-actions">
+            <a href="{{ '#' }}" class="btn btn-outline-primary btn-sm">View All</a>
+          </div>
+        </div>
+        <div class="list-group list-group-flush">
+          {% for owner in owners[:5] %}
+          <div class="list-group-item">
+            <div class="row align-items-center">
+              <div class="col-auto">
+                <span class="avatar bg-green">{{ owner.name[0]|upper }}</span>
+              </div>
+              <div class="col">
+                <div class="font-weight-medium">{{ owner.name }}</div>
+                <div class="text-muted small">{{ owner.email }}</div>
+              </div>
+              <div class="col-auto">
+                <a href="{{ '#' }}#owner-{{ owner.id }}" class="btn btn-outline-primary btn-sm">Manage</a>
+              </div>
+            </div>
+          </div>
+          {% else %}
+          <div class="list-group-item text-center">
+            <div class="text-muted">No owners created yet</div>
+            <a href="{{ '#' }}" class="btn btn-primary btn-sm mt-2">Create Owner</a>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,25 @@
+{% extends "hms/layout/base.html" %}
+{% block title %}Chart of Accounts{% endblock %}
+{% block content %}
+<div class="container-xl">
+  <div class="page-header">
+    <h2 class="page-title">Chart of Accounts</h2>
+  </div>
+  <div class="card">
+    <div class="card-body">
+      <table class="table table-vcenter">
+        <thead><tr><th>Account Name</th><th>Type</th><th class="text-end">Balance</th></tr></thead>
+        <tbody>
+          {% for account in accounts %}
+          <tr>
+            <td>{{ account.name }}</td>
+            <td><span class="badge bg-{{ 'green' if account.type == 'Asset' else 'red' if account.type == 'Liability' else 'blue' if account.type == 'Revenue' else 'yellow' }}">{{ account.type }}</span></td>
+            <td class="text-end">TSh {{ account.balance|format_number }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}

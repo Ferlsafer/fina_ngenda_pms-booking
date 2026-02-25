@@ -1,0 +1,139 @@
+{% extends "hms/layout/base.html" %}
+{% block title %}Table Map - Restaurant - Hotel PMS{% endblock %}
+
+{% block head %}
+<script src="https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js"></script>
+<style>
+  .table-map-container { min-height: 500px; background: #f1f5f9; border-radius: 12px; position: relative; }
+  .table-map-table { position: absolute; min-width: 70px; min-height: 70px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-weight: 600; cursor: pointer; box-shadow: 0 2px 8px rgba(0,0,0,0.1); transition: transform 0.2s, box-shadow 0.2s; }
+  .table-map-table:hover { transform: scale(1.05); box-shadow: 0 4px 12px rgba(0,0,0,0.15); }
+  .table-map-table.available { background: #22c55e; color: #fff; }
+  .table-map-table.occupied { background: #3b82f6; color: #fff; }
+  .table-map-table.reserved { background: #eab308; color: #000; }
+  .table-map-table.ui-sortable-helper { opacity: 0.9; z-index: 1000; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-header d-print-none">
+  <div class="row align-items-center">
+    <div class="col">
+      <h2 class="page-title">Table Map</h2>
+      <div class="text-muted mt-1">Drag tables to arrange. Click to view order.</div>
+    </div>
+    <div class="col-auto">
+      <div class="btn-list">
+        <span class="badge bg-success me-1">Available</span>
+        <span class="badge bg-primary me-1">Occupied</span>
+        <span class="badge bg-warning me-2">Reserved</span>
+        <button type="button" class="btn btn-outline-primary" id="btn-save-layout">Save Layout</button>
+        <a href="{{ url_for('hms.restaurant_pos') }}" class="btn btn-primary">POS</a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="row">
+  <div class="col-12">
+    <div class="card">
+      <div class="card-body">
+        <div class="table-map-container" id="table-map">
+          {% if tables %}
+            {% for table in tables %}
+          <div class="table-map-table {{ table.status }}" 
+               data-table-id="{{ table.id }}" 
+               data-table-number="{{ table.table_number }}"
+               data-x="{{ table.position_x or (loop.index0 % 4) * 120 + 20 }}" 
+               data-y="{{ table.position_y or ((loop.index0 // 4) * 120 + 20) }}"
+               style="left: {{ table.position_x or (loop.index0 % 4) * 120 + 20 }}px; top: {{ table.position_y or ((loop.index0 // 4) * 120 + 20) }}px;">
+            <div>Table {{ table.table_number }}</div>
+            <div style="font-size: 0.75rem; margin-top: 4px;">{{ table.capacity }} seats</div>
+          </div>
+            {% endfor %}
+          {% else %}
+            <div class="text-center text-muted py-5">
+              <i class="fa fa-table" style="font-size: 3rem;"></i>
+              <p class="mt-3">No tables configured. Add tables first.</p>
+              <a href="{{ url_for('hms.restaurant_tables') }}" class="btn btn-primary mt-2">Manage Tables</a>
+            </div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function() {
+  var map = document.getElementById('table-map');
+  if (!map) return;
+
+  // Sortable for drag-drop
+  new Sortable(map, {
+    animation: 150,
+    filter: '.table-map-table',
+    onEnd: function(evt) {
+      var el = evt.item;
+      var rect = map.getBoundingClientRect();
+      var elRect = el.getBoundingClientRect();
+      var x = elRect.left - rect.left;
+      var y = elRect.top - rect.top;
+      el.dataset.x = Math.round(x);
+      el.dataset.y = Math.round(y);
+      el.style.left = el.dataset.x + 'px';
+      el.style.top = el.dataset.y + 'px';
+    }
+  });
+
+  // Click table -> show order info (redirect to POS for now)
+  map.addEventListener('click', function(e) {
+    var table = e.target.closest('.table-map-table');
+    if (!table) return;
+    var id = table.dataset.tableId;
+    var num = table.dataset.tableNumber;
+    // Redirect to POS with table selected
+    window.location.href = '{{ url_for("hms.restaurant_pos") }}?table=' + id;
+  });
+
+  // Save layout to backend (Phase 1.7)
+  document.getElementById('btn-save-layout').addEventListener('click', function() {
+    var positions = [];
+    map.querySelectorAll('.table-map-table').forEach(function(el) {
+      positions.push({
+        id: parseInt(el.dataset.tableId, 10),
+        x: parseInt(el.dataset.x || el.style.left, 10),
+        y: parseInt(el.dataset.y || el.style.top, 10)
+      });
+    });
+    
+    // POST to backend
+    fetch('/hms/restaurant/tables/layout', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ positions: positions })
+    })
+    .then(response => response.json())
+    .then(data => {
+      if (data.success) {
+        showMessage('Layout saved successfully!', 'success');
+      } else {
+        showMessage('Error: ' + data.error, 'error');
+      }
+    })
+    .catch(error => {
+      console.error('Error:', error);
+      showMessage('Failed to save layout', 'error');
+    });
+  });
+  
+  function showMessage(msg, type) {
+    // Simple message display (you can enhance this)
+    alert(msg);
+  }
+})();
+</script>
+{% endblock %}

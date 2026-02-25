@@ -1,0 +1,142 @@
+{% extends "hms/layout/base.html" %}
+{% block title %}Hotel Settings - Hotel PMS{% endblock %}
+
+{% block content %}
+<div class="page-header d-print-none">
+  <div class="row align-items-center">
+    <div class="col">
+      <h2 class="page-title">Hotel settings</h2>
+      <div class="text-muted mt-1">Hotel information, check-in/out times, currency and tax</div>
+    </div>
+    <div class="col-auto">
+      <button type="submit" form="hotel-form" class="btn btn-primary">Save changes</button>
+    </div>
+  </div>
+</div>
+
+<form method="post" action="{{ url_for('hms.settings_hotel') }}" id="hotel-form" enctype="multipart/form-data">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+  <div class="row">
+    <div class="col-lg-8">
+      <div class="card">
+        <div class="card-header">
+          <h3 class="card-title">Hotel information</h3>
+        </div>
+        <div class="card-body">
+          <div class="row">
+            <div class="col-md-6 mb-3">
+              <label class="form-label required">Hotel name</label>
+              <input type="text" name="name" class="form-control" value="{{ hotel.name|default('Grand Hotel') }}" required>
+            </div>
+            <div class="col-md-6 mb-3">
+              <label class="form-label">Contact email</label>
+              <input type="email" name="contact_email" class="form-control" value="{{ hotel.contact_email|default('info@grandhotel.com') }}">
+            </div>
+            <div class="col-12 mb-3">
+              <label class="form-label">Address</label>
+              <input type="text" name="address" class="form-control" value="{{ hotel.address|default('123 Main Street') }}">
+            </div>
+            <div class="col-md-4 mb-3">
+              <label class="form-label">City</label>
+              <input type="text" name="city" class="form-control" value="{{ hotel.city|default('New York') }}">
+            </div>
+            <div class="col-md-4 mb-3">
+              <label class="form-label">Postal code</label>
+              <input type="text" name="postal_code" class="form-control" value="{{ hotel.postal_code|default('10001') }}">
+            </div>
+            <div class="col-md-4 mb-3">
+              <label class="form-label">Country</label>
+              <input type="text" name="country" class="form-control" value="{{ hotel.country|default('USA') }}">
+            </div>
+            <div class="col-md-6 mb-3">
+              <label class="form-label">Phone</label>
+              <input type="text" name="phone" class="form-control" value="{{ hotel.phone|default('+1 234 567 8900') }}">
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-header">
+          <h3 class="card-title">Check-in / Check-out</h3>
+        </div>
+        <div class="card-body">
+          <div class="row">
+            <div class="col-md-6 mb-3">
+              <label class="form-label">Check-in time</label>
+              <input type="time" name="check_in_time" class="form-control" value="{{ hotel.check_in_time|default('15:00') }}">
+            </div>
+            <div class="col-md-6 mb-3">
+              <label class="form-label">Check-out time</label>
+              <input type="time" name="check_out_time" class="form-control" value="{{ hotel.check_out_time|default('11:00') }}">
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-header">
+          <h3 class="card-title">Currency & tax</h3>
+        </div>
+        <div class="card-body">
+          <div class="row">
+            <div class="col-md-6 mb-3">
+              <label class="form-label">Currency</label>
+              <select name="currency" class="form-select">
+                <option value="USD" {{ 'selected' if (hotel.currency|default('USD')) == 'USD' else '' }}>USD</option>
+                <option value="EUR" {{ 'selected' if (hotel.currency|default('')) == 'EUR' else '' }}>EUR</option>
+                <option value="GBP" {{ 'selected' if (hotel.currency|default('')) == 'GBP' else '' }}>GBP</option>
+              </select>
+            </div>
+            <div class="col-md-6 mb-3">
+              <label class="form-label">Default tax rate (%)</label>
+              <input type="number" name="default_tax_rate" class="form-control" step="0.01" value="{{ hotel.default_tax_rate|default(10) }}" min="0" max="100">
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="col-lg-4">
+      <div class="card">
+        <div class="card-header">
+          <h3 class="card-title">Logo</h3>
+        </div>
+        <div class="card-body text-center">
+          <div class="mb-3">
+            {% if hotel.logo_url is defined and hotel.logo_url %}
+            <img src="{{ hotel.logo_url }}" alt="Logo" class="img-fluid rounded" style="max-height: 120px;" id="logo-preview">
+            {% else %}
+            <div class="bg-secondary bg-opacity-25 rounded d-flex align-items-center justify-content-center" style="height: 120px;" id="logo-preview">
+              <span class="text-muted">No logo</span>
+            </div>
+            {% endif %}
+          </div>
+          <input type="file" name="logo" class="form-control" accept="image/*" id="logo-upload">
+          <div class="form-hint">PNG or JPG, max 2MB. Backend: validate and store.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</form>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.getElementById('logo-upload')?.addEventListener('change', function(e) {
+  var f = e.target.files[0];
+  if (!f || !f.type.startsWith('image/')) return;
+  var r = new FileReader();
+  r.onload = function() {
+    var preview = document.getElementById('logo-preview');
+    if (preview.tagName === 'IMG') preview.src = r.result;
+    else {
+      var img = document.createElement('img');
+      img.src = r.result;
+      img.alt = 'Logo';
+      img.className = 'img-fluid rounded';
+      img.style.maxHeight = '120px';
+      preview.replaceWith(img);
+    }
+  };
+  r.readAsDataURL(f);
+});
+</script>
+{% endblock %}

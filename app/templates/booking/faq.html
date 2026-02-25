@@ -1,0 +1,335 @@
+{% extends "booking/base.html" %}
+
+{% block title %}FAQ - Ngenda Hotel and Apartments{% endblock %}
+
+{% block content %}
+<!-- FAQ SECTION START -->
+<div class="section-full p-tb80 bg-white">
+    <div class="container">
+        <!-- TITLE START -->
+        <div class="section-head text-center">
+            <h2 class="m-b5" data-title="FAQ">Frequently Asked Questions</h2>
+            <div class="wt-separator-outer">
+                <div class="wt-separator site-bg-primary"></div>
+            </div>
+            <p class="m-b30">Find answers to common questions about Ngenda Hotel and Apartments</p>
+        </div>
+        <!-- TITLE END -->
+
+        <!-- FAQ ACCORDION START -->
+        <div class="row">
+            <div class="col-lg-8 col-md-12">
+                <div class="faq-accordion">
+                    
+                    <!-- ACCORDION ITEM 1 -->
+                    <div class="accordion-item">
+                        <div class="accordion-header" onclick="toggleAccordion(this)">
+                            <h4 class="m-b0">
+                                <i class="fa fa-question-circle m-r10"></i>
+                                What types of rooms are available at Ngenda Hotel?
+                            </h4>
+                            <i class="fa fa-plus accordion-icon"></i>
+                        </div>
+                        <div class="accordion-body">
+                            <div class="accordion-content">
+                                <p><strong>Apartment with Balcony</strong> - Our premium accommodation option featuring:</p>
+                                <ul class="list-check m-t20">
+                                    <li><i class="fa fa-check text-primary"></i> Capacity for up to 15 guests</li>
+                                    <li><i class="fa fa-check text-primary"></i> Full kitchen facilities with microwave</li>
+                                    <li><i class="fa fa-check text-primary"></i> Beautiful mountain views from private balcony</li>
+                                    <li><i class="fa fa-check text-primary"></i> 120 square meters of living space</li>
+                                </ul>
+                                <p>Perfect for large families, groups, or extended stays in Mbeya.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- ACCORDION ITEM 2 -->
+                    <div class="accordion-item">
+                        <div class="accordion-header" onclick="toggleAccordion(this)">
+                            <h4 class="m-b0">
+                                <i class="fa fa-clock-o m-r10"></i>
+                                What are the check-in and check-out times?
+                            </h4>
+                            <i class="fa fa-plus accordion-icon"></i>
+                        </div>
+                        <div class="accordion-body">
+                            <div class="accordion-content">
+                                <p><strong>Check-in Time:</strong> 10:00 AM</p>
+                                <p><strong>Check-out Time:</strong> 10:00 AM</p>
+                                <p class="m-t20">Early check-in and check-out times allow for flexible travel schedules and easy coordination with airport transfers.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- ACCORDION ITEM 3 -->
+                    <div class="accordion-item">
+                        <div class="accordion-header" onclick="toggleAccordion(this)">
+                            <h4 class="m-b0">
+                                <i class="fa fa-money m-r10"></i>
+                                How is pricing determined for rooms?
+                            </h4>
+                            <i class="fa fa-plus accordion-icon"></i>
+                        </div>
+                        <div class="accordion-body">
+                            <div class="accordion-content">
+                                <p><strong>Dynamic Pricing:</strong> Room rates vary by date and season.</p>
+                                <p class="m-t20">To see current prices and availability, please:</p>
+                                <ul class="list-check">
+                                    <li><i class="fa fa-check text-primary"></i> Enter your desired check-in and check-out dates</li>
+                                    <li><i class="fa fa-check text-primary"></i> Select number of guests</li>
+                                    <li><i class="fa fa-check text-primary"></i> Real-time pricing will be displayed</li>
+                                </ul>
+                                <p>Prices range from TZS 60,000 to 350,000 per night depending on room type and season.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- ACCORDION ITEM 4 -->
+                    <div class="accordion-item">
+                        <div class="accordion-header" onclick="toggleAccordion(this)">
+                            <h4 class="m-b0">
+                                <i class="fa fa-map-marker m-r10"></i>
+                                Where is Ngenda Hotel located?
+                            </h4>
+                            <i class="fa fa-plus accordion-icon"></i>
+                        </div>
+                        <div class="accordion-body">
+                            <div class="accordion-content">
+                                <p><strong>Location:</strong> Isyesye–Hayanga, Mbeya, Tanzania</p>
+                                <p class="m-t20"><strong>Distance from City Center:</strong> 2.8 km from Mbeya center</p>
+                                <p><strong>Distance from Airport:</strong> 3 km from Mbeya Airport</p>
+                                <p class="m-t20">Our convenient location offers easy access to city attractions while maintaining a peaceful atmosphere. Complimentary airport shuttle service is available for all guests.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- ACCORDION ITEM 5 -->
+                    <div class="accordion-item">
+                        <div class="accordion-header" onclick="toggleAccordion(this)">
+                            <h4 class="m-b0">
+                                <i class="fa fa-users m-r10"></i>
+                                Is Ngenda Hotel family-friendly?
+                            </h4>
+                            <i class="fa fa-plus accordion-icon"></i>
+                        </div>
+                        <div class="accordion-body">
+                            <div class="accordion-content">
+                                <p><strong>Yes, absolutely!</strong> Ngenda Hotel is very popular for family stays.</p>
+                                <ul class="list-check m-t20">
+                                    <li><i class="fa fa-check text-primary"></i> Spacious family rooms available</li>
+                                    <li><i class="fa fa-check text-primary"></i> Apartment options for large families</li>
+                                    <li><i class="fa fa-check text-primary"></i> Safe and secure environment</li>
+                                    <li><i class="fa fa-check text-primary"></i> Children's amenities and services</li>
+                                    <li><i class="fa fa-check text-primary"></i> Flexible meal options</li>
+                                </ul>
+                                <p class="m-t20">Our family-friendly facilities and welcoming staff make Ngenda Hotel the perfect choice for families visiting Mbeya.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- ACCORDION ITEM 6 -->
+                    <div class="accordion-item">
+                        <div class="accordion-header" onclick="toggleAccordion(this)">
+                            <h4 class="m-b0">
+                                <i class="fa fa-plane m-r10"></i>
+                                Do you offer airport transportation?
+                            </h4>
+                            <i class="fa fa-plus accordion-icon"></i>
+                        </div>
+                        <div class="accordion-body">
+                            <div class="accordion-content">
+                                <p><strong>Free Airport Shuttle:</strong> Yes, we provide complimentary airport pickup and drop-off service.</p>
+                                <ul class="list-check m-t20">
+                                    <li><i class="fa fa-check text-primary"></i> Free pickup from Mbeya Airport (3km away)</li>
+                                    <li><i class="fa fa-check text-primary"></i> Drop-off service for departures</li>
+                                    <li><i class="fa fa-check text-primary"></i> Available 24/7 with advance notice</li>
+                                </ul>
+                                <p class="m-t20">Please provide your flight details when booking to arrange your complimentary airport transfer.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+
+            <!-- SIDEBAR -->
+            <div class="col-lg-4 col-md-12">
+                <div class="faq-sidebar bg-gray p-a30">
+                    <div class="sidebar-content">
+                        <h3 class="m-b20">Need More Help?</h3>
+                        <p>Can't find the answer you're looking for? Our team is here to help!</p>
+                        
+                        <div class="sidebar-cta m-t30">
+                            <h4 class="m-b15">Contact Us Directly</h4>
+                            <p>Get immediate assistance with your booking or questions.</p>
+                            <a href="{{ url_for('booking.contact') }}" class="site-button btn-half">
+                                <span>Contact Us</span><em></em>
+                            </a>
+                        </div>
+
+                        <div class="sidebar-info m-t30">
+                            <h4 class="m-b15">Quick Information</h4>
+                            <ul class="list-unstyled">
+                                <li><i class="fa fa-phone m-r10"></i> +255671 271 247</li>
+                                <li><i class="fa fa-envelope m-r10"></i> info@ngendahotel.com</li>
+                                <li><i class="fa fa-map-marker m-r10"></i> Hayanga Primary School, Mbeya</li>
+                            </ul>
+                        </div>
+
+                        <div class="sidebar-booking m-t30">
+                            <h4 class="m-b15">Ready to Book?</h4>
+                            <p>Find your perfect room and make a reservation today.</p>
+                            <a href="{{ url_for('booking.index') }}" class="site-button btn-half">
+                                <span>Book Now</span><em></em>
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<!-- FAQ SECTION END -->
+
+<!-- CUSTOM STYLES FOR FAQ -->
+<style>
+.accordion-item {
+    margin-bottom: 20px;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    overflow: hidden;
+    background: #fff;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+}
+
+.accordion-header {
+    padding: 20px;
+    background: #f8f9fa;
+    cursor: pointer;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    transition: all 0.3s ease;
+}
+
+.accordion-header:hover {
+    background: #e9ecef;
+}
+
+.accordion-header h4 {
+    margin: 0;
+    color: #2c3e50;
+    font-weight: 600;
+    font-size: 1.1rem;
+}
+
+.accordion-icon {
+    color: #c19b76;
+    transition: transform 0.3s ease;
+}
+
+.accordion-body {
+    display: none;
+    border-top: 1px solid #e0e0e0;
+}
+
+.accordion-body.active {
+    display: block;
+}
+
+.accordion-content {
+    padding: 25px;
+}
+
+.accordion-content p {
+    margin-bottom: 15px;
+    line-height: 1.6;
+}
+
+.accordion-content ul {
+    margin-bottom: 0;
+}
+
+.faq-sidebar {
+    border-radius: 8px;
+}
+
+.sidebar-cta,
+.sidebar-info,
+.sidebar-booking {
+    margin-bottom: 25px;
+    padding-bottom: 20px;
+    border-bottom: 1px solid #e0e0e0;
+}
+
+.sidebar-cta:last-child,
+.sidebar-info:last-child,
+.sidebar-booking:last-child {
+    border-bottom: none;
+}
+
+.sidebar-cta h4,
+.sidebar-info h4,
+.sidebar-booking h4 {
+    color: #2c3e50;
+    margin-bottom: 10px;
+}
+
+.list-unstyled li {
+    margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+}
+
+.list-unstyled li i {
+    width: 20px;
+}
+
+@media (max-width: 768px) {
+    .accordion-header {
+        padding: 15px;
+    }
+    
+    .accordion-content {
+        padding: 20px;
+    }
+}
+</style>
+
+<!-- ACCORDION JAVASCRIPT -->
+<script>
+function toggleAccordion(header) {
+    const body = header.nextElementSibling;
+    const icon = header.querySelector('.accordion-icon');
+    const allBodies = document.querySelectorAll('.accordion-body');
+    const allIcons = document.querySelectorAll('.accordion-icon');
+    
+    // Close all other accordions
+    allBodies.forEach(b => {
+        if (b !== body) {
+            b.classList.remove('active');
+        }
+    });
+    
+    // Reset all icons
+    allIcons.forEach(i => {
+        if (i !== icon) {
+            i.classList.remove('fa-minus');
+            i.classList.add('fa-plus');
+        }
+    });
+    
+    // Toggle current accordion
+    if (body.classList.contains('active')) {
+        body.classList.remove('active');
+        icon.classList.remove('fa-minus');
+        icon.classList.add('fa-plus');
+    } else {
+        body.classList.add('active');
+        icon.classList.remove('fa-plus');
+        icon.classList.add('fa-minus');
+    }
+}
+</script>
+{% endblock %}

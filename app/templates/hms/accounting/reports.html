@@ -1,0 +1,19 @@
+{% extends "hms/layout/base.html" %}
+{% block title %}Financial Reports{% endblock %}
+{% block content %}
+<div class="container-xl">
+  <div class="page-header"><h2 class="page-title">Financial Reports</h2></div>
+  <div class="row">
+    <div class="col-md-6">
+      <div class="card">
+        <div class="card-header"><h3 class="card-title">Profit & Loss</h3></div>
+        <div class="card-body">
+          <div class="mb-3"><strong>Revenue:</strong> TSh {{ revenue|format_number }}</div>
+          <div class="mb-3"><strong>Expenses:</strong> TSh {{ expenses|format_number }}</div>
+          <div class="border-top pt-3"><strong>Net Profit:</strong> TSh {{ profit|format_number }}</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

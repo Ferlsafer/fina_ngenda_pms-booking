@@ -1,0 +1,139 @@
+{% extends "hms/layout/base.html" %}
+{% block title %}Owners - Superadmin{% endblock %}
+
+{% block content %}
+<div class="container-xl">
+  <!-- Page header -->
+  <div class="page-header d-print-none">
+    <div class="row align-items-center">
+      <div class="col">
+        <h2 class="page-title">Owners</h2>
+        <div class="text-muted mt-1">Manage hotel owners in the system</div>
+      </div>
+      <div class="col-auto ms-auto d-print-none">
+        <a href="{{ '#' }}" class="btn btn-primary">
+          <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+            <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+            <line x1="12" y1="5" x2="12" y2="19" />
+            <line x1="5" y1="12" x2="19" y2="12" />
+          </svg>
+          Add Owner
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <!-- Owners Table -->
+  <div class="card">
+    <div class="table-responsive">
+      <table class="table table-vcenter card-table">
+        <thead>
+          <tr>
+            <th>Owner</th>
+            <th>Contact</th>
+            <th>Hotels</th>
+            <th>Created</th>
+            <th class="w-1"></th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for owner in owners %}
+          <tr>
+            <td>
+              <div class="d-flex py-1 align-items-center">
+                <span class="avatar avatar-sm me-3 rounded" style="background-color: #206bc4; color: white;">{{ owner.name[0]|upper }}</span>
+                <div class="flex-fill">
+                  <div class="font-weight-medium">{{ owner.name }}</div>
+                  <div class="text-muted small">{{ owner.email }}</div>
+                </div>
+              </div>
+            </td>
+            <td>
+              {% if owner.phone %}
+                <div>{{ owner.phone }}</div>
+              {% endif %}
+              <div class="text-muted">{{ owner.email }}</div>
+            </td>
+            <td>
+              {% set owner_hotels = owner.hotels|list %}
+              {% if owner_hotels %}
+                <div class="text-muted">{{ owner_hotels|length }} hotels</div>
+                {% for hotel in owner_hotels[:3] %}
+                  <div class="small">{{ hotel.name }}</div>
+                {% endfor %}
+                {% if owner_hotels|length > 3 %}
+                  <div class="text-muted small">+{{ owner_hotels|length - 3 }} more</div>
+                {% endif %}
+              {% else %}
+                <span class="text-muted">No hotels</span>
+              {% endif %}
+            </td>
+            <td>
+              <div class="text-muted">{{ owner.created_at.strftime('%Y-%m-%d') if owner.created_at else 'N/A' }}</div>
+              <div class="text-muted small">{{ owner.created_at.strftime('%H:%M') if owner.created_at else '' }}</div>
+            </td>
+            <td>
+              <div class="dropdown">
+                <button class="btn btn-outline-primary btn-sm dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
+                  Actions
+                </button>
+                <div class="dropdown-menu">
+                  <a class="dropdown-item" href="#">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="icon dropdown-item-icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                      <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+                      <path d="M10 12a2 2 0 1 0 4 0a2 2 0 0 0 -4 0" />
+                      <path d="M21 12c-2.4 4 -5.4 6 -9 6c-3.6 0 -6.6 -2 -9 -6c2.4 -4 5.4 -6 9 -6c3.6 0 6.6 2 9 6" />
+                    </svg>
+                    View Details
+                  </a>
+                  <a class="dropdown-item" href="#">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="icon dropdown-item-icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                      <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+                      <path d="M7 7h-1a2 2 0 0 0 -2 2v9a2 2 0 0 0 2 2h9a2 2 0 0 0 2 -2v-1" />
+                      <path d="M20.385 6.585a2.1 2.1 0 0 0 -2.97 -2.97l-8.415 8.385v3h3l8.385 -8.415z" />
+                      <path d="M16 5l3 3" />
+                    </svg>
+                    Edit Owner
+                  </a>
+                  <a class="dropdown-item text-danger" href="#" onclick="confirmDelete({{ owner.id }})">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="icon dropdown-item-icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                      <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+                      <path d="M4 7l1 12a2 2 0 0 0 2 2h8a2 2 0 0 0 2 -2l1 -12" />
+                      <path d="M9 7v-3a1 1 0 0 1 1 -1h4a1 1 0 0 1 1 1v3" />
+                      <line x1="10" y1="12" x2="10" y2="18" />
+                      <line x1="14" y1="12" x2="14" y2="18" />
+                    </svg>
+                    Delete Owner
+                  </a>
+                </div>
+              </div>
+            </td>
+          </tr>
+          {% else %}
+          <tr>
+            <td colspan="5" class="text-center text-muted py-4">
+              <svg xmlns="http://www.w3.org/2000/svg" class="icon mb-2" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+                <circle cx="9" cy="7" r="4" />
+                <path d="M3 21v-2a4 4 0 0 1 4 -4h4a4 4 0 0 1 4 4v2" />
+              </svg>
+              <p>No owners created yet</p>
+              <a href="{{ '#' }}" class="btn btn-primary">Add Owner</a>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<script>
+function confirmDelete(ownerId) {
+  if (confirm('Are you sure you want to delete this owner? This action cannot be undone and will affect all associated hotels.')) {
+    // In a real implementation, this would send a DELETE request
+    alert('Owner deletion would happen here in a real implementation');
+  }
+}
+</script>
+{% endblock %}

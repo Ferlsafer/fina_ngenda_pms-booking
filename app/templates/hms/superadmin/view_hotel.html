@@ -1,0 +1,132 @@
+{% extends "hms/layout/base.html" %}
+{% block title %}View Hotel - {{ hotel.name }}{% endblock %}
+
+{% block content %}
+<div class="container-xl">
+  <div class="page-header d-print-none">
+    <div class="row align-items-center">
+      <div class="col">
+        <h2 class="page-title">Hotel Details</h2>
+      </div>
+      <div class="col-auto ms-auto d-print-none">
+        <a href="{{ '#' }}" class="btn btn-secondary">Back to Hotels</a>
+        <a href="{{ url_for('superadmin.edit_hotel', hotel_id=hotel.id) }}" class="btn btn-primary">Edit Hotel</a>
+      </div>
+    </div>
+  </div>
+
+  <div class="row">
+    <div class="col-md-6">
+      <div class="card">
+        <div class="card-header">
+          <h3 class="card-title">Basic Information</h3>
+        </div>
+        <div class="card-body">
+          <div class="row">
+            <div class="col-sm-3">
+              <strong>Name:</strong>
+            </div>
+            <div class="col-sm-9">
+              {{ hotel.name }}
+            </div>
+          </div>
+          <div class="row">
+            <div class="col-sm-3">
+              <strong>Display Name:</strong>
+            </div>
+            <div class="col-sm-9">
+              {{ hotel.display_name or 'Not set' }}
+            </div>
+          </div>
+          <div class="row">
+            <div class="col-sm-3">
+              <strong>Location:</strong>
+            </div>
+            <div class="col-sm-9">
+              {{ hotel.location or 'Not set' }}
+            </div>
+          </div>
+          <div class="row">
+            <div class="col-sm-3">
+              <strong>Address:</strong>
+            </div>
+            <div class="col-sm-9">
+              {{ hotel.address or 'Not set' }}
+            </div>
+          </div>
+          <div class="row">
+            <div class="col-sm-3">
+              <strong>City:</strong>
+            </div>
+            <div class="col-sm-9">
+              {{ hotel.city or 'Not set' }}
+            </div>
+          </div>
+          <div class="row">
+            <div class="col-sm-3">
+              <strong>Country:</strong>
+            </div>
+            <div class="col-sm-9">
+              {{ hotel.country or 'Not set' }}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-6">
+      <div class="card">
+        <div class="card-header">
+          <h3 class="card-title">Contact Information</h3>
+        </div>
+        <div class="card-body">
+          <div class="row">
+            <div class="col-sm-3">
+              <strong>Phone:</strong>
+            </div>
+            <div class="col-sm-9">
+              {{ hotel.phone or 'Not set' }}
+            </div>
+          </div>
+          <div class="row">
+            <div class="col-sm-3">
+              <strong>Email:</strong>
+            </div>
+            <div class="col-sm-9">
+              {{ hotel.email or 'Not set' }}
+            </div>
+          </div>
+          <div class="row">
+            <div class="col-sm-3">
+              <strong>Currency:</strong>
+            </div>
+            <div class="col-sm-9">
+              {{ hotel.currency or 'USD' }}
+            </div>
+          </div>
+          <div class="row">
+            <div class="col-sm-3">
+              <strong>Owner:</strong>
+            </div>
+            <div class="col-sm-9">
+              {% if hotel.owner %}
+                {{ hotel.owner.name }}<br>
+                <small class="text-muted">{{ hotel.owner.email }}</small>
+              {% else %}
+                <span class="text-muted">No owner assigned</span>
+              {% endif %}
+            </div>
+          </div>
+          <div class="row">
+            <div class="col-sm-3">
+              <strong>Created:</strong>
+            </div>
+            <div class="col-sm-9">
+              {{ hotel.created_at.strftime('%Y-%m-%d %H:%M') if hotel.created_at else 'N/A' }}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

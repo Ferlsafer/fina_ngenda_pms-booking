@@ -1,0 +1,112 @@
+{% extends "hms/layout/base.html" %}
+{% block title %}Trial Balance - Accounting{% endblock %}
+
+{% block content %}
+<div class="container-xl">
+  <!-- Page header -->
+  <div class="page-header d-print-none">
+    <div class="row align-items-center">
+      <div class="col">
+        <h2 class="page-title">Trial Balance</h2>
+        <div class="text-muted mt-1">Summary of all account balances</div>
+      </div>
+      <div class="col-auto ms-auto d-print-none">
+        <a href="{{ '#' }}" class="btn btn-secondary">Back to Dashboard</a>
+      </div>
+    </div>
+  </div>
+
+  <!-- Summary Cards -->
+  <div class="row row-deck row-cards mb-3">
+    <div class="col-sm-6 col-lg-3">
+      <div class="card">
+        <div class="card-body">
+          <div class="d-flex align-items-center">
+            <div class="subheader">Total Debits</div>
+          </div>
+          <div class="h1 mb-3">${{ "%.2f"|format(accounts|sum(attribute='total_debits')) }}</div>
+        </div>
+      </div>
+    </div>
+    <div class="col-sm-6 col-lg-3">
+      <div class="card">
+        <div class="card-body">
+          <div class="d-flex align-items-center">
+            <div class="subheader">Total Credits</div>
+          </div>
+          <div class="h1 mb-3">${{ "%.2f"|format(accounts|sum(attribute='total_credits')) }}</div>
+        </div>
+      </div>
+    </div>
+    <div class="col-sm-6 col-lg-3">
+      <div class="card">
+        <div class="card-body">
+          <div class="d-flex align-items-center">
+            <div class="subheader">Account Count</div>
+          </div>
+          <div class="h1 mb-3">{{ accounts|length }}</div>
+        </div>
+      </div>
+    </div>
+    <div class="col-sm-6 col-lg-3">
+      <div class="card">
+        <div class="card-body">
+          <div class="d-flex align-items-center">
+            <div class="subheader">Balance Diff</div>
+          </div>
+          <div class="h1 mb-3">
+            ${{ "%.2f"|format((accounts|sum(attribute='total_debits') - accounts|sum(attribute='total_credits'))|abs) }}
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Trial Balance Table -->
+  <div class="card">
+    <div class="table-responsive">
+      <table class="table table-vcenter card-table">
+        <thead>
+          <tr>
+            <th>Account</th>
+            <th>Type</th>
+            <th class="text-end">Debits</th>
+            <th class="text-end">Credits</th>
+            <th class="text-end">Balance</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for account in accounts %}
+          <tr>
+            <td>{{ account.name }}</td>
+            <td><span class="badge bg-{% if account.type == 'Asset' %}blue{% elif account.type == 'Liability' %}orange{% elif account.type == 'Equity' %}purple{% elif account.type == 'Revenue' %}green{% elif account.type == 'Expense' %}red{% else %}gray{% endif %}">{{ account.type }}</span></td>
+            <td class="text-end">${{ "%.2f"|format(account.total_debits) }}</td>
+            <td class="text-end">${{ "%.2f"|format(account.total_credits) }}</td>
+            <td class="text-end">
+              {% set balance = account.balance %}
+              {% if balance > 0 %}
+                <span class="text-{% if account.type in ['Asset', 'Expense'] %}danger{% else %}success{% endif %}">
+                  ${{ "%.2f"|format(balance) }}
+                </span>
+              {% elif balance < 0 %}
+                <span class="text-{% if account.type in ['Asset', 'Expense'] %}success{% else %}danger{% endif %}">
+                  (${{ "%.2f"|format(balance|abs) }})
+                </span>
+              {% else %}
+                <span class="text-muted">$0.00</span>
+              {% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+          <tr class="border-top">
+            <td colspan="2" class="text-end"><strong>Totals</strong></td>
+            <td class="text-end"><strong>${{ "%.2f"|format(accounts|sum(attribute='total_debits')) }}</strong></td>
+            <td class="text-end"><strong>${{ "%.2f"|format(accounts|sum(attribute='total_credits')) }}</strong></td>
+            <td class="text-end"><strong>${{ "%.2f"|format((accounts|sum(attribute='total_debits') - accounts|sum(attribute='total_credits'))|abs) }}</strong></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}

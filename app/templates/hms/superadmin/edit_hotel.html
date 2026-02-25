@@ -1,0 +1,97 @@
+{% extends "hms/layout/base.html" %}
+{% block title %}Edit Hotel - {{ hotel.name }}{% endblock %}
+
+{% block content %}
+<div class="container-xl">
+  <div class="page-header d-print-none">
+    <div class="row align-items-center">
+      <div class="col">
+        <h2 class="page-title">Edit Hotel</h2>
+      </div>
+      <div class="col-auto ms-auto d-print-none">
+        <a href="{{ '#' }}" class="btn btn-secondary">Cancel</a>
+      </div>
+    </div>
+  </div>
+
+  <div class="row justify-content-center">
+    <div class="col-md-8">
+      <div class="card">
+        <div class="card-header">
+          <h3 class="card-title">Hotel Information</h3>
+        </div>
+        <div class="card-body">
+          <form method="POST">
+            <div class="row">
+              <div class="col-md-6">
+                <div class="mb-3">
+                  <label for="hotel_name" class="form-label">Hotel Name *</label>
+                  <input type="text" class="form-control" id="hotel_name" name="hotel_name" value="{{ hotel.name }}" required>
+                </div>
+              </div>
+              <div class="col-md-6">
+                <div class="mb-3">
+                  <label for="hotel_display_name" class="form-label">Display Name</label>
+                  <input type="text" class="form-control" id="hotel_display_name" name="hotel_display_name" value="{{ hotel.display_name or '' }}">
+                </div>
+              </div>
+            </div>
+            <div class="mb-3">
+              <label for="hotel_location" class="form-label">Location</label>
+              <input type="text" class="form-control" id="hotel_location" name="hotel_location" value="{{ hotel.location or '' }}">
+            </div>
+            <div class="mb-3">
+              <label for="hotel_address" class="form-label">Address</label>
+              <textarea class="form-control" id="hotel_address" name="hotel_address" rows="2">{{ hotel.address or '' }}</textarea>
+            </div>
+            <div class="row">
+              <div class="col-md-6">
+                <div class="mb-3">
+                  <label for="hotel_city" class="form-label">City</label>
+                  <input type="text" class="form-control" id="hotel_city" name="hotel_city" value="{{ hotel.city or '' }}">
+                </div>
+              </div>
+              <div class="col-md-6">
+                <div class="mb-3">
+                  <label for="hotel_country" class="form-label">Country</label>
+                  <input type="text" class="form-control" id="hotel_country" name="hotel_country" value="{{ hotel.country or '' }}">
+                </div>
+              </div>
+            </div>
+            <div class="row">
+              <div class="col-md-6">
+                <div class="mb-3">
+                  <label for="hotel_phone" class="form-label">Phone</label>
+                  <input type="tel" class="form-control" id="hotel_phone" name="hotel_phone" value="{{ hotel.phone or '' }}">
+                </div>
+              </div>
+              <div class="col-md-6">
+                <div class="mb-3">
+                  <label for="hotel_email" class="form-label">Email</label>
+                  <input type="email" class="form-control" id="hotel_email" name="hotel_email" value="{{ hotel.email or '' }}">
+                </div>
+              </div>
+            </div>
+            <div class="mb-3">
+              <label for="hotel_currency" class="form-label">Currency</label>
+              <select class="form-control" id="hotel_currency" name="hotel_currency">
+                <option value="USD" {% if hotel.currency == 'USD' %}selected{% endif %}>USD - US Dollar</option>
+                <option value="EUR" {% if hotel.currency == 'EUR' %}selected{% endif %}>EUR - Euro</option>
+                <option value="GBP" {% if hotel.currency == 'GBP' %}selected{% endif %}>GBP - British Pound</option>
+                <option value="TZS" {% if hotel.currency == 'TZS' %}selected{% endif %}>TZS - Tanzanian Shilling</option>
+                <option value="KES" {% if hotel.currency == 'KES' %}selected{% endif %}>KES - Kenyan Shilling</option>
+                <option value="UGX" {% if hotel.currency == 'UGX' %}selected{% endif %}>UGX - Ugandan Shilling</option>
+                <option value="ZAR" {% if hotel.currency == 'ZAR' %}selected{% endif %}>ZAR - South African Rand</option>
+              </select>
+            </div>
+            <div class="d-flex gap-2">
+              <button type="submit" class="btn btn-primary">Update Hotel</button>
+              <a href="{{ '#' }}" class="btn btn-secondary">Cancel</a>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,166 @@
+<!-- Notification Bell Dropdown -->
+<li class="nav-item dropdown">
+  <a class="nav-link" href="#" data-bs-toggle="dropdown" role="button" id="notificationDropdown">
+    <span class="position-relative">
+      <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+        <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+        <path d="M10 5a2 2 0 0 1 4 0a7 7 0 0 1 4 6v3a4 4 0 0 0 2 3h-16a4 4 0 0 0 2 -3v-3a7 7 0 0 1 4 -6" />
+        <path d="M9 17v1a3 3 0 0 0 6 0v-1" />
+      </svg>
+      {% set unread_count = get_unread_notifications() %}
+      {% if unread_count > 0 %}
+      <span class="badge bg-red badge-pill position-absolute top-0 start-100 translate-middle">
+        {{ unread_count }}
+      </span>
+      {% endif %}
+    </span>
+  </a>
+  <div class="dropdown-menu dropdown-menu-end dropdown-menu-card" aria-labelledby="notificationDropdown">
+    <div class="card" style="width: 350px;">
+      <div class="card-header">
+        <h3 class="card-title">Notifications</h3>
+        <div class="card-actions">
+          <a href="{{ '#' }}" class="btn btn-sm btn-link">
+            View All
+          </a>
+          <a href="#" onclick="markAllAsRead()" class="btn btn-sm btn-link">
+            Mark all read
+          </a>
+        </div>
+      </div>
+      <div class="list-group list-group-flush" style="max-height: 400px; overflow-y: auto;" id="notification-list">
+        {% for notification in get_recent_notifications() %}
+        <a href="{{ notification.link or '#' }}" class="list-group-item list-group-item-action {% if not notification.is_read %}list-group-item-{{ notification.color or 'secondary' }}{% endif %}" onclick="markAsRead({{ notification.id }})">
+          <div class="row g-2 align-items-center">
+            <div class="col-auto">
+              <span class="avatar avatar-{{ notification.color or 'secondary' }}">
+                <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                  <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+                  {% if notification.type == 'booking' %}
+                  <path d="M4 7a2 2 0 0 1 2 -2h12a2 2 0 0 1 2 2v10a2 2 0 0 1 -2 2h-12a2 2 0 0 1 -2 -2v-10z" />
+                  <path d="M16 3v4" />
+                  <path d="M8 3v4" />
+                  <path d="M4 11h16" />
+                  {% elif notification.type == 'payment' %}
+                  <circle cx="12" cy="12" r="9" />
+                  <path d="M14 9l-6 6" />
+                  <path d="M10 9l6 6" />
+                  {% elif notification.type == 'task' %}
+                  <path d="M14 3v4a1 1 0 0 0 1 1h4" />
+                  <path d="M5 8v11a2 2 0 0 0 2 2h10a2 2 0 0 0 2 -2v-11" />
+                  <path d="M12 8v-5" />
+                  {% elif notification.type == 'alert' %}
+                  <path d="M12 9v2m0 4v.01" />
+                  <path d="M5 19h14a2 2 0 0 0 1.84 -2.75l-7.1 -12.25a2 2 0 0 0 -3.5 0l-7.1 12.25a2 2 0 0 0 1.75 2.75" />
+                  {% else %}
+                  <circle cx="12" cy="12" r="9" />
+                  <line x1="12" y1="8" x2="12" y2="12" />
+                  <line x1="12" y1="16" x2="12.01" y2="16" />
+                  {% endif %}
+                </svg>
+              </span>
+            </div>
+            <div class="col">
+              <div class="text-truncate">
+                <strong>{{ notification.title }}</strong>
+              </div>
+              <div class="text-muted small text-truncate">
+                {{ notification.message }}
+              </div>
+              <div class="text-muted small">
+                {{ notification.created_at.strftime('%b %d, %H:%M') }}
+              </div>
+            </div>
+            {% if not notification.is_read %}
+            <div class="col-auto">
+              <span class="badge bg-primary"></span>
+            </div>
+            {% endif %}
+          </div>
+        </a>
+        {% else %}
+        <div class="text-center py-4">
+          <svg xmlns="http://www.w3.org/2000/svg" class="icon mb-2 text-muted" width="48" height="48" viewBox="0 0 24 24" stroke-width="1" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+            <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+            <circle cx="12" cy="12" r="9" />
+            <line x1="9" y1="10" x2="9.01" y2="10" />
+            <line x1="15" y1="10" x2="15.01" y2="10" />
+            <path d="M9.5 15a3.5 3.5 0 0 1 5 0" />
+          </svg>
+          <p class="text-muted">No notifications</p>
+        </div>
+        {% endfor %}
+      </div>
+      <div class="card-footer text-center py-2">
+        <a href="{{ '#' }}">View all notifications</a>
+      </div>
+    </div>
+  </div>
+</li>
+
+<script>
+function markAsRead(notificationId) {
+  fetch('/notifications/' + notificationId + '/read', {
+    method: 'POST',
+    headers: {
+      'X-CSRFToken': '{{ csrf_token() }}'
+    }
+  })
+  .then(response => {
+    if (response.ok) {
+      updateNotificationCount();
+      // Remove unread badge from this item
+      const item = document.querySelector('[onclick="markAsRead(' + notificationId + ')"]');
+      if (item) {
+        item.classList.remove('list-group-item-' + (item.dataset.color || 'secondary'));
+        const badge = item.querySelector('.badge.bg-primary');
+        if (badge) badge.remove();
+      }
+    }
+  });
+}
+
+function markAllAsRead() {
+  fetch('/notifications/mark-all-read', {
+    method: 'POST',
+    headers: {
+      'X-CSRFToken': '{{ csrf_token() }}'
+    }
+  })
+  .then(response => {
+    if (response.ok) {
+      // Update UI to remove badges
+      document.querySelectorAll('#notification-list .list-group-item').forEach(item => {
+        item.classList.remove('list-group-item-secondary', 'list-group-item-info', 'list-group-item-warning', 'list-group-item-danger');
+        const badge = item.querySelector('.badge.bg-primary');
+        if (badge) badge.remove();
+      });
+      updateNotificationCount();
+    }
+  });
+  return false;
+}
+
+function updateNotificationCount() {
+  fetch('/notifications/unread-count')
+    .then(response => response.json())
+    .then(data => {
+      const badge = document.querySelector('#notificationDropdown .badge');
+      if (data.count > 0) {
+        if (badge) {
+          badge.textContent = data.count;
+        } else {
+          const newBadge = document.createElement('span');
+          newBadge.className = 'badge bg-red badge-pill position-absolute top-0 start-100 translate-middle';
+          newBadge.textContent = data.count;
+          document.querySelector('#notificationDropdown .position-relative').appendChild(newBadge);
+        }
+      } else if (badge) {
+        badge.remove();
+      }
+    });
+}
+
+// Auto-refresh notification count every 30 seconds
+setInterval(updateNotificationCount, 30000);
+</script>

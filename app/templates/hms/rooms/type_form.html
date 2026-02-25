@@ -1,0 +1,148 @@
+{% extends "hms/layout/base.html" %}
+{% block title %}Add Room Type - Hotel PMS{% endblock %}
+{% block content %}
+<div class="container-xl">
+  <div class="page-header d-print-none">
+    <div class="row align-items-center">
+      <div class="col">
+        <h2 class="page-title">Add New Room Type</h2>
+        <div class="text-muted mt-1">Define a new category of rooms for your hotel</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-body">
+      <form method="post" action="{{ url_for('hms.rooms_type_add') }}" enctype="multipart/form-data">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+
+        <div class="row">
+          <div class="col-md-6">
+            <div class="mb-3">
+              <label class="form-label required">Name</label>
+              <input type="text" name="name" class="form-control" placeholder="e.g. Classic Balcony Room" required>
+              <div class="form-text">Descriptive name for this room type</div>
+            </div>
+          </div>
+          <div class="col-md-6">
+            <div class="mb-3">
+              <label class="form-label required">Base Price (TZS)</label>
+              <input type="number" name="base_price" class="form-control" step="0.01" min="0" placeholder="299000" required>
+              <div class="form-text">Base nightly rate in Tanzanian Shillings</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="row">
+          <div class="col-md-6">
+            <div class="mb-3">
+              <label class="form-label">Price (USD)</label>
+              <input type="number" name="price_usd" class="form-control" step="0.01" min="0" placeholder="115">
+              <div class="form-text">Price in US Dollars (optional)</div>
+            </div>
+          </div>
+          <div class="col-md-6">
+            <div class="mb-3">
+              <label class="form-label">Category</label>
+              <select name="category" class="form-control">
+                <option value="classic">Classic</option>
+                <option value="superior">Superior</option>
+                <option value="deluxe">Deluxe</option>
+                <option value="executive">Executive</option>
+              </select>
+              <div class="form-text">Room category for website filtering</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="row">
+          <div class="col-md-6">
+            <div class="mb-3">
+              <label class="form-label">Capacity</label>
+              <input type="number" name="capacity" class="form-control" min="1" placeholder="2" value="2">
+              <div class="form-text">Maximum number of guests</div>
+            </div>
+          </div>
+          <div class="col-md-6">
+            <div class="mb-3">
+              <label class="form-label">Size (sqm)</label>
+              <input type="text" name="size_sqm" class="form-control" placeholder="30m²">
+              <div class="form-text">Room size (e.g., 30m²)</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="row">
+          <div class="col-md-6">
+            <div class="mb-3">
+              <label class="form-label">Bed Type</label>
+              <input type="text" name="bed_type" class="form-control" placeholder="e.g. Double Bed, King Bed">
+              <div class="form-text">Type of beds in the room</div>
+            </div>
+          </div>
+          <div class="col-md-6">
+            <div class="mb-3">
+              <label class="form-label">Tax Rate (%)</label>
+              <input type="number" name="tax_rate" class="form-control" min="0" max="100" step="0.01" placeholder="18.00" value="18">
+              <div class="form-text">Tax percentage to apply</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="mb-3">
+          <label class="form-label">Short Description</label>
+          <input type="text" name="short_description" class="form-control" placeholder="Brief description for website listings" maxlength="500">
+          <div class="form-text">Short description for website listings (max 500 characters)</div>
+        </div>
+
+        <div class="mb-3">
+          <label class="form-label">Full Description</label>
+          <textarea name="description" class="form-control" rows="4" placeholder="Detailed description of the room for the website..."></textarea>
+          <div class="form-text">Detailed description that will appear on the website</div>
+        </div>
+
+        <div class="mb-3">
+          <label class="form-label">Amenities</label>
+          <input type="text" name="amenities" class="form-control" placeholder="WiFi, Air Conditioning, Mini Bar, TV, Safe">
+          <div class="form-text">Comma-separated list of amenities (e.g., WiFi, Air Conditioning, Mini Bar)</div>
+        </div>
+
+        <div class="mb-3">
+          <label class="form-label">Room Images</label>
+          <input type="file" name="room_images" class="form-control" multiple accept="image/*">
+          <div class="form-text">Upload images for this room type (multiple allowed). First image will be primary.</div>
+        </div>
+
+        <div class="mb-3">
+          <label class="form-check form-switch">
+            <input type="checkbox" name="is_active" class="form-check-input" checked>
+            <span class="form-check-label">Active</span>
+          </label>
+          <div class="form-text">Enable this room type for bookings</div>
+        </div>
+        
+        <div class="form-footer">
+          <button type="submit" class="btn btn-primary">
+            <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+              <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+              <line x1="12" y1="5" x2="12" y2="19" />
+              <line x1="5" y1="12" x2="19" y2="12" />
+            </svg>
+            Create Room Type
+          </button>
+          <a href="{{ url_for('hms.rooms_types') }}" class="btn btn-link">
+            <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+              <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+              <path d="M10 18h-3a2 2 0 0 1 -2 -2v-9a2 2 0 0 1 2 -2h9a2 2 0 0 1 2 2v3" />
+              <path d="M14 14l4 -4" />
+              <path d="M14 10l4 4" />
+              <path d="M17 17l0 .01" />
+            </svg>
+            Cancel
+          </a>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,115 @@
+{% extends "booking/base.html" %}
+
+{% block title %}Our Services - Ngenda Hotel - Luxury in Mbeya{% endblock %}
+
+{% block content %}
+            
+            <!-- INNER PAGE BANNER -->
+            <div class="wt-bnr-inr overlay-wraper bg-parallax bg-top-center"    style="background-image:url({{ url_for('static', filename='booking/images/banner/banner2.png') }});">
+            	<div class="overlay-main bg-black opacity-07"></div>
+                <div class="container">
+                    <div class="wt-bnr-inr-entry">
+                    	<div class="banner-title-outer">
+                        	<div class="banner-title-name">
+                        		<h2 class="text-white  font-80 font-weight-900">Our Services</h2>
+                            </div>
+                        </div>
+                        <!-- BREADCRUMB ROW -->                            
+                        
+                            <div>
+                                <ul class="wt-breadcrumb breadcrumb-style-2">
+                                    <li><a href="{{ url_for('booking.index') }}">Home</a></li>
+                                    <li>Our Services</li>
+                                </ul>
+                            </div>
+                        
+                        <!-- BREADCRUMB ROW END -->                        
+                    </div>
+                </div>
+            </div>
+            <!-- INNER PAGE BANNER END -->
+            
+			<!-- SECTION CONTENT START -->
+            <div class="section-full p-t90 p-b60 bg-gray">
+				<div class="container">
+                	<div class="section-content">
+                    	<div class="row d-flex align-items-center">
+                    	
+                    		<div class="col-lg-4 col-md-6">
+                    			<div class="wt-icon-box-wraper left bg-gray p-a20 hover-box-effect v-icon-effect  equal-col">
+                    				<div class="icon-md m-b20">
+                    					<span class="icon-cell"><i class="flaticon-room-service v-icon"></i></span>
+                    				</div>
+                    				<div class="icon-content">
+                    					<h4 class="wt-tilte ">Free Wi-Fi Available</h4>
+                    					<p>Stay connected with seamless, high-speed internet available in all guest rooms and public areas, perfect for business or leisure.</p>
+                    				</div>
+                    			</div>                    			
+                    		</div>
+                    		
+                    		<div class="col-lg-4 col-md-6">
+                    			<div class="wt-icon-box-wraper left bg-gray p-a20 hover-box-effect v-icon-effect  equal-col">
+                    				<div class="icon-md m-b20">
+                    					<span class="icon-cell"><i class="flaticon-room-service v-icon"></i></span>
+                    				</div>
+                    				<div class="icon-content">
+                    					<h4 class="wt-tilte ">Meetings & Special Events</h4>
+                    					<p>Our versatile conference halls and event spaces are equipped with modern technology to host your successful corporate meetings or private celebrations.</p>
+                    				</div>
+                    			</div>                    			
+                    		</div>
+                    		
+                    		<div class="col-lg-4 col-md-6">
+                    			<div class="wt-icon-box-wraper left bg-gray p-a20 hover-box-effect v-icon-effect  equal-col">
+                    				<div class="icon-md m-b20">
+                    					<span class="icon-cell"><i class="flaticon-smartphone v-icon"></i></span>
+                    				</div>
+                    				<div class="icon-content">
+                    					<h4 class="wt-tilte ">Flexible Booking</h4>
+                    					<p>Enjoy peace of mind with our flexible booking options and stress-free cancellation policies designed to accommodate your changing travel plans.</p>
+                    				</div>
+                    			</div>                    			
+                    		</div>
+                    		
+                    		<div class="col-lg-4 col-md-6">
+                    			<div class="wt-icon-box-wraper left bg-gray p-a20 hover-box-effect v-icon-effect  equal-col">
+                    				<div class="icon-md m-b20">
+                    					<span class="icon-cell"><i class="flaticon-business-cards v-icon"></i></span>
+                    				</div>
+                    				<div class="icon-content">
+                    					<h4 class="wt-tilte ">Best Price Guarantee</h4>
+                    					<p>Book directly through our website or front desk to ensure you receive the most competitive rates and exclusive offers for your stay in Mbeya.</p>
+                    				</div>
+                    			</div>                    			
+                    		</div>
+                    		
+                    		<div class="col-lg-4 col-md-6">
+                    			<div class="wt-icon-box-wraper left bg-gray p-a20 hover-box-effect v-icon-effect  equal-col">
+                    				<div class="icon-md m-b20">
+                    					<span class="icon-cell"><i class="flaticon-calendar v-icon"></i></span>
+                    				</div>
+                    				<div class="icon-content">
+                    					<h4 class="wt-tilte ">Secure Reservations</h4>
+                    					<p>Plan your visit with confidence. Book your preferred room today to secure availability during peak seasons in the Southern Highlands.</p>
+                    				</div>
+                    			</div>                    			
+                    		</div>
+                    		
+                    		<div class="col-lg-4 col-md-6">
+                    			<div class="wt-icon-box-wraper left bg-gray p-a20 hover-box-effect v-icon-effect  equal-col">
+                    				<div class="icon-md m-b20">
+                    					<span class="icon-cell"><i class="flaticon-time-passing v-icon"></i></span>
+                    				</div>
+                    				<div class="icon-content">
+                    					<h4 class="wt-tilte ">Late Check-out</h4>
+                    					<p>Relax a little longer. We offer late check-out options upon request, subject to availability, so you can make the most of your final day.</p>
+                    				</div>
+                    			</div>                    			
+                    		</div>
+                    		
+                    	</div>                                     
+                </div>
+            </div>
+            <!-- SECTION CONTENT END -->
+
+{% endblock %}

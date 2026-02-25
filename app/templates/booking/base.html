@@ -1,0 +1,442 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+	<!-- META -->
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="keywords" content="" />
+    <meta name="author" content="" />
+    <meta name="robots" content="" />    
+    <meta name="description" content="Ngenda Hotel - Luxury accommodation in Mbeya, Tanzania. Located at Isysye Street, offering premium rooms, restaurant services, and exceptional hospitality." />
+    
+    <!-- FAVICONS ICON -->
+    <link rel="icon" href="{{ url_for('static', filename='booking/images/logo/logo.png') }}" type="image/x-icon" />
+    <link rel="shortcut icon" type="image/x-icon" href="{{ url_for('static', filename='booking/images/logo/logo.png') }}" />
+    
+    <!-- PAGE TITLE HERE -->
+    <title>{% block title %}Ngenda Hotel | Home - Luxury Hotel in Mbeya, Tanzania{% endblock %}</title>
+    
+    <!-- MOBILE SPECIFIC -->
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    
+ 
+    <link rel="stylesheet"  href="{{ url_for('static', filename='booking/css/bootstrap.min.css') }}"><!-- BOOTSTRAP STYLE SHEET -->
+	<link rel="stylesheet"  href="{{ url_for('static', filename='booking/css/t-datepicker.min.css') }}"><!-- BOOTSTRAP DATEPICKER STYLE SHEET -->
+	<link rel="stylesheet"  href="{{ url_for('static', filename='booking/css/t-datepicker-blue.css') }}"><!-- BOOTSTRAP DATEPICKER STYLE SHEET -->     
+    <link rel="stylesheet"  href="{{ url_for('static', filename='booking/css/fontawesome/css/font-awesome.min.css') }}" /><!-- FONTAWESOME STYLE SHEET -->
+    <link rel="stylesheet"  href="{{ url_for('static', filename='booking/css/owl.carousel.min.css') }}"><!-- OWL CAROUSEL STYLE SHEET -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='booking/css/magnific-popup.min.css') }}"><!-- MAGNIFIC POPUP STYLE SHEET -->
+    
+    <!-- CUSTOM STYLES -->
+    <style>
+        .hover-box-effect:hover {
+            background-color: #c19b76;
+            color: #fff;
+            background-image: url("{{ url_for('static', filename='booking/images/banner/banner3.png') }}");
+            background-repeat: no-repeat;
+            background-size: cover;
+        }
+    </style>
+    <link rel="stylesheet"  href="{{ url_for('static', filename='booking/css/loader.min.css') }}"><!-- LOADER STYLE SHEET -->    
+    <link rel="stylesheet"  href="{{ url_for('static', filename='booking/css/style.css') }}"><!-- MAIN STYLE SHEET -->
+    <link rel="stylesheet"  class="skin"  href="{{ url_for('static', filename='booking/css/skin/skin-1.css') }}"><!-- THEME COLOR CHANGE STYLE SHEET -->
+    <link rel="stylesheet"  href="{{ url_for('static', filename='booking/css/flaticon.min.css') }}"><!-- FLATICON STYLE SHEET -->
+             
+
+    <!-- REVOLUTION SLIDER CSS -->
+    <link rel="stylesheet"  href="{{ url_for('static', filename='booking/plugins/revolution/revolution/css/settings.css') }}">
+    <!-- REVOLUTION NAVIGATION STYLE -->
+    <link rel="stylesheet"  href="{{ url_for('static', filename='booking/plugins/revolution/revolution/css/navigation.css') }}">
+    
+    <!-- GOOGLE FONTS -->
+    <link href="https://fonts.googleapis.com/css?family=Poppins:300,300i,400,400i,500,500i,600,600i,700,800,800i,900" rel="stylesheet"> 
+    <link href="https://fonts.googleapis.com/css?family=Roboto:100,100i,300,300i,400,400i,500,500i,700,700i,900,900i" rel="stylesheet"> 
+    <link href="https://fonts.googleapis.com/css?family=DM+Serif+Text:400,400i&display=swap&subset=latin-ext" rel="stylesheet"> 
+    
+    <!-- Fix mobile text overlap -->
+    <style>
+        /* Hero Section Mobile Fixes */
+        @media (max-width: 768px) {
+            .hero-section h1 {
+                font-size: 2.5rem !important;
+                line-height: 1.2 !important;
+                word-wrap: break-word !important;
+                overflow-wrap: break-word !important;
+                hyphens: auto !important;
+            }
+        }
+        
+        @media (max-width: 480px) {
+            .hero-section h1 {
+                font-size: 2rem !important;
+                line-height: 1.3 !important;
+                word-wrap: break-word !important;
+                overflow-wrap: break-word !important;
+                hyphens: auto !important;
+            }
+        }
+        
+        @media (max-width: 360px) {
+            .hero-section h1 {
+                font-size: 1.8rem !important;
+                line-height: 1.4 !important;
+                word-wrap: break-word !important;
+                overflow-wrap: break-word !important;
+                hyphens: auto !important;
+            }
+        }
+    </style>
+
+</head>
+
+<body>
+
+	<div class="page-wraper"> 
+
+        <!-- HEADER START -->
+        <header class="site-header header-style-1 mobile-sider-drawer-menu">
+            <div class="sticky-header main-bar-wraper">
+                <div class="main-bar p-t5">
+                    <div class="container">
+                        <div class="logo-header">
+                            <div class="logo-header-inner logo-header-one">
+                                <a href="{{ url_for('booking.index') }}">
+                                    <img src="{{ url_for('static', filename='booking/images/logo/logo2.png') }}" alt="" />
+                                </a>
+                            </div>
+                        </div>
+                            <!-- NAV Toggle Button -->
+                            <button id="mobile-side-drawer" data-target=".header-nav" data-toggle="collapse" type="button" class="navbar-toggler collapsed">
+                                <span class="sr-only">Toggle navigation</span>
+                                <span class="icon-bar icon-bar-first"></span>
+                                <span class="icon-bar icon-bar-two"></span>
+                                <span class="icon-bar icon-bar-three"></span>
+                            </button>
+                            <!-- ETRA Nav -->
+
+                            <!-- MAIN Vav -->
+                            <div class="header-nav navbar-collapse collapse">
+                                <ul class=" nav navbar-nav">
+                                    <li class="active">
+                                        <a href="{{ url_for('booking.index') }}">Home</a>
+                                    </li>
+                                    <li>
+                                        <a href="{{ url_for('booking.about') }}">About Us</a>
+                                    </li>
+                                    <li>
+                                        <a href="{{ url_for('booking.gallery') }}">Gallery</a>
+                                    </li>
+                                    <li>
+                                        <a href="{{ url_for('booking.contact') }}">Contact Us</a>
+                                    </li>
+                                </ul>                                    
+                            </div>
+
+                            <div class="extra-nav">
+                                <div class="extra-cell">
+                                    <a href="{{ url_for('booking.contact') }}" class="contact-slide-show text-white"><i class="fa fa-envelope-o"></i></a>
+                                </div>    
+                                <!--<div class="extra-cell">											
+                                    <a href="#search" class=" text-white">
+                                    	<i class="fa fa-search"></i>
+                                    </a>
+                                </div>-->
+                                <div class="extra-cell">   
+                                    <a href="https://www.facebook.com/NgendaHotelMbeya" target="_blank" class="socialicon_show  text-white">
+                                    	<i class="fa fa-facebook"></i>
+                                    </a>
+                                </div>
+                                <div class="extra-cell">   
+                                    <a href="https://www.instagram.com/NgendaHotel" target="_blank" class="socialicon_show  text-white">
+                                    	<i class="fa fa-instagram"></i>
+                                    </a>
+                                </div>   	
+                            </div>
+                            <!-- ETRA Nav -->
+                               
+                            <!-- Social Nav -->
+                            <div class="social_hide"> 
+                                <div class="side-social-nav">
+                                     <a href="javascript:void(0)" class="socialicon_close">&times;</a>
+                                     <ul class="list-unstyled">
+                                        <li><a href="https://www.facebook.com/NgendaHotelMbeya" target="_blank" class="fa fa-facebook"><span class="social-tooltips">Facebook</span></a></li>                            
+                                        <li><a href="https://www.instagram.com/NgendaHotel" target="_blank" class="fa fa-instagram"><span class="social-tooltips">Instagram</span></a></li>
+                                    </ul>
+                                </div> 
+                            </div>
+
+                            <!-- Contact Nav -->                            
+                         	<div class="contact-slide-hide"> 
+                                <div class="contact-nav">
+                                     <a href="javascript:void(0)" class="contact_close">&times;</a>
+                                     <div class="contact-nav-form p-a30">
+                            			<form class="cons-contact-form" method="post" action="form-handler.php">
+                                            <div class="contact-one m-b30">
+                                            
+                                                <!-- TITLE START -->
+                                                <div class="section-head text-center">
+                                                    <h2 class="m-b5" data-title="Form">Get In Touch</h2>
+                                                </div>
+                                                <!-- TITLE END -->  
+                                                 <div class="row">
+                                                     <div class="col-md-6">                               
+                                                        <div class="form-group wt-inputicon-box">
+                                                            <input name="username" type="text" required class="form-control" placeholder="Name">
+                                                            <i class="fs-input-icon sl-icon-user"></i>
+                                                        </div>
+                                                    </div>
+                                                     <div class="col-md-6">
+                                                        <div class="form-group wt-inputicon-box"> 
+                                                            <input name="email" type="text" class="form-control" required placeholder="Email">
+                                                            <i class="fs-input-icon sl-icon-envolope-letter"></i>
+                                                        </div>                                                    
+                                                    </div>
+                                                     <div class="col-md-12">
+                                                        <div class="form-group wt-inputicon-box">
+                                                            <textarea name="message" rows="3" class="form-control " required placeholder="Message"></textarea>
+                                                            <i class="fs-input-icon sl-icon-envolope"></i>
+                                                        </div>
+                                                    </div>
+                                                     <div class="col-md-12">
+                                                        <div class="text-center">
+                                                            <button name="submit" type="submit" value="Submit" class="btn-half site-button button-lg m-b15">
+                                                                    <span>Submit</span><em></em>
+                                                            </button>
+                                                        </div>
+                                                    </div>
+        										  </div>
+                                            </div>
+                                        </form>
+                            			<div class="contact-info text-black m-b30">
+                                            <!-- TITLE START -->
+                                            <div class="section-head text-center">
+                                                <h2 class="m-b5" data-title="Info">Contact Info</h2>
+                                            </div>
+                                            <!-- TITLE END -->
+                                            <ul> 
+                                                <li>                           
+                                                	<div class="wt-icon-box-wraper center p-b40">
+                                                        <div class="icon-md m-b20"><i class="sl-icon-phone"></i></div>
+                                                        <div class="icon-content">
+                                                            <h5 class="m-t0 font-weight-500">Phone number</h5>
+                                                            <p>(+255) 252-3456-073</p>
+                                                        </div>
+                                                    </div>
+                                                </li>
+                                                
+                                                <li>
+                                                	<div class="wt-icon-box-wraper center p-b40">
+                                                        <div class="icon-md m-b20"><i class="sl-icon-envolope-letter"></i></div>
+                                                        <div class="icon-content">
+                                                            <h5 class="m-t0 font-weight-500">Email address</h5>
+                                                            <p>info@ngendahotel.co.tz</p>
+                                                        </div>
+                                                    </div>
+                                                </li>
+                                                
+                                                <li>
+                                                	<div class="wt-icon-box-wraper center">
+                                                        <div class="icon-md m-b20"><i class="sl-icon-map"></i></div>
+                                                        <div class="icon-content">
+                                                            <h5 class="m-t0 font-weight-500">Address info</h5>
+                                                            <p>Isysye Street, Mbeya, Tanzania</p>
+                                                        </div>
+                                                    </div>
+                                                </li>
+                                                
+                                            </ul>    
+                                        </div>                                        
+                                     </div>
+                                </div> 
+                            </div>                               
+                            <!-- SITE Search -->
+                            <div id="search"> 
+                                <span class="close"></span>
+                                <form role="search" id="searchform" action="/search" method="get" class="radius-xl">
+                                    <div class="input-group">
+                                        <input value="" name="q" type="search" placeholder="Type to search"/>
+                                        <span class="input-group-btn"><button type="button" class="search-btn"><i class="fa fa-search"></i></button></span>
+                                    </div>   
+                                </form>
+                            </div>                                                                                                          
+                            
+                            
+                    </div>
+                </div>
+            </div>
+        </header>
+        <!-- HEADER END -->
+        
+        <!-- CONTENT START -->
+        <div class="page-content">
+            {% block content %}{% endblock %}
+        </div>
+        <!-- CONTENT END -->
+
+        <!-- FOOTER START -->
+        <footer class="site-footer footer-large footer-dark	footer-wide">
+            
+            <!-- FOOTER BLOCKES START -->  
+            <div class="footer-top overlay-wraper">
+                <div class="overlay-main"></div>
+                <div class="container">
+                
+                    <div class="news-letter-footer">
+                        <div class="row">
+                            <div class="col-lg-6 col-md-12">
+                                <div class="newsletter-f-left">
+                                    <h4 class="text-uppercase m-t0 m-b10">Subscribe to Ngenda Hotel updates!</h4>
+                                    <p>Stay informed about special offers and events at Ngenda Hotel, Mbeya.</p>
+                                </div>
+                            </div>    
+                            <div class="col-lg-6 col-md-12">
+                                <div class="newsletter-f-right text-center">
+                                    <form action="/contact" method="post">
+                                        <div class="input-group">
+                                            <input name="news-letter" class="form-control" placeholder="ENTER YOUR EMAIL" type="text">
+                                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                            <span class="input-group-btn">
+                                                <button type="submit" class="btn-half site-button button-lg"><span>Submit</span><em></em></button>
+                                            </span>
+                                        </div>
+                                     </form>
+                                </div>
+                            </div>
+                        </div>                           
+                    </div>
+                    <div class="m-b10">
+                        <div class="wt-divider bg-gray-dark"></div>
+                    </div>
+                    <div class="row">
+                        <!-- ABOUT COMPANY -->
+                        <div class="col-lg-3 col-md-6 col-sm-6">  
+                            <div class="widget widget_about">
+                                <!--<h4 class="widget-title">About Company</h4>-->
+                                <div class="logo-footer clearfix p-b15">
+                                    <a href="{{ url_for('booking.index') }}"><img src="{{ url_for('static', filename='booking/images/logo/logo2.png') }}" alt=""></a>
+                                </div>
+								<h4 class="widget-title" style="color: #f0ad4e; margin-bottom: 15px;">Ngenda Hotel & Apartments</h4>
+                                <p class="max-w400" style="color: rgba(255,255,255,0.9); line-height: 1.6;">
+                                    <strong style="color: #f0ad4e;">Where comfort meets calm.</strong> Wake up in peace, live in style, and enjoy life the way it should feel.
+                                    <br><br>
+                                    <em style="font-style: italic; color: rgba(255,255,255,0.8);">Ngenda Hotel & Apartments — your quiet escape, your second home.</em>
+                                </p>
+                                
+                                <ul class="social-icons social-tooltips-outer  wt-social-links">
+                                    <li><a href="https://www.facebook.com/NgendaHotelMbeya" target="_blank" class="fa fa-facebook"><span class="social-tooltips">Facebook</span></a></li>                            
+                                    <li><a href="https://www.instagram.com/NgendaHotel" target="_blank" class="fa fa-instagram"><span class="social-tooltips">Instagram</span></a></li>
+                                </ul>                                     
+                            </div>
+                        </div> 
+                        
+                       
+                        <div class="col-lg-3 col-md-6 col-sm-6">
+                            <div class="widget widget_services inline-links">
+                                <h4 class="widget-title">Key Amenities</h4>
+                                <ul style="list-style: none; padding: 0;">
+                                    <li style="margin-bottom: 12px; color: rgba(255,255,255,0.9);">
+                                        <span style="font-size: 16px; margin-right: 8px;">📶</span>
+                                        <strong>Fast Wi-Fi & Netflix</strong>
+                                    </li>
+                                    <li style="margin-bottom: 12px; color: rgba(255,255,255,0.9);">
+                                        <span style="font-size: 16px; margin-right: 8px;">❄️</span>
+                                        <strong>AC Comfort</strong>
+                                    </li>
+                                    <li style="margin-bottom: 12px; color: rgba(255,255,255,0.9);">
+                                        <span style="font-size: 16px; margin-right: 8px;">🍽️</span>
+                                        <strong>Fully Equipped Kitchen</strong>
+                                    </li>
+                                    <li style="margin-bottom: 12px; color: rgba(255,255,255,0.9);">
+                                        <span style="font-size: 16px; margin-right: 8px;">🚗</span>
+                                        <strong>24/7 Transport</strong>
+                                    </li>
+                                </ul>
+                            </div>                           
+                        </div>
+
+                        <div class="col-lg-3 col-md-6 col-sm-6">
+                            <div class="widget widget_address_outer">
+                                <h4 class="widget-title">Contact Us</h4>
+                                <ul class="widget_address">
+                                    <li style="margin-bottom: 12px; color: rgba(255,255,255,0.9);">
+                                        <span style="font-size: 16px; margin-right: 8px;">📍</span>
+                                        <strong>Isyesye–Hayanga, Mbeya.</strong> (Near Hayanga Primary School)
+                                    </li>
+                                    <li style="margin-bottom: 12px; color: rgba(255,255,255,0.9);">
+                                        <span style="font-size: 16px; margin-right: 8px;">📞</span>
+                                        <strong>Primary:</strong> <a href="tel:0671271247" style="color: #f0ad4e; text-decoration: none;">0671 271 247</a>
+                                    </li>
+                                    <li style="margin-bottom: 12px; color: rgba(255,255,255,0.9);">
+                                        <span style="font-size: 16px; margin-right: 8px;">📞</span>
+                                        <strong>Secondary:</strong> <a href="tel:0755920058" style="color: #f0ad4e; text-decoration: none;">0755 920 058</a>
+                                    </li>
+                                </ul>
+                            </div>                                              	
+                        </div>                              
+                        
+
+                    </div>
+                </div>
+            </div>
+            <!-- FOOTER COPYRIGHT -->
+            <div class="footer-bottom overlay-wraper" style="background: #1a1a1a; padding: 20px 0;">
+                <div class="overlay-main"></div>
+                <div class="container">
+                    <div class="row">
+                        <div class="wt-footer-bot-center">
+                            <div class="footer-links" style="margin-bottom: 15px;">
+                                <a href="{{ url_for('booking.about') }}" style="color: #f0ad4e; text-decoration: none; margin: 0 10px;">About Us</a>
+                                <a href="{{ url_for('booking.gallery') }}" style="color: #f0ad4e; text-decoration: none; margin: 0 10px;">Gallery</a>
+                                <a href="{{ url_for('booking.contact') }}" style="color: #f0ad4e; text-decoration: none; margin: 0 10px;">Contact Us</a>
+                                <a href="{{ url_for('booking.faq') }}" style="color: #f0ad4e; text-decoration: none; margin: 0 10px;">FAQ</a>
+                            </div>
+                            <span class="copyrights-text" style="color: rgba(255,255,255,0.8); font-size: 14px;">
+                                <em style="font-style: italic; color: #f0ad4e;">Mahali tulivu pa kufurahia maisha kwa utulivu na starehe.</em>
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </footer>
+        <!-- FOOTER END -->        
+
+        <!-- BUTTON TOP START -->
+		<button class="scroltop"><span class="fa fa-angle-up  relative" id="btn-vibrate"></span></button>
+        
+     
+    </div>
+
+
+
+
+<!-- JAVASCRIPT  FILES ========================================= --> 
+<script defer src="{{ url_for('static', filename='booking/js/jquery-3.7.1.min.js') }}"></script><!-- JQUERY.MIN JS -->
+<script defer src="{{ url_for('static', filename='booking/js/popper.min.js') }}"></script><!-- BOOTSTRAP.MIN JS -->
+<script defer src="{{ url_for('static', filename='booking/js/bootstrap.min.js') }}"></script><!-- BOOTSTRAP.MIN JS -->
+<script defer src="{{ url_for('static', filename='booking/js/magnific-popup.min.js') }}"></script><!-- MAGNIFIC-POPUP JS -->
+<script defer src="{{ url_for('static', filename='booking/js/waypoints.min.js') }}"></script><!-- WAYPOINTS JS -->
+<script defer src="{{ url_for('static', filename='booking/js/counterup.min.js') }}"></script><!-- COUNTERUP JS -->
+<script defer src="{{ url_for('static', filename='booking/js/waypoints-sticky.min.js') }}"></script><!-- COUNTERUP JS -->
+<script defer src="{{ url_for('static', filename='booking/js/isotope.pkgd.min.js') }}"></script><!-- MASONRY  -->
+<script defer src="{{ url_for('static', filename='booking/js/imagesloaded.pkgd.min.js') }}"></script><!-- MASONRY  -->
+<script defer src="{{ url_for('static', filename='booking/js/owl.carousel.min.js') }}"></script><!-- OWL  SLIDER  -->
+<script defer src="{{ url_for('static', filename='booking/js/jquery.owl-filter.js') }}"></script><!-- OWL  SLIDER FIlter -->
+<script defer src="{{ url_for('static', filename='booking/js/t-datepicker.min.js') }}"></script>
+<script defer src="{{ url_for('static', filename='booking/js/custom.js') }}"></script><!-- CUSTOM FUCTIONS  -->
+
+
+<!-- REVOLUTION JS FILES -->
+<script defer src="{{ url_for('static', filename='booking/plugins/revolution/revolution/js/jquery.themepunch.tools.min.js') }}"></script>
+<script defer src="{{ url_for('static', filename='booking/plugins/revolution/revolution/js/jquery.themepunch.revolution.min.js') }}"></script>
+<script defer src="{{ url_for('static', filename='booking/plugins/revolution/revolution/js/extensions/revolution-plugin.js') }}"></script>
+
+<!-- REVOLUTION SLIDER SCRIPT FILES -->
+<script defer src="{{ url_for('static', filename='booking/js/rev-script-1.js') }}"></script>
+
+
+
+</body>
+
+</html>

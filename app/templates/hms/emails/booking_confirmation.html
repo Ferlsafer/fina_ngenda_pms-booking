@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <style>
+        body { font-family: Arial, sans-serif; line-height: 1.6; margin: 0; padding: 0; }
+        .header { padding: 20px; text-align: center; }
+        .header img { max-height: 60px; }
+        .content { padding: 30px; }
+        .booking-details { background: #f8f9fa; padding: 20px; border-radius: 8px; }
+        .footer { background: #f1f3f5; padding: 20px; text-align: center; font-size: 12px; }
+        .button { color: white; padding: 12px 30px; 
+                  text-decoration: none; border-radius: 5px; display: inline-block; }
+        table { width: 100%; border-collapse: collapse; }
+        td { padding: 8px 0; }
+    </style>
+</head>
+<body>
+    <div class="header" style="background-color: {{ hotel.header_color }};">
+        {% if hotel.logo %}
+        <img src="{{ hotel.logo }}" alt="{{ hotel.name }}">
+        {% else %}
+        <h1 style="color: white; margin: 0;">{{ hotel.name }}</h1>
+        {% endif %}
+    </div>
+    
+    <div class="content">
+        <h2>Booking Confirmed! 🏨</h2>
+        <p>Dear {{ booking.guest.name }},</p>
+        <p>Thank you for choosing {{ hotel.name }}. Your booking is confirmed.</p>
+        
+        <div class="booking-details">
+            <h3>Booking Reference: #{{ booking.booking_reference }}</h3>
+            
+            <table>
+                <tr>
+                    <td><strong>Check-in:</strong></td>
+                    <td>{{ booking.check_in_date.strftime('%B %d, %Y') }} (after {{ hotel.check_in_time }})</td>
+                </tr>
+                <tr>
+                    <td><strong>Check-out:</strong></td>
+                    <td>{{ booking.check_out_date.strftime('%B %d, %Y') }} (before {{ hotel.check_out_time }})</td>
+                </tr>
+                <tr>
+                    <td><strong>Room:</strong></td>
+                    <td>{{ booking.room.room_type.name }}</td>
+                </tr>
+                <tr>
+                    <td><strong>Guests:</strong></td>
+                    <td>{{ booking.adults }} Adults{% if booking.children %}, {{ booking.children }} Children{% endif %}</td>
+                </tr>
+                <tr>
+                    <td><strong>Total:</strong></td>
+                    <td>{{ booking.total_amount }} {{ booking.hotel.currency }}</td>
+                </tr>
+            </table>
+        </div>
+        
+        <p style="margin-top: 30px;">
+            {% if hotel.website %}
+            <a href="{{ hotel.website }}/booking/{{ booking.booking_reference }}" class="button" style="background: {{ hotel.header_color }};">
+                View Booking Online
+            </a>
+            {% endif %}
+        </p>
+        
+        <p>Need to make changes? Contact us at <a href="mailto:{{ hotel.email }}">{{ hotel.email }}</a></p>
+    </div>
+    
+    <div class="footer">
+        {% if hotel.footer_text %}
+        <p>{{ hotel.footer_text|safe }}</p>
+        {% endif %}
+        <p>
+            {{ hotel.name }}<br>
+            {{ hotel.address }}<br>
+            Phone: {{ hotel.phone }}<br>
+            Email: {{ hotel.email }}
+        </p>
+        <p>&copy; {{ year }} {{ hotel.name }}. All rights reserved.</p>
+    </div>
+</body>
+</html>

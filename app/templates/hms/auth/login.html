@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Login - Ngenda Hotel</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/core@latest/dist/css/tabler.min.css">
+  <style>
+    body {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+    }
+    
+    .login-container {
+      width: 100%;
+      max-width: 420px;
+      padding: 2rem;
+    }
+    
+    .login-card {
+      background: white;
+      border-radius: 16px;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+      overflow: hidden;
+    }
+    
+    .login-header {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      padding: 2.5rem 2rem;
+      text-align: center;
+      color: white;
+    }
+    
+    .hotel-logo {
+      width: 80px;
+      height: 80px;
+      background: white;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 1rem;
+      font-size: 2.5rem;
+      font-weight: bold;
+      color: #667eea;
+      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+    }
+    
+    .hotel-name {
+      font-size: 1.75rem;
+      font-weight: 700;
+      margin: 0;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+    }
+    
+    .hotel-tagline {
+      font-size: 0.875rem;
+      opacity: 0.9;
+      margin-top: 0.5rem;
+      font-weight: 300;
+    }
+    
+    .login-body {
+      padding: 2rem;
+    }
+    
+    .form-label {
+      font-weight: 600;
+      color: #333;
+      margin-bottom: 0.5rem;
+      font-size: 0.875rem;
+    }
+    
+    .form-control {
+      border-radius: 8px;
+      border: 2px solid #e0e0e0;
+      padding: 0.75rem 1rem;
+      font-size: 1rem;
+      transition: all 0.3s ease;
+    }
+    
+    .form-control:focus {
+      border-color: #667eea;
+      box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+    }
+    
+    .btn-login {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      border: none;
+      border-radius: 8px;
+      padding: 0.875rem;
+      font-size: 1rem;
+      font-weight: 600;
+      color: white;
+      width: 100%;
+      transition: all 0.3s ease;
+      box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+    }
+    
+    .btn-login:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(102, 126, 234, 0.5);
+    }
+    
+    .btn-login:active {
+      transform: translateY(0);
+    }
+    
+    .forgot-password {
+      text-align: center;
+      margin-top: 1.5rem;
+    }
+    
+    .forgot-password a {
+      color: #667eea;
+      text-decoration: none;
+      font-size: 0.875rem;
+      font-weight: 500;
+      transition: color 0.3s ease;
+    }
+    
+    .forgot-password a:hover {
+      color: #764ba2;
+    }
+    
+    .alert {
+      border-radius: 8px;
+      border: none;
+      font-size: 0.875rem;
+    }
+    
+    .input-icon {
+      position: relative;
+    }
+    
+    .input-icon .form-control {
+      padding-left: 2.75rem;
+    }
+    
+    .input-icon svg {
+      position: absolute;
+      left: 1rem;
+      top: 50%;
+      transform: translateY(-50%);
+      color: #999;
+      width: 20px;
+      height: 20px;
+    }
+    
+    .footer-text {
+      text-align: center;
+      margin-top: 2rem;
+      color: rgba(255, 255, 255, 0.8);
+      font-size: 0.75rem;
+    }
+  </style>
+</head>
+<body>
+  <div class="login-container">
+    <div class="login-card">
+      <!-- Header with Hotel Name -->
+      <div class="login-header">
+        <div class="hotel-logo">N</div>
+        <h1 class="hotel-name">Ngenda Hotel</h1>
+        <p class="hotel-tagline">Property Management System</p>
+      </div>
+      
+      <!-- Login Form -->
+      <div class="login-body">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+          {% if messages %}
+            {% for category, msg in messages %}
+              <div class="alert alert-{{ 'danger' if category == 'error' else category }} alert-dismissible" role="alert">
+                <div class="d-flex">
+                  <svg xmlns="http://www.w3.org/2000/svg" class="icon me-2" width="20" height="20" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                    {% if category == 'success' %}
+                      <path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M5 12l5 5l10 -10" />
+                    {% else %}
+                      <path stroke="none" d="M0 0h24v24H0z" fill="none"/><circle cx="12" cy="12" r="9" /><line x1="12" y1="8" x2="12.01" y2="8" /><line x1="12" y1="12" x2="12.01" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" />
+                    {% endif %}
+                  </svg>
+                  <div>{{ msg }}</div>
+                </div>
+                <a class="btn-close" data-bs-dismiss="alert" aria-label="close"></a>
+              </div>
+            {% endfor %}
+          {% endif %}
+        {% endwith %}
+        
+        <form method="post" action="{{ url_for('hms.login') }}">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+          
+          <div class="mb-4">
+            <label class="form-label">
+              <svg xmlns="http://www.w3.org/2000/svg" class="icon me-1" width="16" height="16" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+                <circle cx="12" cy="12" r="9" />
+                <line x1="12" y1="8" x2="12.01" y2="8" />
+                <line x1="12" y1="12" x2="12.01" y2="12" />
+                <line x1="12" y1="16" x2="12.01" y2="16" />
+              </svg>
+              Email Address
+            </label>
+            <div class="input-icon">
+              <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="20" height="20" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+                <rect x="3" y="5" width="18" height="14" rx="2" />
+                <polyline points="3 7 12 13 21 7" />
+              </svg>
+              <input type="email" name="email" class="form-control" placeholder="your@email.com" required autofocus>
+            </div>
+          </div>
+          
+          <div class="mb-4">
+            <label class="form-label">
+              <svg xmlns="http://www.w3.org/2000/svg" class="icon me-1" width="16" height="16" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+                <path d="M5 13a2 2 0 0 1 2 -2h10a2 2 0 0 1 2 2v6a2 2 0 0 1 -2 2h-10a2 2 0 0 1 -2 -2v-6z" />
+                <path d="M11 16a1 1 0 1 0 2 0a1 1 0 0 0 -2 0" />
+                <path d="M8 11v-4a4 4 0 1 1 8 0v4" />
+              </svg>
+              Password
+            </label>
+            <div class="input-icon">
+              <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="20" height="20" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+                <rect x="5" y="11" width="14" height="10" rx="2" />
+                <circle cx="12" cy="16" r="1" />
+                <path d="M8 11v-4a4 4 0 1 1 8 0v4" />
+              </svg>
+              <input type="password" name="password" class="form-control" placeholder="Enter your password" required>
+            </div>
+          </div>
+          
+          <button type="submit" class="btn btn-login">
+            <svg xmlns="http://www.w3.org/2000/svg" class="icon me-2" width="20" height="20" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+              <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+              <path d="M14 3v4a1 1 0 0 0 1 1h4" />
+              <path d="M17 21h-10a2 2 0 0 1 -2 -2v-14a2 2 0 0 1 2 -2h7l5 5v11a2 2 0 0 1 -2 2z" />
+            </svg>
+            Sign In to Dashboard
+          </button>
+        </form>
+
+        <div class="text-center mt-3">
+          <a href="{{ url_for('hms.forgot_password') }}" class="forgot-password">
+            Forgot Password?
+          </a>
+        </div>
+      </div>
+    </div>
+
+    <div class="footer-text">
+      © 2026 Ngenda Hotel PMS. All rights reserved.
+    </div>
+  </div>
+  
+  <script src="https://cdn.jsdelivr.net/npm/@tabler/core@latest/dist/js/tabler.min.js"></script>
+</body>
+</html>

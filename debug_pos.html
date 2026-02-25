@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>POS Debug</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/core@latest/dist/css/tabler.min.css">
+    <style>
+        .pos-floor { display: grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 0.75rem; }
+        .table-btn { min-height: 80px; font-weight: 600; border-radius: 8px; transition: all 0.2s; }
+        .table-btn.available { background: #10b981; border-color: #10b981; color: white; }
+        .table-btn.occupied { background: #3b82f6; border-color: #3b82f6; color: white; }
+        .table-btn.active { box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.5); transform: scale(1.05); }
+        .item-tile { min-height: 60px; cursor: pointer; border-radius: 6px; transition: all 0.2s; }
+        .debug-info { background: #f3f4f6; padding: 10px; margin: 10px 0; border-radius: 5px; }
+    </style>
+</head>
+<body>
+    <div class="container mt-4">
+        <h1>POS Debug Page</h1>
+        
+        <div class="debug-info" id="debug-info">
+            <h4>Debug Information:</h4>
+            <p>JavaScript Status: <span id="js-status">Loading...</span></p>
+            <p>Current Table: <span id="current-table">None</span></p>
+            <p>Order Lines: <span id="order-count">0</span></p>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <h3>Tables (Click to select)</h3>
+            </div>
+            <div class="card-body">
+                <div class="pos-floor" id="pos-floor">
+                    <!-- Test tables -->
+                    <button type="button" class="btn table-btn available" data-table-id="1" data-table-number="1">
+                        Table 1
+                    </button>
+                    <button type="button" class="btn table-btn available" data-table-id="2" data-table-number="2">
+                        Table 2
+                    </button>
+                    <button type="button" class="btn table-btn occupied" data-table-id="3" data-table-number="3">
+                        Table 3
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div class="card mt-3">
+            <div class="card-header">
+                <h3>Menu Items</h3>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-3">
+                        <button type="button" class="btn btn-outline-primary w-100 item-tile add-item-btn" 
+                                data-item-id="1" data-item-name="Test Item 1" data-item-price="10.00">
+                            Test Item 1<br>
+                            <small>$10.00</small>
+                        </button>
+                    </div>
+                    <div class="col-md-3">
+                        <button type="button" class="btn btn-outline-primary w-100 item-tile add-item-btn" 
+                                data-item-id="2" data-item-name="Test Item 2" data-item-price="15.00">
+                            Test Item 2<br>
+                            <small>$15.00</small>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card mt-3">
+            <div class="card-header">
+                <h3>Current Order</h3>
+            </div>
+            <div class="card-body">
+                <div id="order-lines-container">
+                    <p id="order-empty-msg">No items. Select a table and add items.</p>
+                    <ul id="order-lines-list" class="list-group" style="display: none;"></ul>
+                </div>
+                <div class="mt-3">
+                    <strong>Total: $<span id="order-total">0.00</span></strong>
+                </div>
+                <div class="mt-3">
+                    <button class="btn btn-primary" id="test-order-btn">Test Order Creation</button>
+                    <button class="btn btn-secondary" id="clear-order-btn">Clear Order</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        console.log('POS Debug Script starting...');
+        
+        let currentTableId = null;
+        let currentTableNumber = null;
+        let orderLines = [];
+
+        // Update debug info
+        function updateDebugInfo() {
+            document.getElementById('js-status').textContent = 'Loaded';
+            document.getElementById('current-table').textContent = currentTableNumber || 'None';
+            document.getElementById('order-count').textContent = orderLines.length;
+        }
+
+        function setTable(tableId, tableNumber) {
+            console.log('Setting table:', tableId, tableNumber);
+            currentTableId = tableId;
+            currentTableNumber = tableNumber;
+            updateDebugInfo();
+            
+            // Highlight selected table
+            document.querySelectorAll('.table-btn').forEach(btn => btn.classList.remove('active'));
+            document.querySelector(`[data-table-id="${tableId}"]`).classList.add('active');
+        }
+
+        function addItem(id, name, price) {
+            console.log('Adding item:', id, name, price);
+            const existing = orderLines.find(l => l.id === id);
+            if (existing) { 
+                existing.qty++; 
+            } else { 
+                orderLines.push({ id, name, price: parseFloat(price), qty: 1 }); 
+            }
+            renderOrderLines();
+            updateDebugInfo();
+        }
+
+        function renderOrderLines() {
+            const container = document.getElementById('order-lines-container');
+            const emptyMsg = document.getElementById('order-empty-msg');
+            const list = document.getElementById('order-lines-list');
+            
+            if (orderLines.length === 0) {
+                emptyMsg.style.display = 'block';
+                list.style.display = 'none';
+            } else {
+                emptyMsg.style.display = 'none';
+                list.style.display = 'block';
+                list.innerHTML = orderLines.map((line, i) =>
+                    '<li class="list-group-item d-flex justify-content-between">' +
+                    '<span>' + line.name + ' × ' + line.qty + '</span>' +
+                    '<span>$' + (line.price * line.qty).toFixed(2) + '</span>' +
+                    '</li>'
+                ).join('');
+                
+                const total = orderLines.reduce((s, l) => s + l.price * l.qty, 0);
+                document.getElementById('order-total').textContent = total.toFixed(2);
+            }
+        }
+
+        function clearOrder() {
+            console.log('Clearing order');
+            orderLines = [];
+            currentTableId = null;
+            currentTableNumber = null;
+            renderOrderLines();
+            updateDebugInfo();
+            document.querySelectorAll('.table-btn').forEach(btn => btn.classList.remove('active'));
+        }
+
+        // Event listeners
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('DOM loaded, setting up event listeners...');
+            
+            // Table selection
+            const posFloor = document.getElementById('pos-floor');
+            if (posFloor) {
+                posFloor.addEventListener('click', function(e) {
+                    console.log('Click detected on pos-floor');
+                    const tableBtn = e.target.closest('.table-btn');
+                    if (tableBtn) {
+                        console.log('Table button clicked:', tableBtn.dataset.tableId);
+                        setTable(tableBtn.dataset.tableId, tableBtn.dataset.tableNumber);
+                    }
+                });
+            }
+
+            // Item clicks
+            document.querySelectorAll('.add-item-btn').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    console.log('Item button clicked');
+                    if (!currentTableId) {
+                        alert('Please select a table first!');
+                        return;
+                    }
+                    addItem(
+                        this.dataset.itemId, 
+                        this.dataset.itemName, 
+                        parseFloat(this.dataset.itemPrice)
+                    );
+                });
+            });
+
+            // Test buttons
+            document.getElementById('test-order-btn').addEventListener('click', function() {
+                console.log('Test order button clicked');
+                if (currentTableId && orderLines.length > 0) {
+                    alert(`Would create order for table ${currentTableNumber} with ${orderLines.length} items totaling $${document.getElementById('order-total').textContent}`);
+                } else {
+                    alert('Please select a table and add items first!');
+                }
+            });
+
+            document.getElementById('clear-order-btn').addEventListener('click', clearOrder);
+
+            // Initial debug update
+            updateDebugInfo();
+            console.log('Event listeners set up successfully');
+        });
+    </script>
+</body>
+</html>

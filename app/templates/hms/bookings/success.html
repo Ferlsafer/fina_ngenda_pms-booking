@@ -1,0 +1,135 @@
+{% extends "hms/layout/base.html" %}
+{% block title %}Booking Confirmed - {{ booking.booking_reference }}{% endblock %}
+
+{% block content %}
+<div class="container-xl">
+  <div class="page-header d-print-none">
+    <div class="row align-items-center">
+      <div class="col">
+        <h1 class="page-title">Booking Confirmed!</h1>
+        <div class="text-muted mt-1">Your reservation has been successfully confirmed.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="container-xl">
+    <div class="row">
+      <div class="col-md-8">
+        <div class="card">
+          <div class="card-header">
+            <h3 class="card-title">Booking Confirmation</h3>
+          </div>
+          <div class="card-body">
+            <div class="alert alert-success mb-4">
+              <div class="d-flex align-items-center">
+                <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                  <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+                  <circle cx="12" cy="12" r="9" />
+                  <path d="M9 12l2 2l4 -4" />
+                </svg>
+                <div>
+                  <h4 class="alert-heading">Success!</h4>
+                  <div class="alert-text">Your booking has been confirmed</div>
+                </div>
+              </div>
+            </div>
+            
+            <div class="table-responsive">
+              <table class="table table-bordered">
+                <tbody>
+                  <tr>
+                    <td><strong>Booking Reference:</strong></td>
+                    <td>{{ booking.booking_reference }}</td>
+                  </tr>
+                  <tr>
+                    <td><strong>Guest:</strong></td>
+                    <td>{{ booking.guest.name }}</td>
+                  </tr>
+                  <tr>
+                    <td><strong>Room:</strong></td>
+                    <td>{{ booking.room.room_type.name }}</td>
+                  </tr>
+                  <tr>
+                    <td><strong>Check-in:</strong></td>
+                    <td>{{ booking.check_in_date.strftime('%B %d, %Y') }} ({{ booking.check_in_time }})</td>
+                  </tr>
+                  <tr>
+                    <td><strong>Check-out:</strong></td>
+                    <td>{{ booking.check_out_date.strftime('%B %d, %Y') }} ({{ booking.check_out_time }})</td>
+                  </tr>
+                  <tr>
+                    <td><strong>Guests:</strong></td>
+                    <td>{{ booking.adults }} Adults{% if booking.children %}, {{ booking.children }} Children{% endif %}</td>
+                  </tr>
+                  <tr>
+                    <td><strong>Total Amount:</strong></td>
+                    <td>{{ "{:,}".format(int(booking.total_amount)) }} {{ booking.hotel.currency }}</td>
+                  </tr>
+                  <tr>
+                    <td><strong>Status:</strong></td>
+                    <td><span class="badge bg-success">{{ booking.status.title() }}</span></td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            
+            <div class="mt-4">
+              <h5>What's Next?</h5>
+              <div class="row g-3">
+                <div class="col-md-6">
+                  <a href="/dashboard" class="btn btn-primary w-100">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                      <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+                      <path d="M3 9l5 5l10 -10" />
+                    </svg>
+                    Go to Dashboard
+                  </a>
+                </div>
+                <div class="col-md-6">
+                  <a href="/bookings" class="btn btn-outline-primary w-100">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                      <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+                      <path d="M12 2l2 2l4 -4" />
+                    </svg>
+                    Make Another Booking
+                  </a>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <div class="col-md-4">
+        <div class="card">
+          <div class="card-header">
+            <h5 class="card-title">Hotel Information</h5>
+          </div>
+          <div class="card-body">
+            <h6>{{ booking.hotel.display_name or booking.hotel.name }}</h6>
+            <p class="text-muted">{{ booking.hotel.address }}</p>
+            <p class="text-muted">{{ booking.hotel.city }}, {{ booking.hotel.country }}</p>
+            <p class="text-muted">Phone: {{ booking.hotel.phone }}</p>
+            <p class="text-muted">Email: {{ booking.hotel.email }}</p>
+            
+            {% if booking.hotel.website_url %}
+            <p class="mt-3">
+              <strong>Website:</strong> 
+              <a href="{{ booking.hotel.website_url }}" target="_blank">{{ booking.hotel.website_url }}</a>
+            </p>
+            {% endif %}
+            
+            <div class="mt-4">
+              <h6>Check-in Information</h6>
+              <p><strong>Check-in Time:</strong> {{ booking.hotel.check_in_time }}</p>
+              <p><strong>Check-out Time:</strong> {{ booking.hotel.check_out_time }}</p>
+              <p><strong>Payment Policy:</strong></p>
+              <p>{{ booking.hotel.payment_policy or 'Payment due upon arrival' }}</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,185 @@
+{% extends "hms/layout/base.html" %}
+{% block title %}Suppliers{% endblock %}
+
+{% block content %}
+<div class="container-xl">
+  <!-- Page header -->
+  <div class="page-header d-print-none">
+    <div class="row align-items-center">
+      <div class="col">
+        <h2 class="page-title">Suppliers</h2>
+        <div class="text-muted mt-1">Manage your vendors and suppliers</div>
+      </div>
+      <div class="col-auto ms-auto d-print-none">
+        <a href="{{ url_for('hms.supplier_add') }}" class="btn btn-primary">
+          <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+            <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+            <line x1="12" y1="5" x2="12" y2="19" />
+            <line x1="5" y1="12" x2="19" y2="12" />
+          </svg>
+          Add Supplier
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <!-- Search and filters -->
+  <div class="card mb-3">
+    <div class="card-body">
+      <form method="GET" class="row g-3">
+        <div class="col-md-4">
+          <div class="input-icon">
+            <span class="input-icon-addon">
+              <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+                <circle cx="10" cy="10" r="7" />
+                <line x1="21" y1="21" x2="15" y2="15" />
+              </svg>
+            </span>
+            <input type="text" class="form-control" name="search" placeholder="Search suppliers..." value="{{ request.args.get('search', '') }}">
+          </div>
+        </div>
+        <div class="col-md-2">
+          <button type="submit" class="btn btn-primary w-100">
+            <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+              <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+              <circle cx="10" cy="10" r="7" />
+              <line x1="21" y1="21" x2="15" y2="15" />
+            </svg>
+            Search
+          </button>
+        </div>
+        <div class="col-md-2">
+          <a href="{{ url_for('hms.inventory_suppliers') }}" class="btn btn-outline-secondary w-100">Clear</a>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Suppliers table -->
+  <div class="card">
+    <div class="table-responsive">
+      <table class="table table-vcenter card-table table-striped">
+        <thead>
+          <tr>
+            <th>Name</th>
+            <th>Contact Person</th>
+            <th>Email</th>
+            <th>Phone</th>
+            <th>Payment Terms</th>
+            <th>Total POs</th>
+            <th class="w-1"></th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for supplier in suppliers %}
+          <tr>
+            <td>
+              <a href="#" class="text-reset d-block fw-bold">
+                {{ supplier.name }}
+              </a>
+              {% if supplier.code %}
+              <div class="text-muted small">Code: {{ supplier.code }}</div>
+              {% endif %}
+            </td>
+            <td>{{ supplier.contact_person or '-' }}</td>
+            <td>
+              {% if supplier.email %}
+              <a href="mailto:{{ supplier.email }}">{{ supplier.email }}</a>
+              {% else %}
+              -
+              {% endif %}
+            </td>
+            <td>{{ supplier.phone or '-' }}</td>
+            <td>{{ supplier.payment_terms or '-' }}</td>
+            <td>
+              <span class="badge bg-blue-lt">{{ supplier.purchase_orders|length }}</span>
+            </td>
+            <td>
+              <div class="btn-group">
+                <a href="#" class="btn btn-sm btn-outline-secondary" title="Edit">
+                  <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                    <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+                    <path d="M9 7h-3a2 2 0 0 0 -2 2v9a2 2 0 0 0 2 2h9a2 2 0 0 0 2 -2v-3" />
+                    <path d="M9 15h3l8.5 -8.5a1.5 1.5 0 0 0 -3 -3l-8.5 8.5v3" />
+                    <line x1="16" y1="5" x2="19" y2="8" />
+                  </svg>
+                </a>
+                <a href="{{ url_for('hms.inventory_purchase_orders') }}?supplier={{ supplier.id }}" class="btn btn-sm btn-outline-primary" title="View POs">
+                  <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                    <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+                    <path d="M6 19m-2 0a2 2 0 1 0 4 0a2 2 0 1 0 -4 0" />
+                    <path d="M17 19m-2 0a2 2 0 1 0 4 0a2 2 0 1 0 -4 0" />
+                    <path d="M17 17h-11v-11h-2" />
+                    <path d="M9 5l9 0l-2 4h-7" />
+                  </svg>
+                </a>
+              </div>
+            </td>
+          </tr>
+          {% else %}
+          <tr>
+            <td colspan="7" class="text-center text-muted py-4">
+              <svg xmlns="http://www.w3.org/2000/svg" class="icon mb-2" width="48" height="48" viewBox="0 0 24 24" stroke-width="1" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+                <circle cx="12" cy="12" r="9" />
+                <line x1="9" y1="10" x2="9.01" y2="10" />
+                <line x1="15" y1="10" x2="15.01" y2="10" />
+                <path d="M9.5 15.25a3.5 3.5 0 0 1 5 0" />
+              </svg>
+              <p class="mb-0">No suppliers found</p>
+              <p class="text-muted">Add your first supplier to get started</p>
+              <a href="#" class="btn btn-primary mt-2">Add Supplier</a>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Pagination -->
+    {% if pagination and pagination.pages > 1 %}
+    <div class="card-footer d-flex align-items-center">
+      <p class="m-0 text-muted">
+        Showing <span>{{ pagination.first }}</span> to <span>{{ pagination.last }}</span> of <span>{{ pagination.total }}</span> suppliers
+      </p>
+      <ul class="pagination m-0 ms-auto">
+        {% if pagination.has_prev %}
+        <li class="page-item">
+          <a class="page-link" href="{{ url_for('hms.inventory_suppliers', page=pagination.prev_num, **request.args) }}">
+            <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+              <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+              <polyline points="15 6 9 12 15 18" />
+            </svg>
+            prev
+          </a>
+        </li>
+        {% endif %}
+
+        {% for page in pagination.iter_pages() %}
+          {% if page %}
+            <li class="page-item {% if page == pagination.page %}active{% endif %}">
+              <a class="page-link" href="{{ url_for('hms.inventory_suppliers', page=page, **request.args) }}">{{ page }}</a>
+            </li>
+          {% else %}
+            <li class="page-item disabled"><span class="page-link">…</span></li>
+          {% endif %}
+        {% endfor %}
+
+        {% if pagination.has_next %}
+        <li class="page-item">
+          <a class="page-link" href="{{ url_for('hms.inventory_suppliers', page=pagination.next_num, **request.args) }}">
+            next
+            <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+              <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+              <polyline points="9 6 15 12 9 18" />
+            </svg>
+          </a>
+        </li>
+        {% endif %}
+      </ul>
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

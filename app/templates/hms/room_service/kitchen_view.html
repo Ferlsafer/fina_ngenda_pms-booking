@@ -1,0 +1,163 @@
+{% extends "hms/layout/base.html" %}
+{% block title %}Kitchen View - Room Service - Hotel PMS{% endblock %}
+
+{% block head %}
+<style>
+  .kitchen-section { min-height: 300px; border-radius: 8px; padding: 1rem; margin-bottom: 1rem; }
+  .kitchen-section.restaurant { background: #dbeafe; }
+  .kitchen-section.room-service { background: #fef3c7; }
+  .order-tile { border-radius: 8px; margin-bottom: 0.75rem; }
+  .order-tile .timer { font-weight: 700; }
+  .order-tile .timer.overdue { color: #dc2626; }
+  .btn-status { min-height: 44px; touch-action: manipulation; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-header d-print-none">
+  <div class="row align-items-center">
+    <div class="col">
+      <h2 class="page-title">Kitchen view</h2>
+      <div class="text-muted mt-1">Restaurant and room service orders in one view</div>
+    </div>
+    <div class="col-auto">
+      <a href="{{ url_for('hms.restaurant_kitchen') if url_for is defined else '#' }}" class="btn btn-outline-primary">Restaurant kitchen</a>
+      <a href="{{ url_for('hms.room_service_orders') if url_for is defined else '#' }}" class="btn btn-outline-secondary">Room service orders</a>
+      <button type="button" class="btn btn-outline-secondary" id="btn-refresh">Refresh</button>
+    </div>
+  </div>
+</div>
+
+<div class="row">
+  <div class="col-lg-6">
+    <div class="card">
+      <div class="card-header">
+        <h3 class="card-title">Restaurant orders</h3>
+        <span class="badge bg-info" id="count-restaurant">0</span>
+      </div>
+      <div class="card-body p-2">
+        <div class="kitchen-section restaurant" id="restaurant-orders">
+          <!-- Backend: load restaurant orders (pending + preparing) -->
+          <div class="card order-tile" data-order-id="1" data-source="restaurant">
+            <div class="card-body py-2">
+              <div class="d-flex justify-content-between align-items-center mb-1">
+                <span class="fw-bold">#201 — Table 5</span>
+                <span class="timer small" data-ordered-at="2025-02-15T10:10:00">5m</span>
+              </div>
+              <ul class="list-unstyled small mb-1">
+                <li>1× Grilled Salmon, 1× Salad</li>
+              </ul>
+              <button type="button" class="btn btn-sm btn-success btn-status start-btn" data-order-id="1">Start</button>
+              <button type="button" class="btn btn-sm btn-primary btn-status ready-btn d-none" data-order-id="1">Ready</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="col-lg-6">
+    <div class="card">
+      <div class="card-header">
+        <h3 class="card-title">Room service orders</h3>
+        <span class="badge bg-warning" id="count-roomservice">0</span>
+      </div>
+      <div class="card-body p-2">
+        <div class="kitchen-section room-service" id="roomservice-orders">
+          <!-- Backend: load room service orders (accepted + preparing) -->
+          <div class="card order-tile" data-order-id="101" data-source="room_service">
+            <div class="card-body py-2">
+              <div class="d-flex justify-content-between align-items-center mb-1">
+                <span class="fw-bold">#101 — Room 204</span>
+                <span class="timer small" data-ordered-at="2025-02-15T09:30:00">45m</span>
+              </div>
+              <ul class="list-unstyled small mb-1">
+                <li>2× Continental Breakfast, 1× Coffee</li>
+              </ul>
+              <p class="text-muted small mb-1">Guest: John Smith</p>
+              <button type="button" class="btn btn-sm btn-success btn-status start-btn" data-order-id="101">Start</button>
+              <button type="button" class="btn btn-sm btn-primary btn-status ready-btn d-none" data-order-id="101">Ready</button>
+            </div>
+          </div>
+          <div class="card order-tile" data-order-id="102" data-source="room_service">
+            <div class="card-body py-2">
+              <div class="d-flex justify-content-between align-items-center mb-1">
+                <span class="fw-bold">#102 — Room 311</span>
+                <span class="timer small" data-ordered-at="2025-02-15T10:00:00">15m</span>
+              </div>
+              <ul class="list-unstyled small mb-1">
+                <li>Club Sandwich, Mineral Water</li>
+              </ul>
+              <p class="text-muted small mb-1">Guest: Jane Doe</p>
+              <button type="button" class="btn btn-sm btn-primary btn-status ready-btn" data-order-id="102">Mark ready</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="row mt-3">
+  <div class="col-12">
+    <div class="card">
+      <div class="card-header">
+        <h3 class="card-title">Ready for pickup / serve</h3>
+      </div>
+      <div class="card-body">
+        <div class="row" id="ready-orders">
+          <div class="col-md-4">
+            <div class="card bg-green-lt">
+              <div class="card-body py-2">
+                <strong>#99 — Table 1</strong>
+                <span class="badge bg-secondary ms-1">Restaurant</span>
+                <p class="small mb-0 mt-1">2× Espresso, Tiramisu</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function() {
+  function updateTimers() {
+    document.querySelectorAll('.timer[data-ordered-at]').forEach(function(el) {
+      var at = new Date(el.dataset.orderedAt);
+      var mins = Math.floor((Date.now() - at) / 60000);
+      el.textContent = mins + 'm';
+      el.classList.toggle('overdue', mins >= 30);
+    });
+  }
+  function updateCounts() {
+    document.getElementById('count-restaurant').textContent = document.querySelectorAll('#restaurant-orders .order-tile').length;
+    document.getElementById('count-roomservice').textContent = document.querySelectorAll('#roomservice-orders .order-tile').length;
+  }
+  document.getElementById('btn-refresh').addEventListener('click', function() {
+    updateTimers();
+    updateCounts();
+    // Backend: refetch orders and re-render
+  });
+  document.querySelectorAll('.start-btn').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      this.classList.add('d-none');
+      this.nextElementSibling.classList.remove('d-none');
+      // Backend: set status to preparing
+    });
+  });
+  document.querySelectorAll('.ready-btn').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      // Backend: set status to ready
+      this.closest('.order-tile').remove();
+      updateCounts();
+    });
+  });
+  setInterval(updateTimers, 60000);
+  updateTimers();
+  updateCounts();
+})();
+</script>
+{% endblock %}

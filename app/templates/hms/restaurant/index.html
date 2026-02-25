@@ -1,0 +1,344 @@
+{% extends "hms/layout/base.html" %}
+{% block title %}Restaurant Management - Hotel PMS{% endblock %}
+
+{% block content %}
+<div class="container-xl">
+  <!-- Page Header -->
+  <div class="page-header d-print-none">
+    <div class="row align-items-center">
+      <div class="col">
+        <h2 class="page-title">
+          <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-inline me-2" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none">
+            <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+            <path d="M3 12l9 -9l9 9m-9 -9v18" />
+            <path d="M12 15v-6" />
+            <path d="M9 12h6" />
+          </svg>
+          Restaurant Management
+        </h2>
+        <div class="text-muted mt-1">Manage your restaurant operations, menu, and orders</div>
+      </div>
+      <div class="col-auto ms-auto d-print-none">
+        <div class="btn-list">
+          <a href="{{ url_for('hms.restaurant_pos') }}" class="btn btn-primary">
+            <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none">
+              <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+              <rect x="2" y="6" width="20" height="12" rx="2" />
+              <circle cx="6" cy="12" r="1" />
+              <circle cx="18" cy="12" r="1" />
+              <path d="M6 18v-2m6 2v-2m6 2v-2" />
+            </svg>
+            POS Terminal
+          </a>
+          <a href="{{ url_for('hms.restaurant_menu') }}" class="btn btn-outline-primary">
+            <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none">
+              <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+              <path d="M9 14l6 -6" />
+              <path d="M15 10h.01" />
+              <path d="M12 21a9 9 0 0 0 .968 -.13" />
+            </svg>
+            Manage Menu
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Statistics Cards -->
+  <div class="row row-deck row-cards mb-4">
+    <div class="col-sm-6 col-lg-3">
+      <div class="card card-sm">
+        <div class="card-body">
+          <div class="row align-items-center">
+            <div class="col-auto">
+              <span class="bg-primary text-white avatar avatar-lg">
+                <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none">
+                  <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+                  <path d="M9 14l6 -6" />
+                  <path d="M15 10h.01" />
+                  <path d="M12 21a9 9 0 0 0 .968 -.13" />
+                </svg>
+              </span>
+            </div>
+            <div class="col">
+              <div class="font-weight-medium">{{ menu_items }}</div>
+              <div class="text-muted">Menu Items</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <div class="col-sm-6 col-lg-3">
+      <div class="card card-sm">
+        <div class="card-body">
+          <div class="row align-items-center">
+            <div class="col-auto">
+              <span class="bg-azure text-white avatar avatar-lg">
+                <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none">
+                  <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+                  <path d="M12 21a9 9 0 0 0 9 -9a9 9 0 0 0 -9 -9a9 9 0 0 0 -9 9a9 9 0 0 0 9 9z" />
+                  <path d="M12 7v5l3 3" />
+                </svg>
+              </span>
+            </div>
+            <div class="col">
+              <div class="font-weight-medium">{{ today_orders }}</div>
+              <div class="text-muted">Orders Today</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <div class="col-sm-6 col-lg-3">
+      <div class="card card-sm">
+        <div class="card-body">
+          <div class="row align-items-center">
+            <div class="col-auto">
+              <span class="bg-warning text-white avatar avatar-lg">
+                <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none">
+                  <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+                  <circle cx="12" cy="12" r="9" />
+                  <line x1="12" y1="8" x2="12" y2="12" />
+                  <line x1="12" y1="16" x2="12.01" y2="16" />
+                </svg>
+              </span>
+            </div>
+            <div class="col">
+              <div class="font-weight-medium">{{ pending_orders }}</div>
+              <div class="text-muted">Pending Orders</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <div class="col-sm-6 col-lg-3">
+      <div class="card card-sm">
+        <div class="card-body">
+          <div class="row align-items-center">
+            <div class="col-auto">
+              <span class="bg-success text-white avatar avatar-lg">
+                <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none">
+                  <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+                  <path d="M6 3v18" />
+                  <path d="M18 3v18" />
+                  <path d="M3 6h18" />
+                  <path d="M3 18h18" />
+                </svg>
+              </span>
+            </div>
+            <div class="col">
+              <div class="font-weight-medium">{{ available_tables }}/{{ tables }}</div>
+              <div class="text-muted">Available Tables</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Quick Actions -->
+  <div class="row mb-4">
+    <div class="col-12">
+      <h3 class="mb-3">
+        <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-inline me-2" width="20" height="20" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none">
+          <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+          <circle cx="12" cy="12" r="9" />
+          <line x1="9" y1="12" x2="15" y2="12" />
+          <line x1="12" y1="9" x2="12" y2="15" />
+        </svg>
+        Quick Actions
+      </h3>
+    </div>
+    
+    <div class="col-sm-6 col-lg-3">
+      <a href="{{ url_for('hms.restaurant_pos') }}" class="card card-link card-link-popup">
+        <div class="card-body">
+          <div class="d-flex align-items-center mb-3">
+            <span class="avatar avatar-lg bg-primary-lt">
+              <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none">
+                <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+                <rect x="2" y="6" width="20" height="12" rx="2" />
+                <circle cx="6" cy="12" r="1" />
+                <circle cx="18" cy="12" r="1" />
+              </svg>
+            </span>
+            <div class="ms-3">
+              <h4 class="card-title mb-0">POS Terminal</h4>
+              <small class="text-muted">Process walk-in orders</small>
+            </div>
+          </div>
+          <p class="text-muted mb-0">Quick point of sale system for processing customer orders and payments.</p>
+        </div>
+      </a>
+    </div>
+    
+    <div class="col-sm-6 col-lg-3">
+      <a href="{{ url_for('hms.restaurant_menu') }}" class="card card-link card-link-popup">
+        <div class="card-body">
+          <div class="d-flex align-items-center mb-3">
+            <span class="avatar avatar-lg bg-azure-lt">
+              <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none">
+                <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+                <path d="M9 14l6 -6" />
+                <path d="M15 10h.01" />
+                <path d="M12 21a9 9 0 0 0 .968 -.13" />
+              </svg>
+            </span>
+            <div class="ms-3">
+              <h4 class="card-title mb-0">Manage Menu</h4>
+              <small class="text-muted">{{ categories }} categories</small>
+            </div>
+          </div>
+          <p class="text-muted mb-0">Add, edit, or remove menu items and organize them into categories.</p>
+        </div>
+      </a>
+    </div>
+    
+    <div class="col-sm-6 col-lg-3">
+      <a href="{{ url_for('hms.restaurant_kitchen') }}" class="card card-link card-link-popup">
+        <div class="card-body">
+          <div class="d-flex align-items-center mb-3">
+            <span class="avatar avatar-lg bg-warning-lt">
+              <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none">
+                <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+                <path d="M12 9v2m0 4v.01" />
+                <path d="M5 19h14a2 2 0 0 0 1.84 -2.75l-7.1 -12.25a2 2 0 0 0 -3.5 0l-7.1 12.25a2 2 0 0 0 1.75 2.75" />
+              </svg>
+            </span>
+            <div class="ms-3">
+              <h4 class="card-title mb-0">Kitchen Display</h4>
+              <small class="text-muted">View pending orders</small>
+            </div>
+          </div>
+          <p class="text-muted mb-0">Kitchen order display system for chefs to view and manage orders.</p>
+        </div>
+      </a>
+    </div>
+    
+    <div class="col-sm-6 col-lg-3">
+      <a href="{{ url_for('hms.restaurant_tables') }}" class="card card-link card-link-popup">
+        <div class="card-body">
+          <div class="d-flex align-items-center mb-3">
+            <span class="avatar avatar-lg bg-success-lt">
+              <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none">
+                <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+                <path d="M6 3v18" />
+                <path d="M18 3v18" />
+                <path d="M3 6h18" />
+                <path d="M3 18h18" />
+              </svg>
+            </span>
+            <div class="ms-3">
+              <h4 class="card-title mb-0">Tables</h4>
+              <small class="text-muted">Manage seating</small>
+            </div>
+          </div>
+          <p class="text-muted mb-0">Manage restaurant tables, seating arrangements, and table assignments.</p>
+        </div>
+      </a>
+    </div>
+  </div>
+
+  <!-- Additional Features -->
+  <div class="row">
+    <div class="col-12">
+      <h3 class="mb-3">
+        <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-inline me-2" width="20" height="20" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none">
+          <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+          <path d="M12 21a9 9 0 0 0 9 -9a9 9 0 0 0 -9 -9a9 9 0 0 0 -9 9a9 9 0 0 0 9 9z" />
+          <path d="M12 7v5l3 3" />
+        </svg>
+        More Features
+      </h3>
+    </div>
+    
+    <div class="col-md-4">
+      <div class="card">
+        <div class="card-body">
+          <div class="d-flex align-items-center mb-3">
+            <span class="avatar avatar-lg bg-pink-lt">
+              <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none">
+                <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+                <path d="M9 14l6 -6" />
+                <path d="M15 10h.01" />
+              </svg>
+            </span>
+            <div class="ms-3">
+              <h4 class="card-title mb-0">Menu Categories</h4>
+            </div>
+          </div>
+          <p class="text-muted mb-3">Organize your menu items into categories like Breakfast, Main Course, Beverages, and Desserts.</p>
+          <a href="{{ url_for('hms.category_create') }}" class="btn btn-sm btn-outline-pink">
+            <svg xmlns="http://www.w3.org/2000/svg" class="icon me-1" width="16" height="16" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none">
+              <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+              <line x1="12" y1="5" x2="12" y2="19" />
+              <line x1="5" y1="12" x2="19" y2="12" />
+            </svg>
+            Add Category
+          </a>
+        </div>
+      </div>
+    </div>
+    
+    <div class="col-md-4">
+      <div class="card">
+        <div class="card-body">
+          <div class="d-flex align-items-center mb-3">
+            <span class="avatar avatar-lg bg-teal-lt">
+              <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none">
+                <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+                <circle cx="12" cy="12" r="9" />
+                <path d="M12 8v4l3 3" />
+              </svg>
+            </span>
+            <div class="ms-3">
+              <h4 class="card-title mb-0">Order History</h4>
+            </div>
+          </div>
+          <p class="text-muted mb-3">View and track all restaurant orders, from placement to delivery.</p>
+          <a href="{{ url_for('hms.restaurant_kitchen') }}" class="btn btn-sm btn-outline-teal">
+            <svg xmlns="http://www.w3.org/2000/svg" class="icon me-1" width="16" height="16" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none">
+              <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+              <path d="M5 12h14" />
+              <path d="M12 5l7 7l-7 7" />
+            </svg>
+            View Orders
+          </a>
+        </div>
+      </div>
+    </div>
+    
+    <div class="col-md-4">
+      <div class="card">
+        <div class="card-body">
+          <div class="d-flex align-items-center mb-3">
+            <span class="avatar avatar-lg bg-indigo-lt">
+              <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none">
+                <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+                <path d="M12 21a9 9 0 0 0 9 -9a9 9 0 0 0 -9 -9a9 9 0 0 0 -9 9a9 9 0 0 0 9 9z" />
+                <path d="M12 7v5l3 3" />
+              </svg>
+            </span>
+            <div class="ms-3">
+              <h4 class="card-title mb-0">Reports</h4>
+            </div>
+          </div>
+          <p class="text-muted mb-3">Generate sales reports, popular items analysis, and revenue tracking.</p>
+          <a href="{{ url_for('hms.accounting_reports') }}" class="btn btn-sm btn-outline-indigo">
+            <svg xmlns="http://www.w3.org/2000/svg" class="icon me-1" width="16" height="16" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none">
+              <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+              <line x1="4" y1="19" x2="4" y2="5" />
+              <line x1="20" y1="19" x2="20" y2="5" />
+              <path d="M4 19h16" />
+            </svg>
+            View Reports
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

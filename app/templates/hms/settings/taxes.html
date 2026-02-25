@@ -1,0 +1,141 @@
+{% extends "hms/layout/base.html" %}
+{% block title %}Tax Configuration - Hotel PMS{% endblock %}
+
+{% block content %}
+<div class="page-header d-print-none">
+  <div class="row align-items-center">
+    <div class="col">
+      <h2 class="page-title">Tax configuration</h2>
+      <div class="text-muted mt-1">Tax rates by location, room/restaurant, inclusive or exclusive</div>
+    </div>
+    <div class="col-auto">
+      <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#taxModal">Add tax</button>
+    </div>
+  </div>
+</div>
+
+<div class="card">
+  <div class="table-responsive">
+    <table class="table table-vcenter card-table">
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Rate %</th>
+          <th>Applies to</th>
+          <th>Pricing</th>
+          <th>Active</th>
+          <th class="w-1">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for t in (taxes if taxes is defined else []) %}
+        <tr>
+          <td>{{ t.name }}</td>
+          <td>{{ "%.2f"|format(t.rate) }}%</td>
+          <td>
+            {% if t.apply_rooms %}<span class="badge bg-primary me-1">Rooms</span>{% endif %}
+            {% if t.apply_restaurant %}<span class="badge bg-success me-1">Restaurant</span>{% endif %}
+            {% if t.apply_other %}<span class="badge bg-secondary">Other</span>{% endif %}
+          </td>
+          <td><span class="badge bg-{{ 'info' if t.inclusive else 'secondary' }}">{{ 'Inclusive' if t.inclusive else 'Exclusive' }}</span></td>
+          <td><span class="badge bg-{{ 'success' if t.active else 'danger' }}">{{ 'Yes' if t.active else 'No' }}</span></td>
+          <td><button type="button" class="btn btn-sm btn-outline-primary edit-tax-btn" data-id="{{ t.id }}">Edit</button></td>
+        </tr>
+        {% else %}
+        <tr>
+          <td>VAT</td>
+          <td>10.00%</td>
+          <td><span class="badge bg-primary me-1">Rooms</span><span class="badge bg-success">Restaurant</span></td>
+          <td><span class="badge bg-secondary">Exclusive</span></td>
+          <td><span class="badge bg-success">Yes</span></td>
+          <td><button type="button" class="btn btn-sm btn-outline-primary edit-tax-btn" data-id="1">Edit</button></td>
+        </tr>
+        <tr>
+          <td>City tax</td>
+          <td>2.00%</td>
+          <td><span class="badge bg-primary">Rooms</span></td>
+          <td><span class="badge bg-info">Inclusive</span></td>
+          <td><span class="badge bg-success">Yes</span></td>
+          <td><button type="button" class="btn btn-sm btn-outline-primary edit-tax-btn" data-id="2">Edit</button></td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Add/Edit Tax Modal -->
+<div class="modal modal-blur fade" id="taxModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <form method="post" action="{{ url_for('hms.settings_taxes') }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <input type="hidden" name="tax_id" id="tax-id" value="">
+        <div class="modal-header">
+          <h5 class="modal-title" id="tax-modal-title">Add tax</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <div class="mb-3">
+            <label class="form-label required">Name</label>
+            <input type="text" name="name" class="form-control" id="tax-name" required placeholder="e.g. VAT">
+          </div>
+          <div class="mb-3">
+            <label class="form-label required">Rate (%)</label>
+            <input type="number" name="rate" class="form-control" id="tax-rate" step="0.01" min="0" max="100" required>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Applies to</label>
+            <div>
+              <label class="form-check form-check-inline">
+                <input type="checkbox" name="apply_rooms" class="form-check-input" value="1"> Rooms
+              </label>
+              <label class="form-check form-check-inline">
+                <input type="checkbox" name="apply_restaurant" class="form-check-input" value="1"> Restaurant
+              </label>
+              <label class="form-check form-check-inline">
+                <input type="checkbox" name="apply_other" class="form-check-input" value="1"> Other
+              </label>
+            </div>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Pricing</label>
+            <select name="inclusive" class="form-select">
+              <option value="0">Exclusive (tax added on top)</option>
+              <option value="1">Inclusive (included in price)</option>
+            </select>
+          </div>
+          <div class="mb-0">
+            <label class="form-check form-switch">
+              <input type="checkbox" name="active" class="form-check-input" value="1" checked>
+              <span class="form-check-label">Active</span>
+            </label>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-link link-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-primary">Save</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.querySelectorAll('.edit-tax-btn').forEach(function(btn) {
+  btn.addEventListener('click', function() {
+    document.getElementById('tax-modal-title').textContent = 'Edit tax';
+    document.getElementById('tax-id').value = this.dataset.id;
+    // Backend: load tax and fill form
+    new bootstrap.Modal(document.getElementById('taxModal')).show();
+  });
+});
+document.getElementById('taxModal')?.addEventListener('hidden.bs.modal', function() {
+  document.getElementById('tax-modal-title').textContent = 'Add tax';
+  document.getElementById('tax-id').value = '';
+  this.querySelector('form').reset();
+});
+</script>
+{% endblock %}

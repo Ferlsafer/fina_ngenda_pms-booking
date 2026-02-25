@@ -1,0 +1,34 @@
+{% extends "hms/layout/base.html" %}
+{% block title %}Room Service{% endblock %}
+{% block content %}
+<div class="container-xl">
+  <div class="page-header"><h2 class="page-title">Room Service</h2></div>
+  <div class="card"><div class="card-header"><h3 class="card-title">Active Orders ({{ active_orders|length }})</h3></div>
+    <div class="card-body">
+      {% if active_orders %}
+      <table class="table table-vcenter">
+        <thead><tr><th>Order #</th><th>Room</th><th>Guest</th><th>Items</th><th>Status</th><th>Time</th></tr></thead>
+        <tbody>
+          {% for order in active_orders %}
+          <tr>
+            <td><code>#{{ order.id }}</code></td>
+            <td>{{ order.room.room_number if order.room else '-' }}</td>
+            <td>{{ order.guest_name or '-' }}</td>
+            <td>{{ order.items.count() }} items</td>
+            <td><span class="badge bg-{{ 'warning' if order.status == 'pending' else 'primary' if order.status == 'preparing' else 'success' if order.status == 'ready' else 'info' }}">{{ order.status }}</span></td>
+            <td>{{ order.created_at.strftime('%H:%M') }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% else %}
+      <p class="text-muted text-center py-4">No active room service orders</p>
+      {% endif %}
+    </div>
+  </div>
+  <div class="btn-list mt-4">
+    <a href="{{ url_for('hms.room_service_orders') }}" class="btn btn-primary">All Orders</a>
+    <a href="{{ url_for('hms.restaurant_pos') }}" class="btn btn-outline-primary">New Order</a>
+  </div>
+</div>
+{% endblock %}

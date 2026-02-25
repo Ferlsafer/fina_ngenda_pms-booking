@@ -1,0 +1,210 @@
+<!-- Report Issue Modal -->
+<div class="modal modal-blur fade" id="reportIssueModal" tabindex="-1" role="dialog" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered" role="document">
+    <div class="modal-content">
+      <form action="{{ '#' }}" method="POST" enctype="multipart/form-data">
+        {{ form.hidden_tag() }}
+        <div class="modal-header">
+          <h5 class="modal-title">Report Maintenance Issue</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <div class="mb-3">
+            <label class="form-label">Room</label>
+            <select class="form-select" name="room_id" id="issueRoomSelect">
+              <option value="">General (not room-specific)</option>
+              {% for room in rooms %}
+              <option value="{{ room.id }}" 
+                      data-room-number="{{ room.room_number }}"
+                      data-room-type="{{ room.room_type.name }}">
+                {{ room.room_number }} - {{ room.room_type.name }}
+              </option>
+              {% endfor %}
+            </select>
+          </div>
+          
+          <div class="mb-3">
+            <label class="form-label">Issue Type</label>
+            <select class="form-select" name="issue_type" required>
+              <option value="">Select issue type</option>
+              <option value="plumbing">Plumbing</option>
+              <option value="electrical">Electrical</option>
+              <option value="hvac">HVAC</option>
+              <option value="furniture">Furniture</option>
+              <option value="appliance">Appliance</option>
+              <option value="cleaning">Cleaning</option>
+              <option value="safety">Safety Hazard</option>
+              <option value="other">Other</option>
+            </select>
+          </div>
+          
+          <div class="mb-3">
+            <label class="form-label">Title</label>
+            <input type="text" class="form-control" name="title" placeholder="Brief description of the issue" required>
+          </div>
+          
+          <div class="mb-3">
+            <label class="form-label">Description</label>
+            <textarea class="form-control" name="description" rows="3" placeholder="Provide detailed information about the issue" required></textarea>
+          </div>
+          
+          <div class="row">
+            <div class="col-md-6">
+              <div class="mb-3">
+                <label class="form-label">Priority</label>
+                <select class="form-select" name="priority">
+                  <option value="low">Low</option>
+                  <option value="medium" selected>Medium</option>
+                  <option value="high">High</option>
+                  <option value="urgent">Urgent</option>
+                </select>
+              </div>
+            </div>
+            <div class="col-md-6">
+              <div class="mb-3">
+                <label class="form-label">Assign To</label>
+                <select class="form-select" name="assigned_to">
+                  <option value="">Unassigned</option>
+                  {% for staff in staff_members %}
+                  <option value="{{ staff.id }}">{{ staff.name }}</option>
+                  {% endfor %}
+                </select>
+              </div>
+            </div>
+          </div>
+          
+          <div class="mb-3">
+            <label class="form-label">Attach Photo (Optional)</label>
+            <input type="file" class="form-control" name="photo" id="issuePhotoInput" accept="image/*">
+            <div class="form-text">Maximum file size: 5MB. Supported formats: JPG, PNG, GIF</div>
+          </div>
+          
+          <div class="mb-3">
+            <div class="form-check">
+              <input class="form-check-input" type="checkbox" name="guest_visible" id="guestVisibleCheck" value="1">
+              <label class="form-check-label" for="guestVisibleCheck">
+                Make visible to guest (if room is occupied)
+              </label>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-link link-secondary" data-bs-dismiss="modal">
+            Cancel
+          </button>
+          <button type="submit" class="btn btn-primary">
+            <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+              <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+              <path d="M5 12l5 5l10 -10" />
+            </svg>
+            Report Issue
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  // Preview image before upload
+  const photoInput = document.getElementById('issuePhotoInput');
+  if (photoInput) {
+    photoInput.addEventListener('change', function(e) {
+      const file = e.target.files[0];
+      if (file) {
+        // Validate file size (5MB)
+        if (file.size > 5 * 1024 * 1024) {
+          alert('File size must be less than 5MB');
+          this.value = '';
+          return;
+        }
+        
+        // Validate file type
+        const validTypes = ['image/jpeg', 'image/png', 'image/gif'];
+        if (!validTypes.includes(file.type)) {
+          alert('Only JPG, PNG, and GIF files are allowed');
+          this.value = '';
+          return;
+        }
+        
+        // Show preview (you can implement this if needed)
+        // const reader = new FileReader();
+        // reader.onload = function(e) {
+        //   // Display the image preview
+        // };
+        // reader.readAsDataURL(file);
+      }
+    });
+  }
+  
+  // Auto-fill title based on issue type
+  const issueTypeSelect = document.querySelector('select[name="issue_type"]');
+  const titleInput = document.querySelector('input[name="title"]');
+  
+  if (issueTypeSelect && titleInput) {
+    issueTypeSelect.addEventListener('change', function() {
+      if (!titleInput.value) {
+        const roomSelect = document.getElementById('issueRoomSelect');
+        const selectedOption = roomSelect.options[roomSelect.selectedIndex];
+        const roomNumber = selectedOption.getAttribute('data-room-number');
+        
+        let title = '';
+        if (roomNumber) {
+          title += `Room ${roomNumber}: `;
+        }
+        
+        switch(this.value) {
+          case 'plumbing':
+            title += 'Plumbing Issue';
+            break;
+          case 'electrical':
+            title += 'Electrical Problem';
+            break;
+          case 'hvac':
+            title += 'HVAC Issue';
+            break;
+          case 'furniture':
+            title += 'Furniture Problem';
+            break;
+          case 'appliance':
+            title += 'Appliance Malfunction';
+            break;
+          case 'cleaning':
+            title += 'Cleaning Required';
+            break;
+          case 'safety':
+            title += 'Safety Hazard';
+            break;
+          case 'other':
+            title += 'Maintenance Required';
+            break;
+        }
+        
+        titleInput.value = title;
+      }
+    });
+  }
+  
+  // Set priority based on issue type
+  if (issueTypeSelect) {
+    issueTypeSelect.addEventListener('change', function() {
+      const prioritySelect = document.querySelector('select[name="priority"]');
+      if (prioritySelect) {
+        // Set default priority based on issue type
+        switch(this.value) {
+          case 'safety':
+            prioritySelect.value = 'high';
+            break;
+          case 'plumbing':
+          case 'electrical':
+            prioritySelect.value = 'medium';
+            break;
+          default:
+            prioritySelect.value = 'medium';
+        }
+      }
+    });
+  }
+});
+</script>

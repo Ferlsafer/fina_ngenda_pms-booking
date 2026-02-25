@@ -1,0 +1,414 @@
+{% extends "hms/layout/base.html" %}
+{% block title %}New Booking - Hotel PMS{% endblock %}
+{% block content %}
+<div class="container-xl">
+  <div class="page-header d-print-none">
+    <div class="row align-items-center">
+      <div class="col">
+        <h2 class="page-title">New Booking</h2>
+        <div class="text-muted mt-1">Create a new booking for a guest</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="row">
+    <div class="col-lg-8">
+      <div class="card">
+        <div class="card-body">
+          <form method="post" action="{{ url_for('hms.bookings_new') }}" id="booking-form">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+
+            <!-- Guest Information -->
+            <h4 class="mb-3">Guest Information</h4>
+            <div class="row">
+              <div class="col-md-6 mb-3">
+                <label class="form-label required">Guest Name</label>
+                <input type="text" name="guest_name" class="form-control" placeholder="Full name" required>
+              </div>
+              <div class="col-md-6 mb-3">
+                <label class="form-label required">Email</label>
+                <input type="email" name="guest_email" class="form-control" placeholder="email@example.com" required>
+              </div>
+            </div>
+            <div class="row">
+              <div class="col-md-6 mb-3">
+                <label class="form-label required">Phone</label>
+                <input type="tel" name="guest_phone" class="form-control" placeholder="+255..." required>
+              </div>
+              <div class="col-md-3 mb-3">
+                <label class="form-label">Adults</label>
+                <select name="adults" class="form-select">
+                  <option value="1">1</option>
+                  <option value="2" selected>2</option>
+                  <option value="3">3</option>
+                  <option value="4">4</option>
+                </select>
+              </div>
+              <div class="col-md-3 mb-3">
+                <label class="form-label">Children</label>
+                <select name="children" class="form-select">
+                  <option value="0">0</option>
+                  <option value="1">1</option>
+                  <option value="2">2</option>
+                  <option value="3">3</option>
+                </select>
+              </div>
+            </div>
+
+            <!-- Stay Details -->
+            <h4 class="mb-3 mt-4">Stay Details</h4>
+            <div class="row">
+              <div class="col-md-6 mb-3">
+                <label class="form-label required">Check-in Date</label>
+                <input type="date" name="check_in" id="check_in" class="form-control" required min="{{ today }}">
+              </div>
+              <div class="col-md-6 mb-3">
+                <label class="form-label required">Check-out Date</label>
+                <input type="date" name="check_out" id="check_out" class="form-control" required min="{{ today }}">
+              </div>
+            </div>
+
+            <!-- Room Selection -->
+            <h4 class="mb-3 mt-4">Room Selection</h4>
+            
+            <div class="alert alert-info mb-3">
+              <i class="fa fa-info-circle me-2"></i>
+              <strong>Step 1:</strong> Select dates above &nbsp;|&nbsp; 
+              <strong>Step 2:</strong> Choose a room category below &nbsp;|&nbsp; 
+              <strong>Step 3:</strong> Select an available room
+            </div>
+            
+            <!-- Step 1: Select Category -->
+            <div class="mb-3">
+              <label class="form-label required">Room Category</label>
+              <select name="room_category" id="room_category" class="form-select" required>
+                <option value="">-- Select Category --</option>
+                {% for cat in categories %}
+                <option value="{{ cat }}" data-base-price="{{ prices.get(cat, 0) }}">{{ cat|title }}</option>
+                {% endfor %}
+              </select>
+              <div class="form-text">Choose a room category after selecting dates</div>
+            </div>
+
+            <!-- Step 2: Available Rooms (shown after category selection) -->
+            <div id="available-rooms-section" class="mb-3" style="display: none;">
+              <label class="form-label required">Available Rooms</label>
+              <div id="available-rooms-list" class="row g-2">
+                <!-- Rooms will be loaded here via AJAX -->
+              </div>
+              <input type="hidden" name="room_id" id="selected_room_id" required>
+            </div>
+
+            <!-- Additional Info -->
+            <h4 class="mb-3 mt-4">Additional Information</h4>
+            <div class="mb-3">
+              <label class="form-label">Special Requests</label>
+              <textarea name="special_requests" class="form-control" rows="3" placeholder="Any special requests or requirements..."></textarea>
+            </div>
+            <div class="mb-3">
+              <label class="form-label">Source</label>
+              <select name="source" class="form-select">
+                <option value="front_desk" selected>Front Desk</option>
+                <option value="phone">Phone</option>
+                <option value="email">Email</option>
+                <option value="walk_in">Walk-in</option>
+                <option value="website">Website</option>
+              </select>
+            </div>
+
+            <!-- Submit -->
+            <div class="mt-4">
+              <button type="submit" class="btn btn-primary" id="submit-btn" disabled>
+                <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M4 4h6v8h-6z" /><path d="M4 16h6v4h-6z" /><path d="M14 12h6v8h-6z" /><path d="M14 4h6v4h-6z" /></svg>
+                Create Booking
+              </button>
+              <a href="{{ url_for('hms.bookings') }}" class="btn btn-secondary">Cancel</a>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <!-- Booking Summary Sidebar -->
+    <div class="col-lg-4">
+      <div class="card" style="position: sticky; top: 20px;">
+        <div class="card-header">
+          <h4 class="card-title">Booking Summary</h4>
+        </div>
+        <div class="card-body">
+          <div id="summary-content">
+            <p class="text-muted text-center">Select dates and a room to see summary</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Global variables
+let selectedRoom = null;
+let checkInInput, checkOutInput, categorySelect, availableRoomsSection, availableRoomsList;
+let selectedRoomIdInput, submitBtn, summaryContent;
+
+document.addEventListener('DOMContentLoaded', function() {
+  console.log('DOM loaded, initializing booking form...');
+  
+  // Initialize element references
+  checkInInput = document.getElementById('check_in');
+  checkOutInput = document.getElementById('check_out');
+  categorySelect = document.getElementById('room_category');
+  availableRoomsSection = document.getElementById('available-rooms-section');
+  availableRoomsList = document.getElementById('available-rooms-list');
+  selectedRoomIdInput = document.getElementById('selected_room_id');
+  submitBtn = document.getElementById('submit-btn');
+  summaryContent = document.getElementById('summary-content');
+
+  console.log('Elements found:', {
+    checkIn: !!checkInInput,
+    checkOut: !!checkOutInput,
+    category: !!categorySelect,
+    roomsSection: !!availableRoomsSection,
+    submitBtn: !!submitBtn
+  });
+
+  // Date validation
+  if (checkInInput) {
+    checkInInput.addEventListener('change', function() {
+      const minCheckOut = new Date(this.value);
+      minCheckOut.setDate(minCheckOut.getDate() + 1);
+      checkOutInput.min = minCheckOut.toISOString().split('T')[0];
+      if (checkOutInput.value && checkOutInput.value <= this.value) {
+        checkOutInput.value = minCheckOut.toISOString().split('T')[0];
+      }
+      updateSummary();
+    });
+  }
+
+  if (checkOutInput) {
+    checkOutInput.addEventListener('change', function() {
+      updateSummary();
+    });
+  }
+
+  // Category selection - load available rooms
+  if (categorySelect) {
+    categorySelect.addEventListener('change', function() {
+      const categoryId = this.value;
+      const checkIn = checkInInput ? checkInInput.value : '';
+      const checkOut = checkOutInput ? checkOutInput.value : '';
+      
+      console.log('=== Category Changed ===');
+      console.log('Category:', categoryId);
+      console.log('Check-in:', checkIn);
+      console.log('Check-out:', checkOut);
+      
+      if (!categoryId) {
+        console.log('No category selected');
+        return;
+      }
+      
+      if (!checkIn || !checkOut) {
+        alert('Please select check-in and check-out dates first');
+        if (checkInInput) checkInInput.scrollIntoView({behavior: 'smooth', block: 'center'});
+        console.log('Dates not selected');
+        return;
+      }
+      
+      // Show loading
+      if (availableRoomsSection) availableRoomsSection.style.display = 'block';
+      if (availableRoomsList) {
+        availableRoomsList.innerHTML = '<div class="col-12"><div class="text-center text-muted"><div class="spinner-border mb-2"></div><br>Loading available rooms...</div></div>';
+      }
+      
+      const url = `/hms/api/available-rooms?category=${encodeURIComponent(categoryId)}&check_in=${checkIn}&check_out=${checkOut}`;
+      console.log('Fetching:', url);
+      
+      fetch(url)
+        .then(response => {
+          console.log('Response status:', response.status);
+          return response.json();
+        })
+        .then(data => {
+          console.log('=== API Response ===');
+          console.log('Success:', data.success);
+          console.log('Rooms count:', data.rooms ? data.rooms.length : 0);
+          console.log('Rooms:', data.rooms);
+          
+          if (data.success && data.rooms && data.rooms.length > 0) {
+            if (availableRoomsList) availableRoomsList.innerHTML = '';
+            
+            data.rooms.forEach(room => {
+              const col = document.createElement('div');
+              col.className = 'col-md-6';
+              col.innerHTML = `
+                <label class="room-card card card-sm selectable-room" style="cursor: pointer;" onclick="selectRoom(${room.id}, '${room.room_number}', ${room.room_type.base_price})">
+                  <div class="card-body">
+                    <div class="d-flex align-items-center">
+                      <input type="radio" name="room_selection" class="form-check-input me-3" value="${room.id}">
+                      <div>
+                        <h5 class="mb-1">${room.room_number}</h5>
+                        <p class="text-muted mb-1">${room.room_type.name}</p>
+                        <span class="badge bg-${room.status === 'Vacant' ? 'success' : 'warning'}">${room.status}</span>
+                        <span class="float-end text-primary fw-bold">${formatPrice(room.room_type.base_price)}</span>
+                      </div>
+                    </div>
+                  </div>
+                </label>
+              `;
+              if (availableRoomsList) availableRoomsList.appendChild(col);
+            });
+          } else {
+            if (availableRoomsList) {
+              availableRoomsList.innerHTML = '<div class="col-12"><div class="alert alert-warning">No rooms available for selected dates in this category.<br><small>Try different dates or category</small></div></div>';
+            }
+            if (submitBtn) submitBtn.disabled = true;
+          }
+        })
+        .catch(error => {
+          console.error('=== Fetch Error ===');
+          console.error(error);
+          if (availableRoomsList) {
+            availableRoomsList.innerHTML = '<div class="col-12"><div class="alert alert-danger">Error loading rooms.<br><small>' + error + '</small></div></div>';
+          }
+        });
+    });
+  }
+  
+  console.log('Booking form initialization complete');
+});
+
+// Global function - accessible from inline onclick
+function selectRoom(roomId, roomNumber, price) {
+  console.log('=== Room Selected ===');
+  console.log('Room ID:', roomId);
+  console.log('Room Number:', roomNumber);
+  console.log('Price:', price);
+  console.log('submitBtn element:', submitBtn);
+  console.log('submitBtn.disabled before:', submitBtn ? submitBtn.disabled : 'N/A');
+  
+  if (selectedRoomIdInput) {
+    selectedRoomIdInput.value = roomId;
+    console.log('Hidden input set to:', selectedRoomIdInput.value);
+  }
+  selectedRoom = { id: roomId, number: roomNumber, price: price };
+  
+  // Update UI
+  document.querySelectorAll('.selectable-room').forEach(card => {
+    card.classList.remove('border-primary');
+    card.classList.add('border');
+  });
+  if (event && event.currentTarget) {
+    event.currentTarget.classList.remove('border');
+    event.currentTarget.classList.add('border-primary');
+    console.log('Card highlighted');
+  }
+  
+  // Update form
+  const radio = event && event.currentTarget ? event.currentTarget.querySelector('input[type="radio"]') : null;
+  if (radio) {
+    radio.checked = true;
+    console.log('Radio checked');
+  }
+  
+  // Enable submit button - force it
+  if (submitBtn) {
+    submitBtn.removeAttribute('disabled');
+    submitBtn.disabled = false;
+    submitBtn.classList.remove('disabled');
+    console.log('Submit button ENABLED');
+    console.log('submitBtn.disabled after:', submitBtn.disabled);
+  } else {
+    console.error('Submit button not found!');
+  }
+  
+  updateSummary();
+}
+
+function updateSummary() {
+  const checkIn = checkInInput ? checkInInput.value : '';
+  const checkOut = checkOutInput ? checkOutInput.value : '';
+  
+  if (!checkIn || !checkOut) {
+    if (summaryContent) summaryContent.innerHTML = '<p class="text-muted text-center">Select dates and a room to see summary</p>';
+    return;
+  }
+  
+  const nights = Math.floor((new Date(checkOut) - new Date(checkIn)) / (1000 * 60 * 60 * 24));
+  
+  console.log('=== Update Summary ===');
+  console.log('Selected room:', selectedRoom);
+  console.log('Nights:', nights);
+  
+  let price = 0;
+  if (selectedRoom && selectedRoom.price) {
+    price = selectedRoom.price;
+    console.log('Using selected room price:', price);
+  } else if (categorySelect && categorySelect.value) {
+    const selectedOption = categorySelect.options[categorySelect.selectedIndex];
+    price = selectedOption ? parseFloat(selectedOption.dataset.basePrice || 0) : 0;
+    console.log('Using category price:', price);
+  }
+  
+  const total = nights * price;
+  
+  console.log('Total:', total);
+  
+  if (summaryContent) {
+    let html = `
+      <div class="mb-3">
+        <small class="text-muted">Dates</small>
+        <div class="fw-bold">${checkIn} → ${checkOut}</div>
+        <div class="text-muted">${nights} night${nights > 1 ? 's' : ''}</div>
+      </div>
+    `;
+    
+    if (selectedRoom) {
+      html += `
+      <div class="mb-3">
+        <small class="text-muted">Room</small>
+        <div class="fw-bold">${selectedRoom.number}</div>
+        <div class="text-muted">${formatPrice(price)} / night</div>
+      </div>
+      `;
+    }
+    
+    html += `
+      <div class="border-top pt-3">
+        <small class="text-muted">Estimated Total</small>
+        <div class="h3 text-primary mb-0">${formatPrice(total)}</div>
+      </div>
+    `;
+    
+    summaryContent.innerHTML = html;
+  }
+}
+
+function formatPrice(amount) {
+  return 'TSh ' + parseFloat(amount).toLocaleString('en-US', {minimumFractionDigits: 0, maximumFractionDigits: 0});
+}
+
+// Form submit handler for debugging
+window.addEventListener('DOMContentLoaded', function() {
+  const form = document.getElementById('booking-form');
+  if (form) {
+    form.addEventListener('submit', function(e) {
+      console.log('=== Form Submit ===');
+      console.log('Room ID:', selectedRoomIdInput ? selectedRoomIdInput.value : 'NOT SET');
+      console.log('Category:', categorySelect ? categorySelect.value : 'NOT SET');
+      console.log('Check-in:', checkInInput ? checkInInput.value : 'NOT SET');
+      console.log('Check-out:', checkOutInput ? checkOutInput.value : 'NOT SET');
+      console.log('Submit button disabled:', submitBtn ? submitBtn.disabled : 'NOT FOUND');
+      
+      if (selectedRoomIdInput && !selectedRoomIdInput.value) {
+        e.preventDefault();
+        alert('Please select a room first');
+        return false;
+      }
+    });
+  }
+});
+</script>
+{% endblock %}

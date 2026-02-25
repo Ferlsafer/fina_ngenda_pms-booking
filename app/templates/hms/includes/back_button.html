@@ -1,0 +1,36 @@
+<!-- Back button with JavaScript history -->
+<button type="button" class="btn btn-outline-secondary" onclick="goBack()" id="back-button">
+  <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+    <line x1="5" y1="12" x2="19" y2="12" />
+    <line x1="5" y1="12" x2="11" y2="18" />
+    <line x1="5" y1="12" x2="11" y2="6" />
+  </svg>
+  Back
+</button>
+
+<script>
+function goBack() {
+  if (document.referrer && document.referrer.includes(window.location.hostname)) {
+    // If previous page is from same site, use history
+    window.history.back();
+  } else {
+    // Otherwise, go to a default page (e.g., dashboard)
+    window.location.href = '/dashboard';
+  }
+}
+
+// Alternative: Show back button only if there's history
+document.addEventListener('DOMContentLoaded', function() {
+  const backButton = document.getElementById('back-button');
+  if (backButton) {
+    // Check if there's a previous page in history
+    if (history.length <= 1) {
+      // No previous page, change button behavior
+      backButton.onclick = function() {
+        window.location.href = '/dashboard';
+      };
+    }
+  }
+});
+</script>

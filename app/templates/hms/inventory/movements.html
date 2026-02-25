@@ -1,0 +1,128 @@
+{% extends "hms/layout/base.html" %}
+{% block title %}Stock Movements{% endblock %}
+
+{% block content %}
+<div class="container-xl">
+  <!-- Page header -->
+  <div class="page-header d-print-none">
+    <div class="row align-items-center">
+      <div class="col">
+        <h2 class="page-title">Stock Movements</h2>
+        <div class="text-muted mt-1">Track all inventory movements and adjustments</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Filters -->
+  <div class="card mb-3">
+    <div class="card-body">
+      <form method="GET" class="row g-3">
+        <div class="col-md-3">
+          <label class="form-label">Item</label>
+          <select name="item_id" class="form-select">
+            <option value="">All Items</option>
+            {% for item in items %}
+            <option value="{{ item.id }}" {% if filters.item_id == item.id %}selected{% endif %}>
+              {{ item.name }} ({{ item.sku }})
+            </option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-md-3">
+          <label class="form-label">Type</label>
+          <select name="type" class="form-select">
+            <option value="">All Types</option>
+            <option value="purchase" {% if filters.type == 'purchase' %}selected{% endif %}>Purchase</option>
+            <option value="consumption" {% if filters.type == 'consumption' %}selected{% endif %}>Consumption</option>
+            <option value="adjustment" {% if filters.type == 'adjustment' %}selected{% endif %}>Adjustment</option>
+            <option value="waste" {% if filters.type == 'waste' %}selected{% endif %}>Waste</option>
+            <option value="return" {% if filters.type == 'return' %}selected{% endif %}>Return</option>
+          </select>
+        </div>
+        <div class="col-md-3">
+          <label class="form-label">From Date</label>
+          <input type="date" name="date_from" class="form-control" value="{{ filters.date_from }}">
+        </div>
+        <div class="col-md-3">
+          <label class="form-label">To Date</label>
+          <input type="date" name="date_to" class="form-control" value="{{ filters.date_to }}">
+        </div>
+        <div class="col-12">
+          <button type="submit" class="btn btn-primary">Filter</button>
+          <a href="{{ url_for('hms.inventory') }}" class="btn btn-outline-secondary">Reset</a>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Movements Table -->
+  <div class="card">
+    <div class="card-header">
+      <h3 class="card-title">Recent Movements</h3>
+    </div>
+    <div class="table-responsive">
+      <table class="table table-vcenter card-table">
+        <thead>
+          <tr>
+            <th>Item</th>
+            <th>Type</th>
+            <th>Quantity</th>
+            <th>Previous Stock</th>
+            <th>New Stock</th>
+            <th>Date</th>
+            <th>Notes</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for movement in movements %}
+          <tr>
+            <td>
+              <div class="d-flex py-1 align-items-center">
+                <span class="flex-fill">{{ movement.item.name }}</span>
+                <small class="text-muted ms-2">{{ movement.item.sku }}</small>
+              </div>
+            </td>
+            <td>
+              {% if movement.movement_type == 'purchase' %}
+              <span class="badge bg-success">Purchase</span>
+              {% elif movement.movement_type == 'consumption' %}
+              <span class="badge bg-danger">Consumption</span>
+              {% elif movement.movement_type == 'adjustment' %}
+              <span class="badge bg-warning">Adjustment</span>
+              {% elif movement.movement_type == 'waste' %}
+              <span class="badge bg-dark">Waste</span>
+              {% elif movement.movement_type == 'return' %}
+              <span class="badge bg-info">Return</span>
+              {% else %}
+              <span class="badge bg-secondary">{{ movement.movement_type|title }}</span>
+              {% endif %}
+            </td>
+            <td>
+              {% if movement.quantity > 0 %}
+              <span class="text-success">+{{ "%.2f"|format(movement.quantity) }} {{ movement.item.unit }}</span>
+              {% else %}
+              <span class="text-danger">{{ "%.2f"|format(movement.quantity) }} {{ movement.item.unit }}</span>
+              {% endif %}
+            </td>
+            <td>{{ "%.2f"|format(movement.previous_stock) }} {{ movement.item.unit }}</td>
+            <td>{{ "%.2f"|format(movement.new_stock) }} {{ movement.item.unit }}</td>
+            <td>{{ movement.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
+            <td>
+              {% if movement.notes %}
+              <small class="text-muted">{{ movement.notes }}</small>
+              {% else %}
+              <small class="text-muted">-</small>
+              {% endif %}
+            </td>
+          </tr>
+          {% else %}
+          <tr>
+            <td colspan="7" class="text-center text-muted">No movements found</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}

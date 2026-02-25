@@ -1,0 +1,828 @@
+{% extends "booking/base.html" %}
+
+{% block title %}Gallery | Ngenda Hotel - Luxury in Mbeya{% endblock %}
+
+{% block content %}
+<!-- INNER PAGE BANNER -->
+<div class="wt-bnr-inr overlay-wraper bg-parallax bg-top-center" style="background-image:url({{ url_for('static', filename='booking/images/banner/banner2.png') }});">
+    <div class="overlay-main bg-black opacity-07"></div>
+    <div class="container">
+        <div class="wt-bnr-inr-entry">
+            <div class="banner-title-outer">
+                <div class="banner-title-name">
+                    <h2 class="text-white font-80 font-weight-900">Gallery</h2>
+                </div>
+            </div>
+            <div>
+                <ul class="wt-breadcrumb breadcrumb-style-2">
+                    <li><a href="{{ url_for('booking.index') }}">Home</a></li>
+                    <li>Gallery</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+<!-- INNER PAGE BANNER END -->
+
+<!-- ENHANCED GALLERY SECTION -->
+<div class="section-full p-t90 p-b60 bg-gray">
+    <div class="container">
+        <!-- FILTER TABS -->
+        <div class="filter-wrap p-b50">
+            <ul class="masonry-filter link-style text-uppercase">
+                <li class="active"><a data-filter="*" href="#">All</a></li>
+                <li><a data-filter="rooms" href="#">Rooms</a></li>
+                <li><a data-filter="facilities" href="#">Facilities</a></li>
+                <li><a data-filter="dining" href="#">Dining</a></li>
+                <li><a data-filter="events" href="#">Events</a></li>
+            </ul>
+        </div>
+
+        <!-- GALLERY GRID -->
+        <div class="enhanced-gallery-grid">
+
+            {% if not use_static and (large_images or medium_images or small_images) %}
+            <!-- DYNAMIC IMAGES FROM DATABASE -->
+            
+            <!-- LARGE FEATURED IMAGES GROUP -->
+            {% if large_images %}
+            <div class="gallery-row featured-row">
+                {% for image in large_images %}
+                <div class="gallery-item large {{ image.category }}" data-category="{{ image.category }}">
+                    <div class="gallery-card">
+                        <div class="gallery-image-container">
+                            <img src="{{ image.url }}" alt="{{ image.title }}">
+                            <div class="gallery-overlay">
+                                <div class="gallery-content">
+                                    <h4>{{ image.title }}</h4>
+                                    <p>{{ image.description or 'Beautiful view of our ' + image.category }}</p>
+                                    <div class="gallery-actions">
+                                        <a href="{{ image.url }}" class="mfp-link">
+                                            <i class="fa fa-search-plus"></i>
+                                        </a>
+                                        {% if image.category == 'rooms' %}
+                                        <a href="{{ url_for('booking.rooms') }}" class="view-details">
+                                            <i class="fa fa-info-circle"></i>
+                                        </a>
+                                        {% else %}
+                                        <a href="{{ url_for('booking.services') }}" class="view-details">
+                                            <i class="fa fa-info-circle"></i>
+                                        </a>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="gallery-info">
+                            <h5>{{ image.title }}</h5>
+                            <span class="gallery-category">{{ image.category_display }}</span>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% endif %}
+
+            <!-- MEDIUM IMAGES ROW -->
+            {% if medium_images %}
+            <div class="gallery-row medium-row">
+                {% for image in medium_images %}
+                <div class="gallery-item medium {{ image.category }}" data-category="{{ image.category }}">
+                    <div class="gallery-card">
+                        <div class="gallery-image-container">
+                            <img src="{{ image.url }}" alt="{{ image.title }}">
+                            <div class="gallery-overlay">
+                                <div class="gallery-content">
+                                    <h4>{{ image.title }}</h4>
+                                    <p>{{ image.description or 'Beautiful view of our ' + image.category }}</p>
+                                    <div class="gallery-actions">
+                                        <a href="{{ image.url }}" class="mfp-link">
+                                            <i class="fa fa-search-plus"></i>
+                                        </a>
+                                        {% if image.category == 'rooms' %}
+                                        <a href="{{ url_for('booking.rooms') }}" class="view-details">
+                                            <i class="fa fa-info-circle"></i>
+                                        </a>
+                                        {% else %}
+                                        <a href="{{ url_for('booking.services') }}" class="view-details">
+                                            <i class="fa fa-info-circle"></i>
+                                        </a>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="gallery-info">
+                            <h5>{{ image.title }}</h5>
+                            <span class="gallery-category">{{ image.category_display }}</span>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% endif %}
+
+            <!-- SMALL IMAGES GRID -->
+            {% if small_images %}
+            <div class="gallery-row small-grid">
+                {% for image in small_images %}
+                <div class="gallery-item small {{ image.category }}" data-category="{{ image.category }}">
+                    <div class="gallery-card">
+                        <div class="gallery-image-container">
+                            <img src="{{ image.url }}" alt="{{ image.title }}">
+                            <div class="gallery-overlay">
+                                <div class="gallery-content">
+                                    <h4>{{ image.title }}</h4>
+                                    <p>{{ image.description or 'Beautiful view of our ' + image.category }}</p>
+                                    <div class="gallery-actions">
+                                        <a href="{{ image.url }}" class="mfp-link">
+                                            <i class="fa fa-search-plus"></i>
+                                        </a>
+                                        {% if image.category == 'rooms' %}
+                                        <a href="{{ url_for('booking.rooms') }}" class="view-details">
+                                            <i class="fa fa-info-circle"></i>
+                                        </a>
+                                        {% else %}
+                                        <a href="{{ url_for('booking.services') }}" class="view-details">
+                                            <i class="fa fa-info-circle"></i>
+                                        </a>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="gallery-info">
+                            <h5>{{ image.title }}</h5>
+                            <span class="gallery-category">{{ image.category_display }}</span>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% endif %}
+
+            {% else %}
+            <!-- STATIC IMAGES (FALLBACK) -->
+                <!-- Large Room Image -->
+                <div class="gallery-item large rooms" data-category="rooms">
+                    <div class="gallery-card">
+                        <div class="gallery-image-container">
+                            <img src="{{ url_for('static', filename='booking/images/gallery/sitting.jpg') }}" alt="Luxury Room Interior">
+                            <div class="gallery-overlay">
+                                <div class="gallery-content">
+                                    <h4>Executive Suite</h4>
+                                    <p>Spacious luxury accommodation with premium amenities</p>
+                                    <div class="gallery-actions">
+                                        <a href="{{ url_for('static', filename='booking/images/gallery/sitting.jpg') }}" class="mfp-link">
+                                            <i class="fa fa-search-plus"></i>
+                                        </a>
+                                        <a href="{{ url_for('booking.room_detail', room_id=1) }}" class="view-details">
+                                            <i class="fa fa-info-circle"></i>
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="gallery-info">
+                            <h5>Executive Suite</h5>
+                            <span class="gallery-category">Rooms</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Large Bathroom Image -->
+                <div class="gallery-item large facilities" data-category="facilities">
+                    <div class="gallery-card">
+                        <div class="gallery-image-container">
+                            <img src="{{ url_for('static', filename='booking/images/gallery/toilet.jpg') }}" alt="Modern Bathroom">
+                            <div class="gallery-overlay">
+                                <div class="gallery-content">
+                                    <h4>Modern Bathroom</h4>
+                                    <p>Luxurious bathroom facilities with modern amenities</p>
+                                    <div class="gallery-actions">
+                                        <a href="{{ url_for('static', filename='booking/images/gallery/toilet.jpg') }}" class="mfp-link">
+                                            <i class="fa fa-search-plus"></i>
+                                        </a>
+                                        <a href="{{ url_for('booking.services') }}" class="view-details">
+                                            <i class="fa fa-info-circle"></i>
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="gallery-info">
+                            <h5>Modern Bathroom</h5>
+                            <span class="gallery-category">Facilities</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- MEDIUM IMAGES ROW -->
+            <div class="gallery-row medium-row">
+                <!-- Medium Room 1 -->
+                <div class="gallery-item medium facilities" data-category="facilities">
+                    <div class="gallery-card">
+                        <div class="gallery-image-container">
+                            <img src="{{ url_for('static', filename='booking/images/gallery/gar1.jpg') }}" alt="Deluxe Room">
+                            <div class="gallery-overlay">
+                                <div class="gallery-content">
+                                    <h4>Deluxe Room</h4>
+                                    <p>Comfortable accommodation with modern amenities</p>
+                                    <div class="gallery-actions">
+                                        <a href="{{ url_for('static', filename='booking/images/gallery/gar1.jpg') }}" class="mfp-link">
+                                            <i class="fa fa-search-plus"></i>
+                                        </a>
+                                        <a href="{{ url_for('booking.room_detail', room_id=2) }}" class="view-details">
+                                            <i class="fa fa-info-circle"></i>
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="gallery-info">
+                            <h5>Hotel View</h5>
+                            <span class="gallery-category">Facilities</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Medium Dining -->
+                <div class="gallery-item medium facilities" data-category="facilities">
+                    <div class="gallery-card">
+                        <div class="gallery-image-container">
+                            <img src="{{ url_for('static', filename='booking/images/gallery/gar2.jpg') }}" alt="Restaurant">
+                            <div class="gallery-overlay">
+                                <div class="gallery-content">
+                                    <h4>Restaurant</h4>
+                                    <p>Fine dining experience with local cuisine</p>
+                                    <div class="gallery-actions">
+                                        <a href="{{ url_for('static', filename='booking/images/gallery/gar2.jpg') }}" class="mfp-link">
+                                            <i class="fa fa-search-plus"></i>
+                                        </a>
+                                        <a href="{{ url_for('booking.services') }}" class="view-details">
+                                            <i class="fa fa-info-circle"></i>
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="gallery-info">
+                            <h5>Stairs</h5>
+                            <span class="gallery-category">facilities</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Medium Conference -->
+                <div class="gallery-item medium facilities" data-category="facilities">
+                    <div class="gallery-card">
+                        <div class="gallery-image-container">
+                            <img src="{{ url_for('static', filename='booking/images/gallery/gar3.jpg') }}" alt="Conference Hall">
+                            <div class="gallery-overlay">
+                                <div class="gallery-content">
+                                    <h4>Conference Hall</h4>
+                                    <p>Modern facilities for business events</p>
+                                    <div class="gallery-actions">
+                                        <a href="{{ url_for('static', filename='booking/images/gallery/gar3.jpg') }}" class="mfp-link">
+                                            <i class="fa fa-search-plus"></i>
+                                        </a>
+                                        <a href="{{ url_for('booking.contact') }}" class="view-details">
+                                            <i class="fa fa-info-circle"></i>
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="gallery-info">
+                            <h5>Resting View</h5>
+                            <span class="gallery-category">Facilities</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- SMALL IMAGES GRID -->
+            <div class="gallery-row small-grid">
+                <!-- Small Images Row 1 -->
+                <div class="gallery-item small facilities" data-category="facilities">
+                    <div class="gallery-card">
+                        <div class="gallery-image-container">
+                            <img src="{{ url_for('static', filename='booking/images/gallery/gar4.jpg') }}" alt="Standard Room">
+                            <div class="gallery-overlay">
+                                <div class="gallery-content">
+                                    <h4>Standard Room</h4>
+                                    <p>Comfortable and affordable accommodation</p>
+                                    <div class="gallery-actions">
+                                        <a href="{{ url_for('static', filename='booking/images/gallery/gar4.jpg') }}" class="mfp-link">
+                                            <i class="fa fa-search-plus"></i>
+                                        </a>
+                                        <a href="{{ url_for('booking.room_detail', room_id=3) }}" class="view-details">
+                                            <i class="fa fa-info-circle"></i>
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="gallery-info">
+                            <h5>Parking View</h5>
+                            <span class="gallery-category">Facilities</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="gallery-item small rooms" data-category="rooms">
+                    <div class="gallery-card">
+                        <div class="gallery-image-container">
+                            <img src="{{ url_for('static', filename='booking/images/gallery/gar5.jpg') }}" alt="Superior Room">
+                            <div class="gallery-overlay">
+                                <div class="gallery-content">
+                                    <h4>Superior Room</h4>
+                                    <p>Enhanced comfort and amenities</p>
+                                    <div class="gallery-actions">
+                                        <a href="{{ url_for('static', filename='booking/images/gallery/gar5.jpg') }}" class="mfp-link">
+                                            <i class="fa fa-search-plus"></i>
+                                        </a>
+                                        <a href="{{ url_for('booking.room_detail', room_id=4) }}" class="view-details">
+                                            <i class="fa fa-info-circle"></i>
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="gallery-info">
+                            <h5>Superior Room</h5>
+                            <span class="gallery-category">Rooms</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="gallery-item small rooms" data-category="rooms">
+                    <div class="gallery-card">
+                        <div class="gallery-image-container">
+                            <img src="{{ url_for('static', filename='booking/images/gallery/gar6.jpg') }}" alt="Swimming Pool">
+                            <div class="gallery-overlay">
+                                <div class="gallery-content">
+                                    <h4>Swimming Pool</h4>
+                                    <p>Relaxation and recreation facilities</p>
+                                    <div class="gallery-actions">
+                                        <a href="{{ url_for('static', filename='booking/images/gallery/gar6.jpg') }}" class="mfp-link">
+                                            <i class="fa fa-search-plus"></i>
+                                        </a>
+                                        <a href="{{ url_for('booking.services') }}" class="view-details">
+                                            <i class="fa fa-info-circle"></i>
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="gallery-info">
+                            <h5>Standard Room</h5>
+                            <span class="gallery-category">Rooms</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="gallery-item small dining" data-category="dining">
+                    <div class="gallery-card">
+                        <div class="gallery-image-container">
+                            <img src="{{ url_for('static', filename='booking/images/gallery/gar7.jpg') }}" alt="Bar & Lounge">
+                            <div class="gallery-overlay">
+                                <div class="gallery-content">
+                                    <h4>Bar & Lounge</h4>
+                                    <p>Entertainment and social space</p>
+                                    <div class="gallery-actions">
+                                        <a href="{{ url_for('static', filename='booking/images/gallery/gar7.jpg') }}" class="mfp-link">
+                                            <i class="fa fa-search-plus"></i>
+                                        </a>
+                                        <a href="{{ url_for('booking.services') }}" class="view-details">
+                                            <i class="fa fa-info-circle"></i>
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="gallery-info">
+                            <h5>Bar & Lounge</h5>
+                            <span class="gallery-category">Dining</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ADDITIONAL SMALL IMAGES -->
+            <div class="gallery-row small-grid">
+                <div class="gallery-item small rooms" data-category="rooms">
+                    <div class="gallery-card">
+                        <div class="gallery-image-container">
+                            <img src="{{ url_for('static', filename='booking/images/gallery/gar8.jpg') }}" alt="Meeting Room">
+                            <div class="gallery-overlay">
+                                <div class="gallery-content">
+                                    <h4>Meeting Room</h4>
+                                    <p>Professional business facilities</p>
+                                    <div class="gallery-actions">
+                                        <a href="{{ url_for('static', filename='booking/images/gallery/gar8.jpg') }}" class="mfp-link">
+                                            <i class="fa fa-search-plus"></i>
+                                        </a>
+                                        <a href="{{ url_for('booking.contact') }}" class="view-details">
+                                            <i class="fa fa-info-circle"></i>
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="gallery-info">
+                            <h5>Meeting Room</h5>
+                            <span class="gallery-category">Rooms</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="gallery-item small facilities" data-category="facilities">
+                    <div class="gallery-card">
+                        <div class="gallery-image-container">
+                            <img src="{{ url_for('static', filename='booking/images/gallery/gar9.jpg') }}" alt="Classic Room">
+                            <div class="gallery-overlay">
+                                <div class="gallery-content">
+                                    <h4>Classic Room</h4>
+                                    <p>Traditional comfort with modern amenities</p>
+                                    <div class="gallery-actions">
+                                        <a href="{{ url_for('static', filename='booking/images/gallery/gar9.jpg') }}" class="mfp-link">
+                                            <i class="fa fa-search-plus"></i>
+                                        </a>
+                                        <a href="{{ url_for('booking.room_detail', room_id=5) }}" class="view-details">
+                                            <i class="fa fa-info-circle"></i>
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="gallery-info">
+                            <h5>Hotel facilities</h5>
+                            <span class="gallery-category">Facilities</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="gallery-item small facilities" data-category="facilities">
+                    <div class="gallery-card">
+                        <div class="gallery-image-container">
+                            <img src="{{ url_for('static', filename='booking/images/gallery/gar10.jpg') }}" alt="Hotel Facilities">
+                            <div class="gallery-overlay">
+                                <div class="gallery-content">
+                                    <h4>Hotel Facilities</h4>
+                                    <p>Modern amenities and services</p>
+                                    <div class="gallery-actions">
+                                        <a href="{{ url_for('static', filename='booking/images/gallery/gar10.jpg') }}" class="mfp-link">
+                                            <i class="fa fa-search-plus"></i>
+                                        </a>
+                                        <a href="{{ url_for('booking.services') }}" class="view-details">
+                                            <i class="fa fa-info-circle"></i>
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="gallery-info">
+                            <h5>Sitting Room</h5>
+                            <span class="gallery-category">Facilities</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- ENHANCED GALLERY STYLES -->
+<style>
+.enhanced-gallery-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 30px;
+}
+
+.gallery-row {
+    display: flex;
+    gap: 25px;
+    margin-bottom: 30px;
+}
+
+/* Featured Large Images Row */
+.featured-row {
+    justify-content: center;
+}
+
+.gallery-item.large {
+    flex: 1;
+    max-width: 45%;
+}
+
+.gallery-item.large .gallery-image-container {
+    height: 350px;
+}
+
+/* Medium Images Row */
+.medium-row {
+    justify-content: space-between;
+}
+
+.gallery-item.medium {
+    flex: 1;
+    max-width: 32%;
+}
+
+.gallery-item.medium .gallery-image-container {
+    height: 280px;
+}
+
+/* Small Images Grid */
+.small-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 20px;
+}
+
+.gallery-item.small {
+    width: 100%;
+}
+
+.gallery-item.small .gallery-image-container {
+    height: 220px;
+}
+
+/* Gallery Card Styles */
+.gallery-card {
+    background: white;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+    transition: all 0.3s ease;
+    display: flex;
+    flex-direction: column;
+}
+
+.gallery-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 15px 35px rgba(0, 0, 0, 0.15);
+}
+
+.gallery-image-container {
+    position: relative;
+    overflow: hidden;
+    flex: 1;
+}
+
+.gallery-image-container img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 0.5s ease;
+}
+
+.gallery-card:hover .gallery-image-container img {
+    transform: scale(1.1);
+}
+
+.gallery-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(to bottom, rgba(193, 27, 42, 0.8), rgba(193, 27, 42, 0.9));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.gallery-card:hover .gallery-overlay {
+    opacity: 1;
+}
+
+.gallery-content {
+    text-align: center;
+    color: white;
+    padding: 20px;
+}
+
+.gallery-content h4 {
+    font-size: 1.3rem;
+    font-weight: 600;
+    margin-bottom: 10px;
+}
+
+.gallery-content p {
+    font-size: 0.9rem;
+    margin-bottom: 20px;
+    opacity: 0.9;
+}
+
+.gallery-actions {
+    display: flex;
+    gap: 15px;
+    justify-content: center;
+}
+
+.gallery-actions a {
+    width: 40px;
+    height: 40px;
+    background: rgba(255, 255, 255, 0.2);
+    border: 2px solid white;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    text-decoration: none;
+    transition: all 0.3s ease;
+}
+
+.gallery-actions a:hover {
+    background: white;
+    color: #c19b76;
+    transform: scale(1.1);
+}
+
+.gallery-info {
+    padding: 20px;
+    background: white;
+    text-align: center;
+}
+
+.gallery-info h5 {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: #2c3e50;
+    margin-bottom: 8px;
+}
+
+.gallery-category {
+    display: inline-block;
+    padding: 4px 12px;
+    background: #c19b76;
+    color: white;
+    font-size: 0.8rem;
+    border-radius: 20px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+/* Filter Styles */
+.masonry-filter {
+    display: flex;
+    justify-content: center;
+    gap: 20px;
+    flex-wrap: wrap;
+}
+
+.masonry-filter li {
+    list-style: none;
+}
+
+.masonry-filter a {
+    display: block;
+    padding: 12px 25px;
+    background: white;
+    color: #2c3e50;
+    text-decoration: none;
+    border-radius: 25px;
+    transition: all 0.3s ease;
+    border: 2px solid #e0e0e0;
+    font-weight: 500;
+}
+
+.masonry-filter a:hover,
+.masonry-filter a.active {
+    background: #c19b76;
+    color: white;
+    border-color: #c19b76;
+}
+
+/* Responsive Design */
+@media (max-width: 1200px) {
+    .gallery-item.large {
+        max-width: 48%;
+    }
+    
+    .gallery-item.medium {
+        max-width: 48%;
+    }
+    
+    .medium-row {
+        flex-wrap: wrap;
+    }
+}
+
+@media (max-width: 768px) {
+    .featured-row {
+        flex-direction: column;
+    }
+    
+    .gallery-item.large {
+        max-width: 100%;
+    }
+    
+    .medium-row {
+        flex-direction: column;
+    }
+    
+    .gallery-item.medium {
+        max-width: 100%;
+    }
+    
+    .small-grid {
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    }
+    
+    .gallery-item.large .gallery-image-container,
+    .gallery-item.medium .gallery-image-container,
+    .gallery-item.small .gallery-image-container {
+        height: 250px;
+    }
+}
+
+@media (max-width: 480px) {
+    .gallery-row {
+        flex-direction: column;
+    }
+    
+    .masonry-filter {
+        gap: 10px;
+    }
+    
+    .masonry-filter a {
+        padding: 10px 20px;
+        font-size: 0.9rem;
+    }
+}
+</style>
+
+<!-- GALLERY FILTER SCRIPT -->
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const filterButtons = document.querySelectorAll('.masonry-filter a');
+    const galleryItems = document.querySelectorAll('.gallery-item');
+    
+    // Show all items initially
+    galleryItems.forEach(item => {
+        item.style.display = 'block';
+        item.style.opacity = '1';
+        item.style.transform = 'translateY(0)';
+    });
+    
+    filterButtons.forEach(button => {
+        button.addEventListener('click', function(e) {
+            e.preventDefault();
+            
+            // Remove active class from all buttons
+            filterButtons.forEach(btn => btn.classList.remove('active'));
+            
+            // Add active class to clicked button
+            this.classList.add('active');
+            
+            const filterValue = this.getAttribute('data-filter');
+            
+            galleryItems.forEach(item => {
+                if (filterValue === '*' || item.classList.contains(filterValue)) {
+                    item.style.display = 'block';
+                    setTimeout(() => {
+                        item.style.opacity = '1';
+                        item.style.transform = 'translateY(0)';
+                    }, 100);
+                } else {
+                    item.style.opacity = '0';
+                    item.style.transform = 'translateY(30px)';
+                    setTimeout(() => {
+                        item.style.display = 'none';
+                    }, 300);
+                }
+            });
+        });
+    });
+});
+</script>
+
+<!-- Magnific Popup for Image Lightbox -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/magnific-popup.js/1.1.0/jquery.magnific-popup.min.js"></script>
+<script>
+$(document).ready(function() {
+    $('.mfp-link').magnificPopup({
+        type: 'image',
+        gallery: {
+            enabled: true,
+            navigateByImgClick: true,
+            preload: [0,1]
+        },
+        image: {
+            titleSrc: function(item) {
+                return item.el.parent().find('h4').text();
+            }
+        }
+    });
+});
+</script>
+{% endblock %}

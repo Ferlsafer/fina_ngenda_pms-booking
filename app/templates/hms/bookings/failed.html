@@ -1,0 +1,125 @@
+{% extends "hms/layout/base.html" %}
+{% block title %}Booking Failed{% endblock %}
+
+{% block content %}
+<div class="container-xl">
+  <div class="page-header d-print-none">
+    <div class="row align-items-center">
+      <div class="col">
+        <h1 class="page-title">Booking Failed</h1>
+        <div class="text-muted mt-1">We encountered an issue with your booking.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="container-xl">
+    <div class="row">
+      <div class="col-md-6">
+        <div class="card">
+          <div class="card-header">
+            <h3 class="card-title">Payment Failed</h3>
+          </div>
+          <div class="card-body">
+            <div class="alert alert-danger mb-4">
+              <div class="d-flex align-items-center">
+                <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                  <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+                  <circle cx="12" cy="12" r="9" />
+                  <path d="M10 10l4 4m0 -4l-4 4" />
+                </svg>
+                <div>
+                  <h4 class="alert-heading">Payment Failed</h4>
+                  <div class="alert-text">We were unable to process your payment. Please try again or contact support.</div>
+                </div>
+              </div>
+            </div>
+            
+            <div class="text-center mb-4">
+              <h5>What happened?</h5>
+              <p class="text-muted">The payment could not be completed due to one of the following reasons:</p>
+              <ul class="list-unstyled">
+                <li>• Insufficient funds</li>
+                <li>• Invalid PIN entered</li>
+                <li>• Network connectivity issues</li>
+                <li>• Transaction timeout</li>
+                <li>• Invalid phone number</li>
+              </ul>
+            </div>
+            
+            <div class="d-grid gap-2">
+              <button class="btn btn-primary" onclick="retryPayment()">
+                <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                  <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+                  <path d="M1 4v6a1 1 0 012h12a1 1 0 01-1V4a1 1 0 00-1-1z"/>
+                  <path d="M10 11l2-2m0 0l-2 2m2-2v2" />
+                </svg>
+                Try Payment Again
+              </button>
+              <a href="/bookings" class="btn btn-outline-secondary">
+                <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                  <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+                  <path d="M3 12l2 2l4 -4" />
+                </svg>
+                Start New Booking
+              </a>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <div class="col-md-6">
+        <div class="card">
+          <div class="card-header">
+            <h5 class="card-title">Need Help?</h5>
+          </div>
+          <div class="card-body">
+            <h6>Contact Support</h6>
+            <p>If you continue to experience issues, please don't hesitate to contact us:</p>
+            
+            <div class="contact-info">
+              <div class="mb-3">
+                <strong>Phone:</strong><br>
+                <a href="tel:+255712345678">+255 712 345 678</a>
+              </div>
+              
+              <div class="mb-3">
+                <strong>Email:</strong><br>
+                <a href="mailto:support@ngendahotel.com">support@ngendahotel.com</a>
+              </div>
+              
+              <div class="mb-3">
+                <strong>WhatsApp:</strong><br>
+                <a href="https://wa.me/255712345678" target="_blank">
+                  <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                    <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+                    <path d="M3 21l1.5-1.5m0 0l-1.5-1.5m1.5 1.5l1.5 1.5m0 0l1.5-1.5m0 0l-1.5-1.5" />
+                    <line x1="8" y1="12" x2="16" y2="12" />
+                  </svg>
+                  +255 712 345 678
+                </a>
+              </div>
+            </div>
+            
+            <div class="alert alert-info mt-3">
+              <h6>Payment Methods Accepted</h6>
+              <p>We accept the following payment methods:</p>
+              <ul class="list-unstyled">
+                <li><strong>Mobile Money:</strong> Tigo Pesa, Airtel Money, Halopesa, Ezy Pesa, M-Pesa</li>
+                <li><strong>Credit/Debit Cards:</strong> Visa, Mastercard</li>
+                <li><strong>Cash:</strong> Pay at hotel</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+function retryPayment() {
+  // Go back to booking modal
+  window.history.back();
+}
+</script>
+{% endblock %}

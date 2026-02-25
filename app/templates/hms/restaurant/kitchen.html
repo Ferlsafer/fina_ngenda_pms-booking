@@ -1,0 +1,300 @@
+{% extends "hms/layout/base.html" %}
+{% block title %}Kitchen Display - Restaurant - Hotel PMS{% endblock %}
+
+{% block head %}
+<style>
+  .kitchen-column { min-height: 70vh; border-radius: 8px; padding: 1rem; }
+  .kitchen-column.pending { background: #fef3c7; }
+  .kitchen-column.preparing { background: #dbeafe; }
+  .kitchen-column.ready { background: #d1fae5; }
+  .order-card { border-radius: 8px; margin-bottom: 1rem; transition: transform 0.2s; }
+  .order-card.priority-high { border-left: 4px solid #dc2626; }
+  .order-card.priority-normal { border-left: 4px solid #2563eb; }
+  .order-card .timer { font-size: 1.25rem; font-weight: 700; }
+  .order-card .timer.overdue { color: #dc2626; }
+  .btn-status { min-height: 48px; font-size: 1rem; touch-action: manipulation; }
+  @media (max-width: 768px) { .kitchen-column { min-height: 50vh; } }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-header d-print-none">
+  <div class="row align-items-center">
+    <div class="col">
+      <h2 class="page-title">Kitchen Display</h2>
+      <div class="text-muted mt-1">Orders auto-refresh every 30 seconds</div>
+    </div>
+    <div class="col-auto">
+      <span class="badge bg-secondary me-2">Last refresh: <span id="last-refresh">—</span></span>
+      <button type="button" class="btn btn-outline-primary" id="btn-refresh-now">Refresh now</button>
+    </div>
+  </div>
+</div>
+
+<div class="row">
+  <div class="col-md-4">
+    <div class="card">
+      <div class="card-header">
+        <h3 class="card-title">Pending <span class="badge bg-warning ms-2" id="count-pending">{{ pending|length }}</span></h3>
+      </div>
+      <div class="card-body p-2">
+        <div class="kitchen-column pending" id="column-pending">
+          {% if pending %}
+            {% for order in pending %}
+            <div class="order-card card priority-{{ 'high' if order.created_at and (now - order.created_at).total_seconds() > 900 else 'normal' }}" data-order-id="{{ order.id }}">
+              <div class="card-body">
+                <div class="d-flex justify-content-between align-items-start mb-2">
+                  <span class="fw-bold">#{{ order.id }} — {% if order.table %}Table {{ order.table.table_number }}{% else %}{{ order.order_type|title }}{% endif %}</span>
+                  <span class="timer" data-ordered-at="{{ order.created_at.isoformat() if order.created_at else now.isoformat() }}">
+                    {% if order.created_at %}{{ ((now - order.created_at).total_seconds() / 60)|int }}m{% endif %}
+                  </span>
+                </div>
+                <ul class="list-unstyled mb-2 small">
+                  {% for item in order.items %}
+                  <li>{{ item.quantity }}× {{ item.menu_item.name }} {% if item.notes %}({{ item.notes }}){% endif %}</li>
+                  {% endfor %}
+                </ul>
+                {% if order.special_instructions %}
+                <p class="text-muted small mb-2">Note: {{ order.special_instructions }}</p>
+                {% endif %}
+                <button type="button" class="btn btn-success w-100 btn-status start-prep-btn" data-order-id="{{ order.id }}" data-new-status="preparing">Start preparing</button>
+              </div>
+            </div>
+            {% endfor %}
+          {% else %}
+            <div class="text-center text-muted py-5">
+              <i class="fa fa-clipboard-check" style="font-size: 3rem;"></i>
+              <p class="mt-3">No pending orders</p>
+            </div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <div class="col-md-4">
+    <div class="card">
+      <div class="card-header">
+        <h3 class="card-title">Preparing <span class="badge bg-info ms-2" id="count-preparing">{{ preparing|length }}</span></h3>
+      </div>
+      <div class="card-body p-2">
+        <div class="kitchen-column preparing" id="column-preparing">
+          {% if preparing %}
+            {% for order in preparing %}
+            <div class="order-card card priority-{{ 'high' if order.created_at and (now - order.created_at).total_seconds() > 900 else 'normal' }}" data-order-id="{{ order.id }}">
+              <div class="card-body">
+                <div class="d-flex justify-content-between align-items-start mb-2">
+                  <span class="fw-bold">#{{ order.id }} — {% if order.table %}Table {{ order.table.table_number }}{% else %}{{ order.order_type|title }}{% endif %}</span>
+                  <span class="timer" data-ordered-at="{{ order.created_at.isoformat() if order.created_at else now.isoformat() }}">
+                    {% if order.created_at %}{{ ((now - order.created_at).total_seconds() / 60)|int }}m{% endif %}
+                  </span>
+                </div>
+                <ul class="list-unstyled mb-2 small">
+                  {% for item in order.items %}
+                  <li>{{ item.quantity }}× {{ item.menu_item.name }} {% if item.notes %}({{ item.notes }}){% endif %}</li>
+                  {% endfor %}
+                </ul>
+                {% if order.special_instructions %}
+                <p class="text-muted small mb-2">Note: {{ order.special_instructions }}</p>
+                {% endif %}
+                <button type="button" class="btn btn-primary w-100 btn-status mark-ready-btn" data-order-id="{{ order.id }}" data-new-status="ready">Mark ready</button>
+              </div>
+            </div>
+            {% endfor %}
+          {% else %}
+            <div class="text-center text-muted py-5">
+              <i class="fa fa-clock" style="font-size: 3rem;"></i>
+              <p class="mt-3">No orders being prepared</p>
+            </div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <div class="col-md-4">
+    <div class="card">
+      <div class="card-header">
+        <h3 class="card-title">Ready <span class="badge bg-success ms-2" id="count-ready">{{ ready|length }}</span></h3>
+      </div>
+      <div class="card-body p-2">
+        <div class="kitchen-column ready" id="column-ready">
+          {% if ready %}
+            {% for order in ready %}
+            <div class="order-card card priority-{{ 'high' if order.created_at and (now - order.created_at).total_seconds() > 900 else 'normal' }}" data-order-id="{{ order.id }}">
+              <div class="card-body">
+                <div class="d-flex justify-content-between align-items-start mb-2">
+                  <span class="fw-bold">#{{ order.id }} — {% if order.table %}Table {{ order.table.table_number }}{% else %}{{ order.order_type|title }}{% endif %}</span>
+                  <span class="text-muted small">
+                    {% if order.completed_at %}Ready {{ ((now - order.completed_at).total_seconds() / 60)|int }}m ago{% endif %}
+                  </span>
+                </div>
+                <ul class="list-unstyled mb-2 small">
+                  {% for item in order.items %}
+                  <li>{{ item.quantity }}× {{ item.menu_item.name }} {% if item.notes %}({{ item.notes }}){% endif %}</li>
+                  {% endfor %}
+                </ul>
+                {% if order.special_instructions %}
+                <p class="text-muted small mb-2">Note: {{ order.special_instructions }}</p>
+                {% endif %}
+                <button type="button" class="btn btn-outline-secondary w-100 btn-status served-btn" data-order-id="{{ order.id }}" data-new-status="completed">Mark served</button>
+              </div>
+            </div>
+            {% endfor %}
+          {% else %}
+            <div class="text-center text-muted py-5">
+              <i class="fa fa-check-circle" style="font-size: 3rem;"></i>
+              <p class="mt-3">No ready orders</p>
+            </div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function() {
+  const REFRESH_INTERVAL_MS = 30000;
+
+  function updateTimers() {
+    document.querySelectorAll('.timer[data-ordered-at]').forEach(el => {
+      const at = new Date(el.dataset.orderedAt);
+      const mins = Math.floor((Date.now() - at) / 60000);
+      el.textContent = mins + 'm';
+      el.classList.toggle('overdue', mins >= 20);
+    });
+  }
+
+  function updateCounts() {
+    document.getElementById('count-pending').textContent = document.querySelectorAll('#column-pending .order-card').length;
+    document.getElementById('count-preparing').textContent = document.querySelectorAll('#column-preparing .order-card').length;
+    document.getElementById('count-ready').textContent = document.querySelectorAll('#column-ready .order-card').length;
+  }
+
+  function setLastRefresh() {
+    document.getElementById('last-refresh').textContent = new Date().toLocaleTimeString();
+  }
+
+  function refreshOrders() {
+    // Fetch updated orders from backend
+    fetch('/hms/restaurant/kitchen/orders')
+      .then(response => response.json())
+      .then(data => {
+        if (data.success) {
+          renderOrders(data.orders);
+          setLastRefresh();
+          updateTimers();
+          updateCounts();
+        }
+      })
+      .catch(error => {
+        console.error('Error refreshing orders:', error);
+      });
+  }
+
+  function renderOrders(orders) {
+    // Clear columns
+    document.getElementById('column-pending').innerHTML = '';
+    document.getElementById('column-preparing').innerHTML = '';
+    document.getElementById('column-ready').innerHTML = '';
+    
+    // Render orders into appropriate columns
+    orders.forEach(order => {
+      const card = createOrderCard(order);
+      if (order.status === 'pending') {
+        document.getElementById('column-pending').appendChild(card);
+      } else if (order.status === 'preparing') {
+        document.getElementById('column-preparing').appendChild(card);
+      } else if (order.status === 'ready') {
+        document.getElementById('column-ready').appendChild(card);
+      }
+    });
+  }
+
+  function createOrderCard(order) {
+    const div = document.createElement('div');
+    div.className = 'order-card card priority-' + (order.minutes_since_order > 15 ? 'high' : 'normal');
+    div.dataset.orderId = order.id;
+    
+    const tableOrType = order.table ? 'Table ' + order.table_number : order.order_type;
+    const timeAgo = order.minutes_since_order + 'm';
+    
+    let itemsHtml = '';
+    order.items.forEach(item => {
+      itemsHtml += '<li>' + item.quantity + '× ' + item.name + (item.notes ? ' (' + item.notes + ')' : '') + '</li>';
+    });
+    
+    let buttonHtml = '';
+    if (order.status === 'pending') {
+      buttonHtml = '<button type="button" class="btn btn-success w-100 btn-status" data-order-id="' + order.id + '" data-new-status="preparing">Start preparing</button>';
+    } else if (order.status === 'preparing') {
+      buttonHtml = '<button type="button" class="btn btn-primary w-100 btn-status" data-order-id="' + order.id + '" data-new-status="ready">Mark ready</button>';
+    } else if (order.status === 'ready') {
+      buttonHtml = '<button type="button" class="btn btn-outline-secondary w-100 btn-status" data-order-id="' + order.id + '" data-new-status="completed">Mark served</button>';
+    }
+    
+    div.innerHTML = 
+      '<div class="card-body">' +
+        '<div class="d-flex justify-content-between align-items-start mb-2">' +
+          '<span class="fw-bold">#' + order.id + ' — ' + tableOrType + '</span>' +
+          '<span class="timer">' + timeAgo + '</span>' +
+        '</div>' +
+        '<ul class="list-unstyled mb-2 small">' + itemsHtml + '</ul>' +
+        (order.special_instructions ? '<p class="text-muted small mb-2">Note: ' + order.special_instructions + '</p>' : '') +
+        buttonHtml +
+      '</div>';
+    
+    return div;
+  }
+
+  function updateOrderStatus(orderId, newStatus) {
+    fetch('/hms/restaurant/pos/order/' + orderId + '/status', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ status: newStatus })
+    })
+    .then(response => response.json())
+    .then(data => {
+      if (data.success) {
+        // Refresh orders to show updated state
+        refreshOrders();
+      } else {
+        alert('Error updating status: ' + data.error);
+      }
+    })
+    .catch(error => {
+      console.error('Error:', error);
+      alert('Failed to update order status');
+    });
+  }
+
+  // Event delegation for status buttons
+  document.addEventListener('click', function(e) {
+    if (e.target.classList.contains('btn-status')) {
+      const orderId = e.target.dataset.orderId;
+      const newStatus = e.target.dataset.newStatus;
+      if (orderId && newStatus) {
+        updateOrderStatus(orderId, newStatus);
+      }
+    }
+  });
+
+  document.getElementById('btn-refresh-now').addEventListener('click', function() {
+    this.disabled = true;
+    refreshOrders();
+    setTimeout(function() { document.getElementById('btn-refresh-now').disabled = false; }, 500);
+  });
+
+  setInterval(updateTimers, 60000);
+  setInterval(refreshOrders, REFRESH_INTERVAL_MS);
+  updateTimers();
+  updateCounts();
+  setLastRefresh();
+})();
+</script>
+{% endblock %}

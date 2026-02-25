@@ -1,0 +1,189 @@
+{% extends "hms/layout/base.html" %}
+{% block title %}Inventory Report - Hotel PMS{% endblock %}
+
+{% block head %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+{% endblock %}
+
+{% block content %}
+<div class="page-header d-print-none">
+  <div class="row align-items-center">
+    <div class="col">
+      <h2 class="page-title">Inventory report</h2>
+      <div class="text-muted mt-1">Stock usage, COGS, valuation, low stock forecast</div>
+    </div>
+    <div class="col-auto">
+      <div class="btn-list">
+        <button type="button" class="btn btn-outline-danger" id="btn-export-pdf">Export PDF</button>
+        <button type="button" class="btn btn-outline-success" id="btn-export-excel">Export Excel</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="card mb-3">
+  <div class="card-body">
+    <form method="get" action="#" class="row g-2 align-items-end">
+      <div class="col-md-3">
+        <label class="form-label">From</label>
+        <input type="date" name="from" class="form-control" value="2025-02-01">
+      </div>
+      <div class="col-md-3">
+        <label class="form-label">To</label>
+        <input type="date" name="to" class="form-control" value="2025-02-14">
+      </div>
+      <div class="col-md-2">
+        <label class="form-label">Department</label>
+        <select name="department" class="form-select">
+          <option value="">All</option>
+          <option value="restaurant">Restaurant</option>
+          <option value="housekeeping">Housekeeping</option>
+          <option value="bar">Bar</option>
+        </select>
+      </div>
+      <div class="col-md-2">
+        <button type="submit" class="btn btn-primary">Apply</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div class="row row-deck row-cards mb-3">
+  <div class="col-sm-6 col-lg-3">
+    <div class="card">
+      <div class="card-body">
+        <div class="subheader">Cost of goods sold</div>
+        <div class="h1 mb-0">${{ cogs|default('18,240') }}</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-sm-6 col-lg-3">
+    <div class="card">
+      <div class="card-body">
+        <div class="subheader">Inventory valuation</div>
+        <div class="h1 mb-0">${{ valuation|default('42,500') }}</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-sm-6 col-lg-3">
+    <div class="card">
+      <div class="card-body">
+        <div class="subheader">Low stock items</div>
+        <div class="h1 mb-0 text-warning">{{ low_stock_count|default(12) }}</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-sm-6 col-lg-3">
+    <div class="card">
+      <div class="card-body">
+        <div class="subheader">Reorder alerts</div>
+        <div class="h1 mb-0 text-danger">{{ reorder_count|default(3) }}</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="row">
+  <div class="col-lg-6">
+    <div class="card">
+      <div class="card-header">
+        <h3 class="card-title">Usage by department</h3>
+      </div>
+      <div class="card-body">
+        <canvas id="usageChart" height="180"></canvas>
+      </div>
+    </div>
+  </div>
+  <div class="col-lg-6">
+    <div class="card">
+      <div class="card-header">
+        <h3 class="card-title">Inventory valuation by category</h3>
+      </div>
+      <div class="card-body">
+        <canvas id="valuationChart" height="180"></canvas>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="row mt-3">
+  <div class="col-12">
+    <div class="card">
+      <div class="card-header">
+        <h3 class="card-title">Low stock forecast</h3>
+      </div>
+      <div class="table-responsive">
+        <table class="table table-vcenter card-table">
+          <thead>
+            <tr>
+              <th>Item</th>
+              <th>Department</th>
+              <th>Current stock</th>
+              <th>Reorder at</th>
+              <th>Est. run out (days)</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Olive oil (L)</td>
+              <td>Restaurant</td>
+              <td><span class="badge bg-warning">8</span></td>
+              <td>10</td>
+              <td>4</td>
+              <td><a href="#" class="btn btn-sm btn-outline-primary">Reorder</a></td>
+            </tr>
+            <tr>
+              <td>Towels</td>
+              <td>Housekeeping</td>
+              <td><span class="badge bg-danger">45</span></td>
+              <td>100</td>
+              <td>2</td>
+              <td><a href="#" class="btn btn-sm btn-outline-primary">Reorder</a></td>
+            </tr>
+            <tr>
+              <td>Wine — House Red</td>
+              <td>Bar</td>
+              <td><span class="badge bg-warning">6</span></td>
+              <td>12</td>
+              <td>7</td>
+              <td><a href="#" class="btn btn-sm btn-outline-primary">Reorder</a></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function() {
+  var ctx1 = document.getElementById('usageChart');
+  if (ctx1) {
+    new Chart(ctx1, {
+      type: 'doughnut',
+      data: {
+        labels: ['Restaurant', 'Housekeeping', 'Bar', 'Spa'],
+        datasets: [{ data: [12400, 3200, 1800, 840], backgroundColor: ['#3b82f6', '#22c55e', '#eab308', '#94a3b8'] }]
+      },
+      options: { responsive: true }
+    });
+  }
+  var ctx2 = document.getElementById('valuationChart');
+  if (ctx2) {
+    new Chart(ctx2, {
+      type: 'bar',
+      data: {
+        labels: ['Beverages', 'Dry goods', 'Perishables', 'Cleaning', 'Amenities'],
+        datasets: [{ label: 'Value ($)', data: [12000, 8500, 6500, 3200, 4300], backgroundColor: 'rgba(34, 197, 94, 0.8)' }]
+      },
+      options: { responsive: true, scales: { y: { beginAtZero: true } } }
+    });
+  }
+  document.getElementById('btn-export-pdf')?.addEventListener('click', function() { window.print(); });
+  document.getElementById('btn-export-excel')?.addEventListener('click', function() { alert('Backend: Excel export'); });
+})();
+</script>
+{% endblock %}

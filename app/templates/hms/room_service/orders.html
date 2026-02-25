@@ -1,0 +1,194 @@
+{% extends "hms/layout/base.html" %}
+{% block title %}Room Service Orders - Hotel PMS{% endblock %}
+
+{% block content %}
+<div class="page-header d-print-none">
+  <div class="row align-items-center">
+    <div class="col">
+      <h2 class="page-title">Room Service orders</h2>
+      <div class="text-muted mt-1">View and manage room service orders</div>
+    </div>
+    <div class="col-auto">
+      <a href="{{ url_for('hms.room_service_order_create') }}" class="btn btn-primary">New order</a>
+      <a href="{{ url_for('hms.room_service_kitchen') }}" class="btn btn-outline-secondary">Kitchen view</a>
+      <a href="{{ url_for('hms.room_service_delivery') }}" class="btn btn-outline-secondary">Delivery</a>
+    </div>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-body">
+    <div class="row mb-3">
+      <div class="col-md-4">
+        <select class="form-select" id="filter-status">
+          <option value="">All statuses</option>
+          <option value="pending">Pending</option>
+          <option value="accepted">Accepted</option>
+          <option value="preparing">Preparing</option>
+          <option value="ready">Ready</option>
+          <option value="delivered">Delivered</option>
+          <option value="cancelled">Cancelled</option>
+        </select>
+      </div>
+      <div class="col-md-4">
+        <input type="text" class="form-control" id="filter-room" placeholder="Room number">
+      </div>
+      <div class="col-md-4">
+        <button type="button" class="btn btn-outline-primary" id="btn-apply-filter">Apply</button>
+        <button type="button" class="btn btn-link link-secondary" id="btn-reset-filter">Reset</button>
+      </div>
+    </div>
+  </div>
+  <div class="table-responsive">
+    <table class="table table-vcenter card-table table-striped">
+      <thead>
+        <tr>
+          <th>Order #</th>
+          <th>Room</th>
+          <th>Guest</th>
+          <th>Items summary</th>
+          <th>Total</th>
+          <th>Status</th>
+          <th>Ordered at</th>
+          <th class="w-1">Actions</th>
+        </tr>
+      </thead>
+      <tbody id="orders-tbody">
+        <!-- Backend: pass orders list -->
+        {% for o in (orders if orders is defined else []) %}
+        <tr data-order-id="{{ o.id }}" data-status="{{ o.status }}">
+          <td>#{{ o.id }}</td>
+          <td>{{ o.room_number }}</td>
+          <td>{{ o.guest_name }}</td>
+          <td>{{ o.items_summary|default('—') }}</td>
+          <td>${{ "%.2f"|format(o.total) }}</td>
+          <td><span class="badge bg-{{ 'secondary' if o.status == 'pending' else 'info' if o.status == 'accepted' else 'primary' if o.status == 'preparing' else 'warning' if o.status == 'ready' else 'success' if o.status == 'delivered' else 'danger' }}">{{ o.status|title }}</span></td>
+          <td>{{ o.created_at.strftime('%Y-%m-%d %H:%M') if o.created_at else '—' }}</td>
+          <td>
+            <div class="btn-list">
+              {% if o.status == 'pending' %}
+              <button type="button" class="btn btn-sm btn-success accept-btn" data-order-id="{{ o.id }}">Accept</button>
+              {% endif %}
+              {% if o.status == 'accepted' %}
+              <button type="button" class="btn btn-sm btn-primary prepare-btn" data-order-id="{{ o.id }}">Prepare</button>
+              {% endif %}
+              {% if o.status == 'preparing' %}
+              <button type="button" class="btn btn-sm btn-warning ready-btn" data-order-id="{{ o.id }}">Mark ready</button>
+              {% endif %}
+              {% if o.status == 'ready' %}
+              <button type="button" class="btn btn-sm btn-info deliver-btn" data-order-id="{{ o.id }}">Deliver</button>
+              {% endif %}
+              <a href="{{ url_for('hms.room_service_order_detail', order_id=o.id) }}" class="btn btn-sm btn-outline-secondary">Detail</a>
+            </div>
+          </td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="8" class="text-muted text-center py-4">No orders. Placeholder row — backend: load orders.</td>
+        </tr>
+        <tr data-order-id="101" data-status="pending">
+          <td>#101</td>
+          <td>204</td>
+          <td>John Smith</td>
+          <td>2× Continental Breakfast, 1× Coffee</td>
+          <td>$41.00</td>
+          <td><span class="badge bg-secondary">Pending</span></td>
+          <td>2025-02-15 09:30</td>
+          <td>
+            <button type="button" class="btn btn-sm btn-success accept-btn" data-order-id="101">Accept</button>
+            <a href="#" class="btn btn-sm btn-outline-secondary">Detail</a>
+          </td>
+        </tr>
+        <tr data-order-id="102" data-status="preparing">
+          <td>#102</td>
+          <td>311</td>
+          <td>Jane Doe</td>
+          <td>Club Sandwich, Mineral Water</td>
+          <td>$21.00</td>
+          <td><span class="badge bg-primary">Preparing</span></td>
+          <td>2025-02-15 10:00</td>
+          <td>
+            <button type="button" class="btn btn-sm btn-warning ready-btn" data-order-id="102">Mark ready</button>
+            <a href="#" class="btn btn-sm btn-outline-secondary">Detail</a>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Loading overlay for AJAX -->
+<div class="d-none position-fixed top-0 start-0 w-100 h-100 bg-dark bg-opacity-25 d-flex align-items-center justify-content-center" id="orders-loading">
+  <div class="spinner-border text-light" role="status"><span class="visually-hidden">Loading...</span></div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function() {
+  // Filter buttons
+  document.getElementById('btn-apply-filter')?.addEventListener('click', function() {
+    var status = document.getElementById('filter-status').value;
+    window.location.href = '/hms/room-service/orders' + (status ? '?status=' + status : '');
+  });
+  
+  document.getElementById('btn-reset-filter')?.addEventListener('click', function() {
+    window.location.href = '/hms/room-service/orders';
+  });
+  
+  // Status update functions
+  function updateOrderStatus(orderId, newStatus, btn) {
+    if (!confirm('Update order to ' + newStatus + '?')) return;
+    
+    fetch('/hms/room-service/order/' + orderId + '/status', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({status: newStatus})
+    })
+    .then(r => r.json())
+    .then(result => {
+      if (result.success) {
+        alert(result.message);
+        location.reload();
+      } else {
+        alert('Error: ' + result.error);
+      }
+    })
+    .catch(err => alert('Network error'));
+  }
+  
+  // Accept buttons
+  document.querySelectorAll('.accept-btn').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      var id = this.dataset.orderId;
+      updateOrderStatus(id, 'accepted', this);
+    });
+  });
+  
+  // Prepare buttons
+  document.querySelectorAll('.prepare-btn').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      var id = this.dataset.orderId;
+      updateOrderStatus(id, 'preparing', this);
+    });
+  });
+  
+  // Ready buttons
+  document.querySelectorAll('.ready-btn').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      var id = this.dataset.orderId;
+      updateOrderStatus(id, 'ready', this);
+    });
+  });
+  
+  // Deliver buttons
+  document.querySelectorAll('.deliver-btn').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      var id = this.dataset.orderId;
+      updateOrderStatus(id, 'delivered', this);
+    });
+  });
+})();
+</script>
+{% endblock %}

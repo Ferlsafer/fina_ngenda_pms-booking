@@ -1,0 +1,147 @@
+{% extends "hms/layout/base.html" %}
+{% block title %}Profit & Loss Statement - Accounting{% endblock %}
+
+{% block content %}
+<div class="container-xl">
+  <!-- Page header -->
+  <div class="page-header d-print-none">
+    <div class="row align-items-center">
+      <div class="col">
+        <h2 class="page-title">Profit & Loss Statement</h2>
+        <div class="text-muted mt-1">Income statement for the period</div>
+      </div>
+      <div class="col-auto ms-auto d-print-none">
+        <a href="{{ '#' }}" class="btn btn-secondary">Back to Dashboard</a>
+      </div>
+    </div>
+  </div>
+
+  <!-- Summary Cards -->
+  <div class="row row-deck row-cards mb-3">
+    <div class="col-sm-6 col-lg-3">
+      <div class="card">
+        <div class="card-body">
+          <div class="d-flex align-items-center">
+            <div class="subheader">Total Revenue</div>
+          </div>
+          <div class="h1 mb-3 text-success">${{ "%.2f"|format(total_revenue) }}</div>
+        </div>
+      </div>
+    </div>
+    <div class="col-sm-6 col-lg-3">
+      <div class="card">
+        <div class="card-body">
+          <div class="d-flex align-items-center">
+            <div class="subheader">Total Expenses</div>
+          </div>
+          <div class="h1 mb-3 text-danger">${{ "%.2f"|format(total_expense) }}</div>
+        </div>
+      </div>
+    </div>
+    <div class="col-sm-6 col-lg-3">
+      <div class="card">
+        <div class="card-body">
+          <div class="d-flex align-items-center">
+            <div class="subheader">Net Income</div>
+          </div>
+          <div class="h1 mb-3 {% if net_income >= 0 %}text-success{% else %}text-danger{% endif %}">
+            ${{ "%.2f"|format(net_income) }}
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="col-sm-6 col-lg-3">
+      <div class="card">
+        <div class="card-body">
+          <div class="d-flex align-items-center">
+            <div class="subheader">Profit Margin</div>
+          </div>
+          <div class="h1 mb-3">
+            {% if total_revenue > 0 %}
+              {{ "%.2f"|format((net_income / total_revenue * 100)) }}%
+            {% else %}
+              0.00%
+            {% endif %}
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="row">
+    <!-- Revenues Section -->
+    <div class="col-md-6">
+      <div class="card">
+        <div class="card-header">
+          <h3 class="card-title">Revenues</h3>
+        </div>
+        <div class="table-responsive">
+          <table class="table card-table">
+            <tbody>
+              {% for revenue in revenues %}
+              <tr>
+                <td>{{ revenue.name }}</td>
+                <td class="text-end text-success">${{ "%.2f"|format(revenue.balance) }}</td>
+              </tr>
+              {% endfor %}
+              <tr class="border-top">
+                <td><strong>Total Revenue</strong></td>
+                <td class="text-end text-success"><strong>${{ "%.2f"|format(total_revenue) }}</strong></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- Expenses Section -->
+    <div class="col-md-6">
+      <div class="card">
+        <div class="card-header">
+          <h3 class="card-title">Expenses</h3>
+        </div>
+        <div class="table-responsive">
+          <table class="table card-table">
+            <tbody>
+              {% for expense in expenses %}
+              <tr>
+                <td>{{ expense.name }}</td>
+                <td class="text-end text-danger">${{ "%.2f"|format(expense.balance) }}</td>
+              </tr>
+              {% endfor %}
+              <tr class="border-top">
+                <td><strong>Total Expenses</strong></td>
+                <td class="text-end text-danger"><strong>${{ "%.2f"|format(total_expense) }}</strong></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Net Income Calculation -->
+  <div class="card">
+    <div class="table-responsive">
+      <table class="table card-table">
+        <tbody>
+          <tr>
+            <td><strong>Total Revenue</strong></td>
+            <td class="text-end text-success"><strong>${{ "%.2f"|format(total_revenue) }}</strong></td>
+          </tr>
+          <tr>
+            <td><strong>Total Expenses</strong></td>
+            <td class="text-end text-danger"><strong>${{ "%.2f"|format(total_expense) }}</strong></td>
+          </tr>
+          <tr class="border-top">
+            <td><strong>Net Income (Loss)</strong></td>
+            <td class="text-end {% if net_income >= 0 %}text-success{% else %}text-danger{% endif %}">
+              <strong>${{ "%.2f"|format(net_income) }}</strong>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}

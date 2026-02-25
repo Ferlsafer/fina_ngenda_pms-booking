@@ -1,0 +1,117 @@
+{% extends "booking/base.html" %}
+
+{% block title %}Booking Confirmed - Ngenda Hotel{% endblock %}
+
+{% block content %}
+<!-- SECTION CONTENT START -->
+<div class="section-full p-tb80 bg-gray" style="min-height: 100vh; display: flex; align-items: center;">
+    <div class="container">
+        <div class="section-head text-center m-b30">
+            <h2 class="m-b5">Booking Confirmed!</h2>
+            <div class="wt-separator-outer">
+                <div class="wt-separator site-bg-primary"></div>
+            </div>
+        </div>
+
+        <div class="section-content">
+            <div class="row">
+                <div class="col-lg-8 col-lg-offset-2 col-md-10 col-md-offset-1">
+                    <div class="confirmation-box text-center p-a40" style="background: #fff; border-radius: 10px; box-shadow: 0 4px 15px rgba(0,0,0,0.1);">
+                        <div class="confirmation-icon m-b20">
+                            <i class="fa fa-check-circle fa-4x" style="color: #28a745;"></i>
+                        </div>
+                        <h3 class="m-t0 m-b10" style="color: #28a745;">Booking Successful!</h3>
+                        <p class="m-b30" style="color: #666;">Thank you for choosing Ngenda Hotel & Apartments. Your booking has been confirmed.</p>
+                        
+                        <div class="confirmation-details m-b30" style="background: #f8f9fa; padding: 30px; border-radius: 8px;">
+                            <div class="row">
+                                <div class="col-md-6 col-sm-6 m-b15">
+                                    <p class="m-b5" style="color: #999; font-size: 14px;">Booking Reference</p>
+                                    <p class="m-t0" style="font-size: 18px; font-weight: bold; color: #007bff;">{{ booking.booking_reference }}</p>
+                                </div>
+                                <div class="col-md-6 col-sm-6 m-b15">
+                                    <p class="m-b5" style="color: #999; font-size: 14px;">Status</p>
+                                    <p class="m-t0"><span class="badge" style="background: #28a745; padding: 5px 15px; border-radius: 20px; font-size: 14px;">Confirmed</span></p>
+                                </div>
+                            </div>
+                            
+                            <hr style="border-top: 1px solid #e0e0e0; margin: 20px 0;">
+                            
+                            <div class="row">
+                                <div class="col-md-6 col-sm-6 m-b15">
+                                    <p class="m-b5" style="color: #999; font-size: 14px;">Guest Name</p>
+                                    <p class="m-t0" style="font-weight: 500;">{{ booking.guest_name }}</p>
+                                </div>
+                                <div class="col-md-6 col-sm-6 m-b15">
+                                    <p class="m-b5" style="color: #999; font-size: 14px;">Email</p>
+                                    <p class="m-t0" style="font-weight: 500;">{{ booking.guest_email }}</p>
+                                </div>
+                            </div>
+                            
+                            <div class="row">
+                                <div class="col-md-6 col-sm-6 m-b15">
+                                    <p class="m-b5" style="color: #999; font-size: 14px;">Check-in Date</p>
+                                    <p class="m-t0" style="font-weight: 500;">{{ booking.check_in_date.strftime('%A, %B %d, %Y') if booking.check_in_date else 'To be confirmed' }}</p>
+                                </div>
+                                <div class="col-md-6 col-sm-6 m-b15">
+                                    <p class="m-b5" style="color: #999; font-size: 14px;">Check-out Date</p>
+                                    <p class="m-t0" style="font-weight: 500;">{{ booking.check_out_date.strftime('%A, %B %d, %Y') if booking.check_out_date else 'To be confirmed' }}</p>
+                                </div>
+                            </div>
+                            
+                            <div class="row">
+                                <div class="col-md-6 col-sm-6 m-b15">
+                                    <p class="m-b5" style="color: #999; font-size: 14px;">Room Type</p>
+                                    <p class="m-t0" style="font-weight: 500;">{{ booking.room_type_requested or 'Standard Room' }}</p>
+                                </div>
+                                <div class="col-md-6 col-sm-6 m-b15">
+                                    <p class="m-b5" style="color: #999; font-size: 14px;">Duration</p>
+                                    <p class="m-t0" style="font-weight: 500;">{{ nights }} night{{ 's' if nights != 1 else '' }}</p>
+                                </div>
+                            </div>
+                            
+                            <div class="row">
+                                <div class="col-md-6 col-sm-6 m-b15">
+                                    <p class="m-b5" style="color: #999; font-size: 14px;">Guests</p>
+                                    <p class="m-t0" style="font-weight: 500;">{{ booking.adults }} Adult{{ 's' if booking.adults != 1 else '' }}{% if booking.children > 0 %}, {{ booking.children }} Child{{ 'ren' if booking.children != 1 else '' }}{% endif %}</p>
+                                </div>
+                                <div class="col-md-6 col-sm-6 m-b15">
+                                    <p class="m-b5" style="color: #999; font-size: 14px;">Total Amount</p>
+                                    <p class="m-t0" style="font-weight: 500; font-size: 18px; color: #007bff;">{{ currency_symbol }}{{ "%.2f"|format(booking.total_amount) }}</p>
+                                </div>
+                            </div>
+                            
+                            {% if booking.special_requests %}
+                            <hr style="border-top: 1px solid #e0e0e0; margin: 20px 0;">
+                            <div class="text-left">
+                                <p class="m-b5" style="color: #999; font-size: 14px;">Special Requests</p>
+                                <p class="m-t0" style="color: #666; font-style: italic;">{{ booking.special_requests }}</p>
+                            </div>
+                            {% endif %}
+                        </div>
+
+                        <div class="confirmation-actions">
+                            <a href="{{ url_for('booking.index') }}" class="btn btn-primary btn-lg m-r10" style="display: inline-block; padding: 15px 30px; text-decoration: none; color: white; background: #007bff; border-radius: 5px; margin: 10px;">
+                                <i class="fa fa-home m-r5"></i>Back to Home
+                            </a>
+                            <a href="tel:+255671271247" class="btn btn-success btn-lg" style="display: inline-block; padding: 15px 30px; text-decoration: none; color: white; background: #28a745; border-radius: 5px; margin: 10px;">
+                                <i class="fa fa-phone m-r5"></i>Call Hotel
+                            </a>
+                        </div>
+                        
+                        <div class="m-t30 p-t20" style="border-top: 1px solid #e0e0e0;">
+                            <p class="m-b5" style="color: #666; font-size: 14px;">Need help? Contact us:</p>
+                            <p class="m-t0" style="color: #007bff;">
+                                <a href="tel:+255671271247" style="color: #007bff; text-decoration: none; margin: 0 10px;"><i class="fa fa-phone"></i> +255 671 271 247</a>
+                                <span style="color: #ccc;">|</span>
+                                <a href="mailto:info@ngendahotel.com" style="color: #007bff; text-decoration: none; margin: 0 10px;"><i class="fa fa-envelope"></i> info@ngendahotel.com</a>
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<!-- SECTION CONTENT END -->
+{% endblock %}

@@ -1,0 +1,75 @@
+    /*
+    Flaticon icon font: Flaticon
+    Creation date: 06/11/2019 09:47
+    */
+
+    @font-face {
+  font-family: "Flaticon";
+  src: url("./Flaticon.eot");
+  src: url("./Flaticon.eot?#iefix") format("embedded-opentype"),
+       url("./Flaticon.woff") format("woff"),
+       url("./Flaticon.ttf") format("truetype"),
+       url("./Flaticon.svg#Flaticon") format("svg");
+  font-weight: normal;
+  font-style: normal;
+}
+
+@media screen and (-webkit-min-device-pixel-ratio:0) {
+  @font-face {
+    font-family: "Flaticon";
+    src: url("./Flaticon.svg#Flaticon") format("svg");
+  }
+}
+
+    .fi:before{
+        display: inline-block;
+  font-family: "Flaticon";
+  font-style: normal;
+  font-weight: normal;
+  font-variant: normal;
+  line-height: 1;
+  text-decoration: inherit;
+  text-rendering: optimizeLegibility;
+  text-transform: none;
+  -moz-osx-font-smoothing: grayscale;
+  -webkit-font-smoothing: antialiased;
+  font-smoothing: antialiased;
+    }
+
+    .flaticon-business-cards:before { content: "\f100"; }
+.flaticon-wifi:before { content: "\f101"; }
+.flaticon-calendar:before { content: "\f102"; }
+.flaticon-time-passing:before { content: "\f103"; }
+.flaticon-smartphone:before { content: "\f104"; }
+.flaticon-room-service:before { content: "\f105"; }
+.flaticon-room-service-1:before { content: "\f106"; }
+.flaticon-hotel:before { content: "\f107"; }
+.flaticon-cheers:before { content: "\f108"; }
+.flaticon-coffee-cup:before { content: "\f109"; }
+.flaticon-seats-at-the-hall:before { content: "\f10a"; }
+.flaticon-swimmer:before { content: "\f10b"; }
+.flaticon-stones:before { content: "\f10c"; }
+.flaticon-conference:before { content: "\f10d"; }
+.flaticon-cards:before { content: "\f10e"; }
+.flaticon-car:before { content: "\f10f"; }
+.flaticon-woman:before { content: "\f110"; }
+.flaticon-exercise:before { content: "\f111"; }
+    
+    $font-Flaticon-business-cards: "\f100";
+    $font-Flaticon-wifi: "\f101";
+    $font-Flaticon-calendar: "\f102";
+    $font-Flaticon-time-passing: "\f103";
+    $font-Flaticon-smartphone: "\f104";
+    $font-Flaticon-room-service: "\f105";
+    $font-Flaticon-room-service-1: "\f106";
+    $font-Flaticon-hotel: "\f107";
+    $font-Flaticon-cheers: "\f108";
+    $font-Flaticon-coffee-cup: "\f109";
+    $font-Flaticon-seats-at-the-hall: "\f10a";
+    $font-Flaticon-swimmer: "\f10b";
+    $font-Flaticon-stones: "\f10c";
+    $font-Flaticon-conference: "\f10d";
+    $font-Flaticon-cards: "\f10e";
+    $font-Flaticon-car: "\f10f";
+    $font-Flaticon-woman: "\f110";
+    $font-Flaticon-exercise: "\f111";

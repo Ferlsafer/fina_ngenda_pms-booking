@@ -1,0 +1,316 @@
+{% extends "hms/layout/base.html" %}
+{% block title %}Stock Adjustment{% endblock %}
+
+{% block content %}
+<div class="container-xl">
+  <!-- Page header -->
+  <div class="page-header d-print-none">
+    <div class="row align-items-center">
+      <div class="col">
+        <h2 class="page-title">Stock Adjustment</h2>
+        <div class="text-muted mt-1">Correct inventory levels, record damages, or write-offs</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-body">
+      <form method="POST" id="adjustment-form">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+        <!-- Alert for negative adjustments -->
+        <div class="alert alert-warning d-none" id="negative-alert">
+          <strong>⚠️ Warning:</strong> You are reducing stock. This will decrease inventory value.
+        </div>
+
+        <div class="row g-3">
+          <!-- Item Selection -->
+          <div class="col-md-8">
+            <label class="form-label required">Select Item</label>
+            <select class="form-select" name="item_id" id="item-select" required>
+              <option value="">Choose an item...</option>
+              {% for item in items %}
+              <option value="{{ item.id }}" 
+                      data-stock="{{ item.current_stock }}"
+                      data-unit="{{ item.unit }}"
+                      data-cost="{{ item.average_cost }}">
+                {{ item.name }} ({{ item.sku }}) - Current: {{ "%.2f"|format(item.current_stock) }} {{ item.unit }}
+              </option>
+              {% endfor %}
+            </select>
+          </div>
+
+          <!-- Current Stock Display -->
+          <div class="col-md-4">
+            <label class="form-label">Current Stock</label>
+            <div class="form-control-plaintext fw-bold" id="current-stock-display">-</div>
+          </div>
+
+          <!-- Adjustment Type -->
+          <div class="col-md-6">
+            <label class="form-label required">Adjustment Type</label>
+            <div class="row g-2">
+              <div class="col-6">
+                <label class="form-check">
+                  <input type="radio" class="form-check-input" name="adjustment_type" value="add" checked>
+                  <span class="form-check-label">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="icon text-success" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                      <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+                      <circle cx="12" cy="12" r="9" />
+                      <line x1="9" y1="12" x2="15" y2="12" />
+                      <line x1="12" y1="9" x2="12" y2="15" />
+                    </svg>
+                    Add Stock
+                  </span>
+                </label>
+              </div>
+              <div class="col-6">
+                <label class="form-check">
+                  <input type="radio" class="form-check-input" name="adjustment_type" value="remove">
+                  <span class="form-check-label">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="icon text-danger" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                      <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+                      <circle cx="12" cy="12" r="9" />
+                      <line x1="9" y1="12" x2="15" y2="12" />
+                    </svg>
+                    Remove Stock
+                  </span>
+                </label>
+              </div>
+            </div>
+          </div>
+
+          <!-- Quantity -->
+          <div class="col-md-6">
+            <label class="form-label required">Quantity</label>
+            <div class="input-group">
+              <input type="number" 
+                     step="0.01" 
+                     min="0.01" 
+                     class="form-control" 
+                     name="quantity" 
+                     id="quantity"
+                     required>
+              <span class="input-group-text unit-display">units</span>
+            </div>
+            <small class="form-hint" id="max-quantity-hint"></small>
+          </div>
+
+          <!-- Reason/Notes -->
+          <div class="col-md-12">
+            <label class="form-label required">Reason for Adjustment</label>
+            <select class="form-select" name="reason_code" id="reason-code" required>
+              <option value="">Select reason...</option>
+              <option value="cycle_count">Cycle Count Correction</option>
+              <option value="damaged">Damaged Goods</option>
+              <option value="expired">Expired/Out of Date</option>
+              <option value="theft">Theft/Loss</option>
+              <option value="return">Customer Return</option>
+              <option value="write_off">Write Off</option>
+              <option value="other">Other</option>
+            </select>
+          </div>
+
+          <div class="col-md-12">
+            <label class="form-label">Additional Notes</label>
+            <textarea class="form-control" name="notes" rows="3" placeholder="Provide more details about this adjustment..."></textarea>
+          </div>
+
+          <!-- Cost Information (Optional) -->
+          <div class="col-md-6" id="cost-field" style="display: none;">
+            <label class="form-label">Unit Cost (if different)</label>
+            <div class="input-group">
+              <span class="input-group-text">$</span>
+              <input type="number" step="0.01" min="0" class="form-control" name="unit_cost">
+            </div>
+            <small class="form-hint">Leave blank to use current average cost</small>
+          </div>
+
+          <!-- Accounting Impact Preview -->
+          <div class="col-md-12 mt-3">
+            <div class="card bg-light">
+              <div class="card-header">
+                <h4 class="card-title">Accounting Impact</h4>
+              </div>
+              <div class="card-body">
+                <div id="accounting-preview">
+                  <p class="text-muted">Select an item and quantity to see accounting impact</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Submit Buttons -->
+          <div class="col-12 mt-4">
+            <button type="submit" class="btn btn-warning">
+              <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+                <path d="M12 5v14" />
+                <path d="M5 12h14" />
+              </svg>
+              Process Adjustment
+            </button>
+            <a href="{{ url_for('hms.inventory_items') }}" class="btn btn-link">Cancel</a>
+          </div>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  const itemSelect = document.getElementById('item-select');
+  const currentStockDisplay = document.getElementById('current-stock-display');
+  const quantityInput = document.getElementById('quantity');
+  const unitDisplay = document.querySelector('.unit-display');
+  const adjustmentTypeRadios = document.querySelectorAll('input[name="adjustment_type"]');
+  const reasonCode = document.getElementById('reason-code');
+  const negativeAlert = document.getElementById('negative-alert');
+  const costField = document.getElementById('cost-field');
+  const accountingPreview = document.getElementById('accounting-preview');
+  
+  let currentItem = null;
+  
+  // Update item details when selected
+  itemSelect.addEventListener('change', function() {
+    const option = this.options[this.selectedIndex];
+    if (option.value) {
+      currentItem = {
+        id: option.value,
+        stock: parseFloat(option.dataset.stock),
+        unit: option.dataset.unit,
+        cost: parseFloat(option.dataset.cost)
+      };
+      currentStockDisplay.textContent = currentItem.stock.toFixed(2) + ' ' + currentItem.unit;
+      unitDisplay.textContent = currentItem.unit;
+      
+      // Update max quantity hint for removals
+      updateMaxQuantity();
+      updateAccountingPreview();
+    } else {
+      currentItem = null;
+      currentStockDisplay.textContent = '-';
+    }
+  });
+  
+  // Update max quantity hint based on adjustment type
+  function updateMaxQuantity() {
+    if (!currentItem) return;
+    
+    const type = document.querySelector('input[name="adjustment_type"]:checked').value;
+    if (type === 'remove') {
+      quantityInput.max = currentItem.stock;
+      document.getElementById('max-quantity-hint').textContent = 
+        `Maximum: ${currentItem.stock.toFixed(2)} ${currentItem.unit}`;
+    } else {
+      quantityInput.removeAttribute('max');
+      document.getElementById('max-quantity-hint').textContent = '';
+    }
+  }
+  
+  // Show/hide warning and cost field based on adjustment type
+  adjustmentTypeRadios.forEach(radio => {
+    radio.addEventListener('change', function() {
+      if (this.value === 'remove') {
+        negativeAlert.classList.remove('d-none');
+        costField.style.display = 'none';
+      } else {
+        negativeAlert.classList.add('d-none');
+        costField.style.display = 'block';
+      }
+      updateMaxQuantity();
+      updateAccountingPreview();
+    });
+  });
+  
+  // Show cost field for certain reasons
+  reasonCode.addEventListener('change', function() {
+    if (this.value === 'other' || this.value === 'return') {
+      costField.style.display = 'block';
+    }
+  });
+  
+  // Update accounting preview
+  function updateAccountingPreview() {
+    if (!currentItem || !quantityInput.value) {
+      accountingPreview.innerHTML = '<p class="text-muted">Select an item and quantity to see accounting impact</p>';
+      return;
+    }
+    
+    const quantity = parseFloat(quantityInput.value) || 0;
+    const type = document.querySelector('input[name="adjustment_type"]:checked').value;
+    const cost = currentItem.cost;
+    const totalValue = quantity * cost;
+    
+    let html = `
+      <div class="row">
+        <div class="col-md-6">
+          <table class="table table-sm">
+            <tr>
+              <th>Account</th>
+              <th class="text-end">Debit</th>
+              <th class="text-end">Credit</th>
+            </tr>
+    `;
+    
+    if (type === 'add') {
+      html += `
+        <tr>
+          <td>Inventory</td>
+          <td class="text-end">$${totalValue.toFixed(2)}</td>
+          <td class="text-end">-</td>
+        </tr>
+        <tr>
+          <td>Inventory Adjustment</td>
+          <td class="text-end">-</td>
+          <td class="text-end">$${totalValue.toFixed(2)}</td>
+        </tr>
+      `;
+    } else {
+      html += `
+        <tr>
+          <td>Inventory Adjustment</td>
+          <td class="text-end">$${totalValue.toFixed(2)}</td>
+          <td class="text-end">-</td>
+        </tr>
+        <tr>
+          <td>Inventory</td>
+          <td class="text-end">-</td>
+          <td class="text-end">$${totalValue.toFixed(2)}</td>
+        </tr>
+      `;
+      
+      // Add loss account for damaged/expired
+      if (reasonCode.value === 'damaged' || reasonCode.value === 'expired') {
+        html += `
+          <tr class="table-danger">
+            <td>Inventory Loss</td>
+            <td class="text-end">$${totalValue.toFixed(2)}</td>
+            <td class="text-end">-</td>
+          </tr>
+        `;
+      }
+    }
+    
+    html += `
+          </table>
+        </div>
+        <div class="col-md-6">
+          <div class="alert alert-${type === 'add' ? 'success' : 'danger'}">
+            <strong>Net Impact:</strong><br>
+            Inventory will ${type === 'add' ? 'increase' : 'decrease'} by 
+            <strong>${quantity.toFixed(2)} ${currentItem.unit}</strong><br>
+            Value: <strong>$${totalValue.toFixed(2)}</strong>
+          </div>
+        </div>
+      </div>
+    `;
+    
+    accountingPreview.innerHTML = html;
+  }
+  
+  quantityInput.addEventListener('input', updateAccountingPreview);
+});
+</script>
+{% endblock %}

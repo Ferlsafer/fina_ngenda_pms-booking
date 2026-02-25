@@ -1,0 +1,92 @@
+{% extends "hms/layout/base.html" %}
+{% block title %}{{ 'Edit' if item else 'New' }} Inventory Item{% endblock %}
+
+{% block content %}
+<div class="container-xl">
+  <div class="page-header d-print-none">
+    <div class="row align-items-center">
+      <div class="col">
+        <h2 class="page-title">{{ 'Edit' if item else 'New' }} Inventory Item</h2>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-body">
+      <form method="POST" action="{% if item %}{{ url_for('hms.update_item', item_id=item.id) }}{% else %}{{ url_for('hms.inventory_item_add') }}{% endif %}">
+        <div class="row">
+          <div class="col-md-12">
+            <div class="mb-3">
+              <label class="form-label required">Item Name</label>
+              <input type="text" name="name" class="form-control" value="{{ item.name if item else '' }}" required>
+            </div>
+          </div>
+        </div>
+        
+        <div class="row">
+          <div class="col-md-6">
+            <div class="mb-3">
+              <label class="form-label required">Category</label>
+              <select name="category_id" class="form-select" required>
+                <option value="">Select Category</option>
+                {% for category in categories %}
+                <option value="{{ category.id }}" {% if item and item.category_id == category.id %}selected{% endif %}>
+                  {{ category.name }}
+                </option>
+                {% endfor %}
+              </select>
+            </div>
+          </div>
+          <div class="col-md-6">
+            <div class="mb-3">
+              <label class="form-label required">Unit of Measure</label>
+              <input type="text" name="unit" class="form-control" value="{{ item.unit if item else '' }}" required placeholder="e.g., kg, pcs, liters">
+            </div>
+          </div>
+        </div>
+        
+        <div class="row">
+          <div class="col-md-4">
+            <div class="mb-3">
+              <label class="form-label">Reorder Level</label>
+              <input type="number" name="reorder_level" class="form-control" value="{{ item.reorder_level if item else '0' }}" step="0.01" min="0">
+            </div>
+          </div>
+          <div class="col-md-4">
+            <div class="mb-3">
+              <label class="form-label">Initial Stock</label>
+              <input type="number" name="initial_stock" class="form-control" value="{{ item.current_stock if item else '0' }}" step="0.01" min="0" placeholder="Leave 0 if no initial stock">
+            </div>
+          </div>
+          <div class="col-md-4">
+            <div class="mb-3">
+              <label class="form-label">Cost Per Unit ($)</label>
+              <input type="number" name="cost_per_unit" class="form-control" value="{{ item.average_cost if item else '0' }}" step="0.01" min="0">
+            </div>
+          </div>
+        </div>
+        
+        <div class="mb-3">
+          <label class="form-label">Description</label>
+          <textarea name="description" class="form-control" rows="3">{{ item.description if item else '' }}</textarea>
+        </div>
+        
+        <div class="form-footer">
+          <button type="submit" class="btn btn-primary">
+            {% if item %}Update{% else %}Create{% endif %} Item
+          </button>
+          <a href="{{ url_for('hms.inventory_items') }}" class="btn btn-link">Cancel</a>
+          <a href="{{ url_for('hms.supplier_add') }}" class="btn btn-outline-secondary ms-2">
+            <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+              <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+              <line x1="12" y1="5" x2="12" y2="19" />
+              <line x1="5" y1="12" x2="19" y2="12" />
+            </svg>
+            Add Supplier
+          </a>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

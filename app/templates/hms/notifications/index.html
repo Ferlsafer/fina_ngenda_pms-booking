@@ -1,0 +1,223 @@
+{% extends "hms/layout/base.html" %}
+{% block title %}Notifications{% endblock %}
+
+{% block content %}
+<!-- Hidden CSRF token for JavaScript -->
+<input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+<div class="container-xl">
+  <!-- Page header -->
+  <div class="page-header d-print-none">
+    <div class="row align-items-center">
+      <div class="col">
+        <h2 class="page-title">Notifications</h2>
+        <div class="text-muted mt-1">Manage your alerts and notifications</div>
+      </div>
+      <div class="col-auto ms-auto d-print-none">
+        <div class="btn-list">
+          <button type="button" class="btn btn-primary" onclick="markAllAsRead()">
+            <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+              <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+              <path d="M12 12m-9 0a9 9 0 1 0 18 0a9 9 0 1 0 -18 0" />
+              <path d="M12 8v4l2 2" />
+            </svg>
+            Mark All as Read
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Filters -->
+  <div class="card mb-3">
+    <div class="card-body">
+      <form method="GET" class="row g-3">
+        <div class="col-md-3">
+          <label class="form-label">Type</label>
+          <select name="type" class="form-select">
+            <option value="">All Types</option>
+            <option value="booking" {% if request.args.get('type') == 'booking' %}selected{% endif %}>Bookings</option>
+            <option value="payment" {% if request.args.get('type') == 'payment' %}selected{% endif %}>Payments</option>
+            <option value="task" {% if request.args.get('type') == 'task' %}selected{% endif %}>Tasks</option>
+            <option value="alert" {% if request.args.get('type') == 'alert' %}selected{% endif %}>Alerts</option>
+            <option value="message" {% if request.args.get('type') == 'message' %}selected{% endif %}>Messages</option>
+          </select>
+        </div>
+        <div class="col-md-3">
+          <label class="form-label">Status</label>
+          <select name="status" class="form-select">
+            <option value="">All Statuses</option>
+            <option value="unread" {% if request.args.get('status') == 'unread' %}selected{% endif %}>Unread</option>
+            <option value="read" {% if request.args.get('status') == 'read' %}selected{% endif %}>Read</option>
+          </select>
+        </div>
+        <div class="col-md-3">
+          <label class="form-label">From Date</label>
+          <input type="date" name="date_from" class="form-control" value="{{ request.args.get('date_from', '') }}">
+        </div>
+        <div class="col-md-3">
+          <label class="form-label">To Date</label>
+          <input type="date" name="date_to" class="form-control" value="{{ request.args.get('date_to', '') }}">
+        </div>
+        <div class="col-12">
+          <button type="submit" class="btn btn-primary">Filter</button>
+          <a href="{{ '#' }}" class="btn btn-outline-secondary">Reset</a>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Notifications List -->
+  <div class="card">
+    <div class="card-body p-0">
+      <div class="divide-y">
+        {% for notification in notifications %}
+        <div class="d-flex align-items-center p-3 {% if not notification.is_read %}bg-blue-lt{% endif %}" data-notification-id="{{ notification.id }}">
+          <div class="me-3">
+            <span class="avatar avatar-{{ notification.color or 'secondary' }}">
+              {% if notification.icon %}
+                <i class="fas {{ notification.icon }}"></i>
+              {% else %}
+                <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                  <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+                  <path d="M10 5a2 2 0 0 1 4 0a7 7 0 0 1 4 6v3a4 4 0 0 0 2 3h-16a4 4 0 0 0 2 -3v-3a7 7 0 0 1 4 -6" />
+                  <path d="M9 17v1a3 3 0 0 0 6 0v-1" />
+                </svg>
+              {% endif %}
+            </span>
+          </div>
+          <div class="flex-fill">
+            <div class="font-weight-medium">
+              {% if notification.link %}
+                <a href="{{ notification.link }}">{{ notification.title }}</a>
+              {% else %}
+                {{ notification.title }}
+              {% endif %}
+              {% if not notification.is_read %}
+                <span class="badge bg-red ms-2">New</span>
+              {% endif %}
+            </div>
+            <div class="text-muted small">{{ notification.message }}</div>
+            <div class="text-muted small">{{ notification.created_at.strftime('%Y-%m-%d %H:%M') }}</div>
+          </div>
+          <div class="ms-3">
+            {% if not notification.is_read %}
+              <button type="button" class="btn btn-sm btn-primary" onclick="markAsRead({{ notification.id }})">
+                Mark Read
+              </button>
+            {% else %}
+              <span class="text-muted">Read</span>
+            {% endif %}
+          </div>
+        </div>
+        {% else %}
+        <div class="text-center p-5">
+          <svg xmlns="http://www.w3.org/2000/svg" class="icon mb-2 text-muted" width="48" height="48" viewBox="0 0 24 24" stroke-width="1" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+            <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+            <circle cx="12" cy="12" r="9" />
+            <line x1="9" y1="10" x2="9.01" y2="10" />
+            <line x1="15" y1="10" x2="15.01" y2="10" />
+            <path d="M9.5 15a3.5 3.5 0 0 1 5 0" />
+          </svg>
+          <p class="text-muted">No notifications</p>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+function getCSRFToken() {
+  const tokenInput = document.querySelector('input[name="csrf_token"]');
+  if (tokenInput) {
+    return tokenInput.value;
+  }
+  // Fallback to cookie
+  const cookies = document.cookie.split(';');
+  for (let cookie of cookies) {
+    const [name, value] = cookie.trim().split('=');
+    if (name === 'csrf_token') {
+      return value;
+    }
+  }
+  return '';
+}
+
+function markAsRead(notificationId) {
+  const csrfToken = getCSRFToken();
+  
+  fetch('/notifications/' + notificationId + '/read', {
+    method: 'POST',
+    headers: {
+      'X-CSRFToken': csrfToken,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({csrf_token: csrfToken})
+  })
+  .then(response => {
+    if (!response.ok) {
+      throw new Error('Network response was not ok: ' + response.status);
+    }
+    return response.json();
+  })
+  .then(data => {
+    if (data.success) {
+      // Remove the notification from the list with animation
+      const notifElement = document.querySelector('[data-notification-id="' + notificationId + '"]');
+      if (notifElement) {
+        notifElement.style.opacity = '0';
+        notifElement.style.transform = 'translateX(100%)';
+        notifElement.style.transition = 'all 0.3s ease';
+        setTimeout(() => {
+          notifElement.remove();
+          // Check if no notifications left
+          const remaining = document.querySelectorAll('[data-notification-id]');
+          if (remaining.length === 0) {
+            location.reload(); // Reload to show "No notifications" message
+          }
+        }, 300);
+      }
+    } else {
+      alert('Failed to mark as read: ' + (data.error || 'Unknown error'));
+    }
+  })
+  .catch(err => {
+    console.error('Error:', err);
+    alert('Error marking as read: ' + err.message);
+  });
+}
+
+function markAllAsRead() {
+  const csrfToken = getCSRFToken();
+  
+  if (confirm('Mark all notifications as read?')) {
+    fetch('/notifications/mark-all-read', {
+      method: 'POST',
+      headers: {
+        'X-CSRFToken': csrfToken,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({csrf_token: csrfToken})
+    })
+    .then(response => {
+      if (!response.ok) {
+        throw new Error('Network response was not ok: ' + response.status);
+      }
+      return response.json();
+    })
+    .then(data => {
+      if (data.success) {
+        location.reload();
+      } else {
+        alert('Failed to mark all as read');
+      }
+    })
+    .catch(err => {
+      console.error('Error:', err);
+      alert('Error: ' + err.message);
+    });
+  }
+}
+</script>
+{% endblock %}

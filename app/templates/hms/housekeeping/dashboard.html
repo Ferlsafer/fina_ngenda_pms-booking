@@ -1,0 +1,148 @@
+{% extends "hms/layout/base.html" %}
+{% block title %}Housekeeping Dashboard - Hotel PMS{% endblock %}
+
+{% block content %}
+<div class="container-xl">
+  <!-- Page Header -->
+  <div class="page-header d-print-none">
+    <div class="row align-items-center">
+      <div class="col">
+        <h2 class="page-title">Housekeeping Dashboard</h2>
+        <div class="text-muted mt-1">Manage room cleaning and maintenance tasks</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Room Status Cards -->
+  <div class="row row-deck row-cards mb-4">
+    <div class="col-sm-6 col-lg-3">
+      <div class="card card-sm">
+        <div class="card-body">
+          <div class="row align-items-center">
+            <div class="col-auto">
+              <span class="bg-success text-white avatar avatar-lg">
+                <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none">
+                  <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+                  <path d="M3 12l9 9l9 -9" />
+                  <path d="M3 6l9 -9l9 9" />
+                </svg>
+              </span>
+            </div>
+            <div class="col">
+              <div class="font-weight-medium">{{ stats.vacant_rooms }}</div>
+              <div class="text-muted">Vacant Rooms</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-sm-6 col-lg-3">
+      <div class="card card-sm">
+        <div class="card-body">
+          <div class="row align-items-center">
+            <div class="col-auto">
+              <span class="bg-primary text-white avatar avatar-lg">
+                <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none">
+                  <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+                  <path d="M5 12l5 5l10 -10" />
+                </svg>
+              </span>
+            </div>
+            <div class="col">
+              <div class="font-weight-medium">{{ stats.occupied_rooms }}</div>
+              <div class="text-muted">Occupied Rooms</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-sm-6 col-lg-3">
+      <div class="card card-sm">
+        <div class="card-body">
+          <div class="row align-items-center">
+            <div class="col-auto">
+              <span class="bg-warning text-white avatar avatar-lg">
+                <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none">
+                  <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+                  <path d="M12 9v2m0 4v.01" />
+                  <path d="M5 19h14a2 2 0 0 0 1.84 -2.75l-7.1 -12.25a2 2 0 0 0 -3.5 0l-7.1 12.25a2 2 0 0 0 1.75 2.75" />
+                </svg>
+              </span>
+            </div>
+            <div class="col">
+              <div class="font-weight-medium">{{ stats.dirty_rooms }}</div>
+              <div class="text-muted">Dirty Rooms</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-sm-6 col-lg-3">
+      <div class="card card-sm">
+        <div class="card-body">
+          <div class="row align-items-center">
+            <div class="col-auto">
+              <span class="bg-danger text-white avatar avatar-lg">
+                <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none">
+                  <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+                  <path d="M12 9v2m0 4v.01" />
+                  <path d="M5 19h14a2 2 0 0 0 1.84 -2.75l-7.1 -12.25a2 2 0 0 0 -3.5 0l-7.1 12.25a2 2 0 0 0 1.75 2.75" />
+                </svg>
+              </span>
+            </div>
+            <div class="col">
+              <div class="font-weight-medium">{{ stats.maintenance_rooms }}</div>
+              <div class="text-muted">Maintenance</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Tasks Status -->
+  <div class="row row-deck row-cards">
+    <div class="col-sm-6 col-lg-4">
+      <div class="card">
+        <div class="card-header">
+          <h3 class="card-title">Pending Tasks</h3>
+        </div>
+        <div class="card-body text-center">
+          <div class="display-1 text-warning">{{ stats.pending_tasks }}</div>
+          <p class="text-muted">Tasks waiting to be started</p>
+          <a href="{{ url_for('hms.housekeeping') }}" class="btn btn-warning">View Tasks</a>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-sm-6 col-lg-4">
+      <div class="card">
+        <div class="card-header">
+          <h3 class="card-title">In Progress</h3>
+        </div>
+        <div class="card-body text-center">
+          <div class="display-1 text-primary">{{ stats.in_progress_tasks }}</div>
+          <p class="text-muted">Tasks currently being worked on</p>
+          <a href="{{ url_for('hms.housekeeping') }}" class="btn btn-primary">View Tasks</a>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-sm-6 col-lg-4">
+      <div class="card">
+        <div class="card-header">
+          <h3 class="card-title">Completed Today</h3>
+        </div>
+        <div class="card-body text-center">
+          <div class="display-1 text-success">{{ stats.completed_tasks_today }}</div>
+          <p class="text-muted">Tasks completed today</p>
+          <a href="{{ url_for('hms.housekeeping') }}" class="btn btn-success">View All</a>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

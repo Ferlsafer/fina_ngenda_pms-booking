@@ -1,0 +1,152 @@
+{% extends "hms/layout/base.html" %}
+{% block title %}Edit Gallery Image - Hotel PMS{% endblock %}
+
+{% block content %}
+<div class="page-header d-print-none">
+  <div class="row align-items-center">
+    <div class="col">
+      <h2 class="page-title">Edit Gallery Image</h2>
+      <div class="text-muted mt-1">Update image details</div>
+    </div>
+    <div class="col-auto">
+      <a href="{{ url_for('hms.settings_gallery') }}" class="btn btn-secondary">
+        <i class="fa fa-arrow-left"></i> Back to Gallery
+      </a>
+    </div>
+  </div>
+</div>
+
+<div class="row">
+  <div class="col-lg-8">
+    <div class="card">
+      <div class="card-header">
+        <h3 class="card-title">Image Details</h3>
+      </div>
+      <div class="card-body">
+        <form method="POST">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          
+          <!-- Current Image Preview -->
+          <div class="mb-4">
+            <label class="form-label">Current Image</label>
+            <div>
+              <img src="{{ image.url }}" alt="{{ image.title }}" 
+                   style="max-width: 400px; max-height: 300px; border-radius: 8px; border: 2px solid #e0e0e0;">
+            </div>
+            <div class="form-hint mt-2">
+              To replace the image, delete this one and upload a new one.
+            </div>
+          </div>
+
+          <!-- Title -->
+          <div class="mb-3">
+            <label class="form-label required">Title</label>
+            <input type="text" name="title" class="form-control" value="{{ image.title }}" required>
+          </div>
+
+          <!-- Description -->
+          <div class="mb-3">
+            <label class="form-label">Description</label>
+            <textarea name="description" class="form-control" rows="3">{{ image.description }}</textarea>
+          </div>
+
+          <!-- Category -->
+          <div class="mb-3">
+            <label class="form-label required">Category</label>
+            <select name="category" class="form-select" required>
+              <option value="rooms" {{ 'selected' if image.category == 'rooms' }}>Rooms</option>
+              <option value="facilities" {{ 'selected' if image.category == 'facilities' }}>Facilities</option>
+              <option value="dining" {{ 'selected' if image.category == 'dining' }}>Dining</option>
+              <option value="events" {{ 'selected' if image.category == 'events' }}>Events</option>
+            </select>
+          </div>
+
+          <!-- Size Type -->
+          <div class="mb-3">
+            <label class="form-label required">Display Size</label>
+            <select name="size_type" class="form-select" required>
+              <option value="small" {{ 'selected' if image.size_type == 'small' }}>Small (Grid layout)</option>
+              <option value="medium" {{ 'selected' if image.size_type == 'medium' }}>Medium (3 images per row)</option>
+              <option value="large" {{ 'selected' if image.size_type == 'large' }}>Large (2 images per row, featured)</option>
+            </select>
+          </div>
+
+          <!-- Sort Order -->
+          <div class="mb-3">
+            <label class="form-label">Sort Order</label>
+            <input type="number" name="sort_order" class="form-control" value="{{ image.sort_order }}" min="0">
+          </div>
+
+          <!-- Active Status -->
+          <div class="mb-4">
+            <label class="form-check">
+              <input type="checkbox" name="is_active" class="form-check-input" {{ 'checked' if image.is_active }}>
+              <span class="form-check-label">Active (show on website)</span>
+            </label>
+          </div>
+
+          <!-- Actions -->
+          <div class="d-flex gap-2">
+            <button type="submit" class="btn btn-primary">
+              <i class="fa fa-save"></i> Save Changes
+            </button>
+            <a href="{{ url_for('hms.settings_gallery') }}" class="btn btn-secondary">
+              Cancel
+            </a>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Image Info Panel -->
+  <div class="col-lg-4">
+    <div class="card">
+      <div class="card-header">
+        <h3 class="card-title">Image Information</h3>
+      </div>
+      <div class="card-body">
+        <dl class="row">
+          <dt class="col-5">Filename:</dt>
+          <dd class="col-7 text-muted">{{ image.image_filename }}</dd>
+          
+          <dt class="col-5">Uploaded:</dt>
+          <dd class="col-7 text-muted">{{ image.created_at.strftime('%Y-%m-%d') if image.created_at else 'N/A' }}</dd>
+          
+          <dt class="col-5">Category:</dt>
+          <dd class="col-7">
+            <span class="badge badge-{{ 
+              'azure' if image.category == 'rooms' else 
+              'green' if image.category == 'facilities' else 
+              'orange' if image.category == 'dining' else 
+              'purple' 
+            }}">
+              {{ image.category|title }}
+            </span>
+          </dd>
+          
+          <dt class="col-5">Size Type:</dt>
+          <dd class="col-7">
+            <span class="badge badge-{{ 
+              'red' if image.size_type == 'large' else 
+              'yellow' if image.size_type == 'medium' else 
+              'gray' 
+            }}">
+              {{ image.size_type|title }}
+            </span>
+          </dd>
+          
+          <dt class="col-5">Status:</dt>
+          <dd class="col-7">
+            {% if image.is_active %}
+            <span class="badge bg-success">Active</span>
+            {% else %}
+            <span class="badge bg-secondary">Hidden</span>
+            {% endif %}
+          </dd>
+        </dl>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,211 @@
+{% extends "hms/layout/base.html" %}
+{% block title %}New Room Service Order{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h2 class="page-title">New Room Service Order</h2>
+</div>
+
+<form method="POST" id="order-form">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+  
+  <div class="row">
+    <!-- Guest & Room Selection -->
+    <div class="col-md-6">
+      <div class="card">
+        <div class="card-header"><h3 class="card-title">Guest Information</h3></div>
+        <div class="card-body">
+          <div class="mb-3">
+            <label class="form-label">Select Room</label>
+            <select class="form-select" name="room_id" id="room-select" required>
+              <option value="">-- Select Room --</option>
+              {% for room in rooms %}
+              <option value="{{ room.id }}" data-number="{{ room.room_number }}">
+                Room {{ room.room_number }} ({{ room.status }})
+              </option>
+              {% endfor %}
+            </select>
+          </div>
+          
+          <div class="mb-3">
+            <label class="form-label">Or Select Booking</label>
+            <select class="form-select" name="booking_id" id="booking-select">
+              <option value="">-- Select Booking --</option>
+              {% for booking in bookings %}
+              <option value="{{ booking.id }}" 
+                      data-guest="{{ booking.guest_name }}"
+                      data-room="{{ booking.room_id }}">
+                {{ booking.guest_name }} - Room {{ booking.room.room_number if booking.room else 'N/A' }}
+              </option>
+              {% endfor %}
+            </select>
+          </div>
+          
+          <div class="mb-3">
+            <label class="form-label">Guest Name</label>
+            <input type="text" class="form-control" name="guest_name" id="guest-name" required>
+          </div>
+          
+          <div class="mb-3">
+            <label class="form-label">Delivery Time</label>
+            <input type="datetime-local" class="form-control" name="delivery_time">
+            <small class="text-muted">Leave empty for immediate delivery</small>
+          </div>
+          
+          <div class="mb-3">
+            <label class="form-label">Special Instructions</label>
+            <textarea class="form-control" name="special_instructions" rows="3"></textarea>
+          </div>
+          
+          <div class="form-check form-switch">
+            <input class="form-check-input" type="checkbox" name="charge_to_room" id="charge-to-room" checked>
+            <label class="form-check-label" for="charge-to-room">Charge to Room</label>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Menu Items -->
+    <div class="col-md-6">
+      <div class="card">
+        <div class="card-header"><h3 class="card-title">Menu Items</h3></div>
+        <div class="card-body">
+          <div class="mb-3">
+            <label class="form-label">Add Items</label>
+            <select class="form-select" id="item-select">
+              <option value="">-- Select Item --</option>
+              {% for item in menu_items %}
+              <option value="{{ item.id }}" data-price="{{ item.price }}" data-name="{{ item.name }}">
+                {{ item.name }} - ${{ "%.2f"|format(item.price) }}
+              </option>
+              {% endfor %}
+            </select>
+          </div>
+          
+          <div class="mb-3">
+            <label class="form-label">Quantity</label>
+            <input type="number" class="form-control" id="item-quantity" value="1" min="1">
+          </div>
+          
+          <button type="button" class="btn btn-primary" id="btn-add-item">Add Item</button>
+          
+          <hr>
+          
+          <h4>Order Items</h4>
+          <div id="order-items-container">
+            <p class="text-muted">No items added yet</p>
+          </div>
+          
+          <input type="hidden" name="item_id[]" id="item-ids">
+          <input type="hidden" name="quantity[]" id="item-quantities">
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <!-- Order Summary -->
+  <div class="card mt-3">
+    <div class="card-body">
+      <div class="row">
+        <div class="col-md-4">
+          <strong>Subtotal:</strong> $<span id="subtotal">0.00</span>
+        </div>
+        <div class="col-md-4">
+          <strong>Tax (18%):</strong> $<span id="tax">0.00</span>
+        </div>
+        <div class="col-md-4">
+          <strong>Total:</strong> $<span id="total">0.00</span>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <div class="btn-list mt-3">
+    <button type="submit" class="btn btn-primary">Create Order</button>
+    <a href="{{ url_for('hms.room_service_orders') }}" class="btn btn-outline-secondary">Cancel</a>
+  </div>
+</form>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function() {
+  let orderItems = [];
+  const TAX_RATE = 0.18;
+  
+  // Auto-fill guest name from booking
+  document.getElementById('booking-select').addEventListener('change', function() {
+    const option = this.options[this.selectedIndex];
+    if (option.value) {
+      const guestName = option.dataset.guest;
+      document.getElementById('guest-name').value = guestName;
+    }
+  });
+  
+  // Add item to order
+  document.getElementById('btn-add-item').addEventListener('click', function() {
+    const itemSelect = document.getElementById('item-select');
+    const qtyInput = document.getElementById('item-quantity');
+    
+    const itemId = itemSelect.value;
+    const itemName = itemSelect.options[itemSelect.selectedIndex].dataset.name;
+    const itemPrice = parseFloat(itemSelect.options[itemSelect.selectedIndex].dataset.price);
+    const quantity = parseInt(qtyInput.value);
+    
+    if (!itemId || quantity < 1) {
+      alert('Please select an item and quantity');
+      return;
+    }
+    
+    // Add to items array
+    const existing = orderItems.find(i => i.id === itemId);
+    if (existing) {
+      existing.qty += quantity;
+    } else {
+      orderItems.push({ id: itemId, name: itemName, price: itemPrice, qty: quantity });
+    }
+    
+    renderItems();
+    itemSelect.value = '';
+    qtyInput.value = '1';
+  });
+  
+  function renderItems() {
+    const container = document.getElementById('order-items-container');
+    
+    if (orderItems.length === 0) {
+      container.innerHTML = '<p class="text-muted">No items added yet</p>';
+    } else {
+      container.innerHTML = '<ul class="list-group">';
+      orderItems.forEach((item, index) => {
+        container.innerHTML += `
+          <li class="list-group-item d-flex justify-content-between align-items-center">
+            ${item.name} x${item.qty} - $${(item.price * item.qty).toFixed(2)}
+            <button type="button" class="btn btn-sm btn-ghost-danger" onclick="removeItem(${index})">Remove</button>
+          </li>
+        `;
+      });
+      container.innerHTML += '</ul>';
+    }
+    
+    // Update hidden inputs
+    document.getElementById('item-ids').value = orderItems.map(i => i.id).join(',');
+    document.getElementById('item-quantities').value = orderItems.map(i => i.qty).join(',');
+    
+    // Calculate totals
+    const subtotal = orderItems.reduce((sum, item) => sum + (item.price * item.qty), 0);
+    const tax = subtotal * TAX_RATE;
+    const total = subtotal + tax;
+    
+    document.getElementById('subtotal').textContent = subtotal.toFixed(2);
+    document.getElementById('tax').textContent = tax.toFixed(2);
+    document.getElementById('total').textContent = total.toFixed(2);
+  }
+  
+  window.removeItem = function(index) {
+    orderItems.splice(index, 1);
+    renderItems();
+  };
+})();
+</script>
+{% endblock %}

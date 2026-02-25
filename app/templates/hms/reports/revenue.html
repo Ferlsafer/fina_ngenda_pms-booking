@@ -1,0 +1,170 @@
+{% extends "hms/layout/base.html" %}
+{% block title %}Revenue Report - Hotel PMS{% endblock %}
+
+{% block head %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+{% endblock %}
+
+{% block content %}
+<div class="page-header d-print-none">
+  <div class="row align-items-center">
+    <div class="col">
+      <h2 class="page-title">Revenue report</h2>
+      <div class="text-muted mt-1">Revenue by period and department</div>
+    </div>
+    <div class="col-auto">
+      <div class="btn-list">
+        <select class="form-select form-select-sm" id="period-select" style="width: auto;">
+          <option value="day">By day</option>
+          <option value="week">By week</option>
+          <option value="month">By month</option>
+        </select>
+        <button type="button" class="btn btn-outline-danger" id="btn-export-pdf">Export PDF</button>
+        <button type="button" class="btn btn-outline-success" id="btn-export-excel">Export Excel</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="card mb-3">
+  <div class="card-body">
+    <form method="get" action="#" class="row g-2 align-items-end">
+      <div class="col-md-2">
+        <label class="form-label">From</label>
+        <input type="date" name="from" class="form-control" value="2025-01-01">
+      </div>
+      <div class="col-md-2">
+        <label class="form-label">To</label>
+        <input type="date" name="to" class="form-control" value="2025-02-14">
+      </div>
+      <div class="col-md-2">
+        <label class="form-label">Compare to</label>
+        <input type="month" name="compare" class="form-control" value="2024-02" placeholder="Year-over-year">
+      </div>
+      <div class="col-md-2">
+        <button type="submit" class="btn btn-primary">Apply</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div class="row row-deck row-cards mb-3">
+  <div class="col-sm-6 col-lg-3">
+    <div class="card">
+      <div class="card-body">
+        <div class="subheader">Total revenue</div>
+        <div class="h1 mb-0">${{ total_revenue|default('124,500') }}</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-sm-6 col-lg-3">
+    <div class="card">
+      <div class="card-body">
+        <div class="subheader">Rooms</div>
+        <div class="h1 mb-0">${{ rooms_revenue|default('89,200') }}</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-sm-6 col-lg-3">
+    <div class="card">
+      <div class="card-body">
+        <div class="subheader">Restaurant</div>
+        <div class="h1 mb-0">${{ restaurant_revenue|default('28,400') }}</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-sm-6 col-lg-3">
+    <div class="card">
+      <div class="card-body">
+        <div class="subheader">Spa / Other</div>
+        <div class="h1 mb-0">${{ other_revenue|default('6,900') }}</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="row">
+  <div class="col-lg-8">
+    <div class="card">
+      <div class="card-header">
+        <h3 class="card-title">Revenue over time</h3>
+      </div>
+      <div class="card-body">
+        <canvas id="revenueChart" height="80"></canvas>
+      </div>
+    </div>
+  </div>
+  <div class="col-lg-4">
+    <div class="card">
+      <div class="card-header">
+        <h3 class="card-title">Department breakdown</h3>
+      </div>
+      <div class="card-body">
+        <canvas id="departmentChart" height="200"></canvas>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="row mt-3">
+  <div class="col-12">
+    <div class="card">
+      <div class="card-header">
+        <h3 class="card-title">Year-over-year comparison</h3>
+      </div>
+      <div class="card-body">
+        <canvas id="yoyChart" height="60"></canvas>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function() {
+  var ctx1 = document.getElementById('revenueChart');
+  if (ctx1) {
+    new Chart(ctx1, {
+      type: 'bar',
+      data: {
+        labels: ['Jan W1','Jan W2','Jan W3','Jan W4','Feb W1','Feb W2'],
+        datasets: [
+          { label: 'Rooms', data: [12000, 14000, 13500, 15000, 14200, 14500], backgroundColor: 'rgba(59, 130, 246, 0.8)' },
+          { label: 'Restaurant', data: [4200, 4800, 4500, 5100, 4800, 4600], backgroundColor: 'rgba(34, 197, 94, 0.8)' },
+          { label: 'Spa/Other', data: [1100, 1200, 1150, 1250, 1180, 1020], backgroundColor: 'rgba(234, 179, 8, 0.8)' }
+        ]
+      },
+      options: { responsive: true, scales: { x: { stacked: true }, y: { stacked: true, beginAtZero: true } } }
+    });
+  }
+  var ctx2 = document.getElementById('departmentChart');
+  if (ctx2) {
+    new Chart(ctx2, {
+      type: 'doughnut',
+      data: {
+        labels: ['Rooms', 'Restaurant', 'Spa', 'Other'],
+        datasets: [{ data: [89200, 28400, 4500, 2400], backgroundColor: ['#3b82f6', '#22c55e', '#eab308', '#94a3b8'] }]
+      },
+      options: { responsive: true }
+    });
+  }
+  var ctx3 = document.getElementById('yoyChart');
+  if (ctx3) {
+    new Chart(ctx3, {
+      type: 'line',
+      data: {
+        labels: ['Jan','Feb','Mar','Apr','May','Jun'],
+        datasets: [
+          { label: '2025', data: [44700, 38500, 0, 0, 0, 0], borderColor: '#3b82f6', tension: 0.3 },
+          { label: '2024', data: [41200, 36800, 40100, 38500, 42000, 44500], borderColor: '#94a3b8', tension: 0.3 }
+        ]
+      },
+      options: { responsive: true, scales: { y: { beginAtZero: true } } }
+    });
+  }
+  document.getElementById('btn-export-pdf')?.addEventListener('click', function() { window.print(); });
+  document.getElementById('btn-export-excel')?.addEventListener('click', function() { alert('Backend: Excel export'); });
+})();
+</script>
+{% endblock %}

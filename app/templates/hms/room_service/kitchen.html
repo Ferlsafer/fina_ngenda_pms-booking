@@ -1,0 +1,140 @@
+{% extends "hms/layout/base.html" %}
+{% block title %}Room Service Kitchen{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h2 class="page-title">Room Service Kitchen</h2>
+</div>
+
+<div class="row">
+  <!-- Pending Orders -->
+  <div class="col-md-4">
+    <div class="card border-warning">
+      <div class="card-header bg-warning text-white">
+        <h3 class="card-title">Pending ({{ pending|length }})</h3>
+      </div>
+      <div class="card-body">
+        {% for order in pending %}
+        <div class="card mb-2 order-card" data-order-id="{{ order.id }}">
+          <div class="card-body p-2">
+            <div class="d-flex justify-content-between">
+              <strong>#{{ order.id }}</strong>
+              <small>{{ order.created_at.strftime('%H:%M') }}</small>
+            </div>
+            <div>Room {{ order.room.room_number if order.room else 'N/A' }}</div>
+            <div class="text-muted small">{{ order.guest_name or 'N/A' }}</div>
+            <div class="mt-1">
+              {% for item in order.items %}
+              <span class="badge bg-secondary">{{ item.quantity }}x {{ item.menu_item.name if item.menu_item else '?' }}</span>
+              {% endfor %}
+            </div>
+            <button class="btn btn-sm btn-success w-100 mt-2" onclick="updateStatus({{ order.id }}, 'preparing')">
+              Start Preparing
+            </button>
+          </div>
+        </div>
+        {% else %}
+        <p class="text-muted text-center">No pending orders</p>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+  
+  <!-- Preparing Orders -->
+  <div class="col-md-4">
+    <div class="card border-primary">
+      <div class="card-header bg-primary text-white">
+        <h3 class="card-title">Preparing ({{ preparing|length }})</h3>
+      </div>
+      <div class="card-body">
+        {% for order in preparing %}
+        <div class="card mb-2 order-card" data-order-id="{{ order.id }}">
+          <div class="card-body p-2">
+            <div class="d-flex justify-content-between">
+              <strong>#{{ order.id }}</strong>
+              <small>{{ order.created_at.strftime('%H:%M') }}</small>
+            </div>
+            <div>Room {{ order.room.room_number if order.room else 'N/A' }}</div>
+            <div class="text-muted small">{{ order.guest_name or 'N/A' }}</div>
+            <div class="mt-1">
+              {% for item in order.items %}
+              <span class="badge bg-secondary">{{ item.quantity }}x {{ item.menu_item.name if item.menu_item else '?' }}</span>
+              {% endfor %}
+            </div>
+            <button class="btn btn-sm btn-warning w-100 mt-2" onclick="updateStatus({{ order.id }}, 'ready')">
+              Mark Ready
+            </button>
+          </div>
+        </div>
+        {% else %}
+        <p class="text-muted text-center">No orders being prepared</p>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+  
+  <!-- Ready Orders -->
+  <div class="col-md-4">
+    <div class="card border-success">
+      <div class="card-header bg-success text-white">
+        <h3 class="card-title">Ready ({{ ready|length }})</h3>
+      </div>
+      <div class="card-body">
+        {% for order in ready %}
+        <div class="card mb-2 order-card" data-order-id="{{ order.id }}">
+          <div class="card-body p-2">
+            <div class="d-flex justify-content-between">
+              <strong>#{{ order.id }}</strong>
+              <small>{{ order.created_at.strftime('%H:%M') }}</small>
+            </div>
+            <div>Room {{ order.room.room_number if order.room else 'N/A' }}</div>
+            <div class="text-muted small">{{ order.guest_name or 'N/A' }}</div>
+            <div class="mt-1">
+              {% for item in order.items %}
+              <span class="badge bg-secondary">{{ item.quantity }}x {{ item.menu_item.name if item.menu_item else '?' }}</span>
+              {% endfor %}
+            </div>
+            <a href="{{ url_for('hms.room_service_order_detail', order_id=order.id) }}" class="btn btn-sm btn-info w-100 mt-2">
+              View Details
+            </a>
+          </div>
+        </div>
+        {% else %}
+        <p class="text-muted text-center">No ready orders</p>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="mt-3">
+  <a href="{{ url_for('hms.room_service_orders') }}" class="btn btn-outline-secondary">All Orders</a>
+  <a href="{{ url_for('hms.room_service_delivery') }}" class="btn btn-outline-primary">Delivery Dashboard</a>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function updateStatus(orderId, status) {
+  if (!confirm('Update order to ' + status + '?')) return;
+  
+  fetch('/hms/room-service/order/' + orderId + '/status', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({status: status})
+  })
+  .then(r => r.json())
+  .then(result => {
+    if (result.success) {
+      location.reload();
+    } else {
+      alert('Error: ' + result.error);
+    }
+  })
+  .catch(err => alert('Network error'));
+}
+
+// Auto-refresh every 30 seconds
+setTimeout(() => location.reload(), 30000);
+</script>
+{% endblock %}

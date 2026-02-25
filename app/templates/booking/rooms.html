@@ -1,0 +1,132 @@
+{% extends "booking/base.html" %}
+
+{% block title %}Our Rooms - Ngenda Hotel{% endblock %}
+
+{% block content %}
+
+<!-- Page Header -->
+<div class="page-header" style="background: linear-gradient(135deg, #f0ad4e 0%, #d4953c 100%); padding: 80px 0; text-align: center; color: white;">
+    <div class="container">
+        <h1 style="font-size: 3rem; font-weight: 700; margin-bottom: 10px;">Our Rooms & Suites</h1>
+        <p style="font-size: 1.2rem; opacity: 0.95;">Choose your perfect accommodation</p>
+    </div>
+</div>
+
+<!-- Rooms Section -->
+<div class="section-full p-tb90">
+    <div class="container">
+        <!-- Filter Buttons -->
+        <div class="text-center mb-5">
+            <ul class="btn-filter-wrap2" style="list-style: none; padding: 0; display: flex; justify-content: center; gap: 10px; flex-wrap: wrap;">
+                <li class="btn-filter btn-active" data-filter="*" style="padding: 10px 25px; background: #f0ad4e; color: white; border-radius: 25px; cursor: pointer; border: none; font-weight: 600;">All Rooms</li>
+                {% for category in categories %}
+                <li class="btn-filter" data-filter=".{{ category }}" style="padding: 10px 25px; background: #f8f9fa; color: #333; border-radius: 25px; cursor: pointer; border: 2px solid #eee; font-weight: 600;">{{ category|title }}</li>
+                {% endfor %}
+            </ul>
+        </div>
+
+        <!-- Rooms Grid -->
+        <div class="row" id="rooms-grid">
+            {% for room_type in room_types %}
+            <div class="col-lg-4 col-md-6 mb-4 {{ room_type.category }}">
+                <div class="room-card" style="border-radius: 15px; overflow: hidden; box-shadow: 0 5px 15px rgba(0,0,0,0.1); transition: transform 0.3s ease; height: 100%;" onmouseover="this.style.transform='translateY(-5px)'" onmouseout="this.style.transform='translateY(0)'">
+                    <div style="position: relative; height: 250px; overflow: hidden;">
+                        {% if room_type.primary_image %}
+                        <img src="{{ url_for('static', filename='uploads/rooms/' + room_type.primary_image) }}" alt="{{ room_type.name }}" style="width: 100%; height: 100%; object-fit: cover; transition: transform 0.3s ease;" onmouseover="this.style.transform='scale(1.1)'" onmouseout="this.style.transform='scale(1)'">
+                        {% else %}
+                        <img src="{{ url_for('static', filename='booking/images/rooms/roomview.jpg') }}" alt="{{ room_type.name }}" style="width: 100%; height: 100%; object-fit: cover; transition: transform 0.3s ease;" onmouseover="this.style.transform='scale(1.1)'" onmouseout="this.style.transform='scale(1)'">
+                        {% endif %}
+                        <div style="position: absolute; top: 15px; right: 15px; background: #f0ad4e; color: white; padding: 5px 15px; border-radius: 20px; font-size: 0.85rem; font-weight: 600;">
+                            {{ room_type.category|title }}
+                        </div>
+                    </div>
+                    <div class="p-4" style="flex: 1; display: flex; flex-direction: column;">
+                        <h4 style="margin-bottom: 10px; font-weight: 600; color: #1a1a1a;">{{ room_type.name }}</h4>
+                        <p style="color: #666; font-size: 0.95rem; margin-bottom: 15px; flex: 1;">{{ room_type.short_description or 'Luxury accommodation with modern amenities' }}</p>
+                        
+                        <div class="row mb-3">
+                            <div class="col-4">
+                                <div class="text-center">
+                                    <i class="fa fa-expand" style="color: #f0ad4e; font-size: 1.2rem;"></i>
+                                    <div style="font-size: 0.85rem; color: #666;">{{ room_type.size_sqm or '30m²' }}</div>
+                                </div>
+                            </div>
+                            <div class="col-4">
+                                <div class="text-center">
+                                    <i class="fa fa-users" style="color: #f0ad4e; font-size: 1.2rem;"></i>
+                                    <div style="font-size: 0.85rem; color: #666;">{{ room_type.capacity or 2 }} Guests</div>
+                                </div>
+                            </div>
+                            <div class="col-4">
+                                <div class="text-center">
+                                    <i class="fa fa-bed" style="color: #f0ad4e; font-size: 1.2rem;"></i>
+                                    <div style="font-size: 0.85rem; color: #666;">{{ room_type.bed_type or 'Double' }}</div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="d-flex justify-content-between align-items-center mt-auto">
+                            <div>
+                                <span style="color: #f0ad4e; font-size: 1.5rem; font-weight: 700;">{{ currency_symbol }} {{ room_type.display_price|format_number }}</span>
+                                <span style="color: #666; font-size: 0.9rem;">/night</span>
+                            </div>
+                            <a href="{{ url_for('booking.room_detail', room_id=room_type.id) }}" class="btn btn-outline-primary" style="border-color: #f0ad4e; color: #f0ad4e; border-radius: 10px;">
+                                View Details
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+
+<!-- Call to Action -->
+<div class="section-full p-tb90" style="background: #f8f9fa;">
+    <div class="container text-center">
+        <h2 style="color: #1a1a1a; font-weight: 700; margin-bottom: 20px;">Ready to Book Your Stay?</h2>
+        <p style="color: #666; font-size: 1.1rem; margin-bottom: 30px; max-width: 600px; margin-left: auto; margin-right: auto;">
+            Experience luxury and comfort at Ngenda Hotel & Apartments. Book now and enjoy exceptional hospitality.
+        </p>
+        <a href="{{ url_for('booking.book') }}" class="btn btn-primary btn-lg px-5" style="background: #f0ad4e; border: none; border-radius: 10px; font-weight: 600; padding: 15px 40px;">
+            <i class="fa fa-calendar-check me-2"></i>Book Now
+        </a>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Room filter functionality
+document.addEventListener('DOMContentLoaded', function() {
+    const filterButtons = document.querySelectorAll('.btn-filter');
+    const rooms = document.querySelectorAll('#rooms-grid > div');
+    
+    filterButtons.forEach(btn => {
+        btn.addEventListener('click', function() {
+            // Update active state
+            filterButtons.forEach(b => {
+                b.classList.remove('btn-active');
+                b.style.background = '#f8f9fa';
+                b.style.color = '#333';
+            });
+            this.classList.add('btn-active');
+            this.style.background = '#f0ad4e';
+            this.style.color = 'white';
+            
+            const filter = this.getAttribute('data-filter');
+            
+            rooms.forEach(room => {
+                if (filter === '*' || room.classList.contains(filter.substring(1))) {
+                    room.style.display = 'block';
+                } else {
+                    room.style.display = 'none';
+                }
+            });
+        });
+    });
+});
+</script>
+{% endblock %}

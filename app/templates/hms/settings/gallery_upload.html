@@ -1,0 +1,138 @@
+{% extends "hms/layout/base.html" %}
+{% block title %}Upload Gallery Image - Hotel PMS{% endblock %}
+
+{% block content %}
+<div class="page-header d-print-none">
+  <div class="row align-items-center">
+    <div class="col">
+      <h2 class="page-title">Upload Gallery Image</h2>
+      <div class="text-muted mt-1">Add a new image to your website gallery</div>
+    </div>
+    <div class="col-auto">
+      <a href="{{ url_for('hms.settings_gallery') }}" class="btn btn-secondary">
+        <i class="fa fa-arrow-left"></i> Back to Gallery
+      </a>
+    </div>
+  </div>
+</div>
+
+<div class="row">
+  <div class="col-lg-8">
+    <div class="card">
+      <div class="card-header">
+        <h3 class="card-title">Image Details</h3>
+      </div>
+      <div class="card-body">
+        <form method="POST" enctype="multipart/form-data">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          
+          <!-- Image Upload -->
+          <div class="mb-4">
+            <label class="form-label required">Image File</label>
+            <input type="file" name="image" class="form-control" accept="image/*" required>
+            <div class="form-hint">Allowed formats: JPG, PNG, WebP. Maximum size: 5MB</div>
+          </div>
+
+          <!-- Title -->
+          <div class="mb-3">
+            <label class="form-label required">Title</label>
+            <input type="text" name="title" class="form-control" placeholder="e.g. Executive Suite, Swimming Pool" required>
+            <div class="form-hint">This will be displayed on the gallery page</div>
+          </div>
+
+          <!-- Description -->
+          <div class="mb-3">
+            <label class="form-label">Description</label>
+            <textarea name="description" class="form-control" rows="3" placeholder="Brief description of the image..."></textarea>
+          </div>
+
+          <!-- Category -->
+          <div class="mb-3">
+            <label class="form-label required">Category</label>
+            <select name="category" class="form-select" required>
+              <option value="facilities">Facilities</option>
+              <option value="rooms">Rooms</option>
+              <option value="dining">Dining</option>
+              <option value="events">Events</option>
+            </select>
+            <div class="form-hint">Used for filtering on the website gallery page</div>
+          </div>
+
+          <!-- Size Type -->
+          <div class="mb-3">
+            <label class="form-label required">Display Size</label>
+            <select name="size_type" class="form-select" required>
+              <option value="small">Small (Grid layout)</option>
+              <option value="medium">Medium (3 images per row)</option>
+              <option value="large">Large (2 images per row, featured)</option>
+            </select>
+            <div class="form-hint">
+              <strong>Large:</strong> 2 images max, prominent display<br>
+              <strong>Medium:</strong> 3 images max, medium prominence<br>
+              <strong>Small:</strong> Grid layout, multiple images
+            </div>
+          </div>
+
+          <!-- Sort Order -->
+          <div class="mb-3">
+            <label class="form-label">Sort Order</label>
+            <input type="number" name="sort_order" class="form-control" value="0" min="0">
+            <div class="form-hint">Lower numbers appear first. Default is 0.</div>
+          </div>
+
+          <!-- Active Status -->
+          <div class="mb-4">
+            <label class="form-check">
+              <input type="checkbox" name="is_active" class="form-check-input" checked>
+              <span class="form-check-label">Active (show on website immediately)</span>
+            </label>
+          </div>
+
+          <!-- Actions -->
+          <div class="d-flex gap-2">
+            <button type="submit" class="btn btn-primary">
+              <i class="fa fa-upload"></i> Upload Image
+            </button>
+            <a href="{{ url_for('hms.settings_gallery') }}" class="btn btn-secondary">
+              Cancel
+            </a>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Help Panel -->
+  <div class="col-lg-4">
+    <div class="card">
+      <div class="card-header">
+        <h3 class="card-title">Tips</h3>
+      </div>
+      <div class="card-body">
+        <h4>Image Guidelines</h4>
+        <ul class="text-muted">
+          <li>Use high-quality images (minimum 1920x1080px)</li>
+          <li>Optimize images for web (compress without losing quality)</li>
+          <li>Use descriptive titles for SEO</li>
+          <li>Choose appropriate categories for easy filtering</li>
+        </ul>
+
+        <h4 class="mt-4">Size Types</h4>
+        <ul class="text-muted">
+          <li><strong>Large:</strong> Featured images at top of gallery</li>
+          <li><strong>Medium:</strong> Secondary prominent images</li>
+          <li><strong>Small:</strong> Grid layout for multiple images</li>
+        </ul>
+
+        <h4 class="mt-4">Categories</h4>
+        <ul class="text-muted">
+          <li><strong>Rooms:</strong> Guest rooms, suites, bathrooms</li>
+          <li><strong>Facilities:</strong> Pool, gym, lobby, amenities</li>
+          <li><strong>Dining:</strong> Restaurant, bar, lounge</li>
+          <li><strong>Events:</strong> Conference rooms, event spaces</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

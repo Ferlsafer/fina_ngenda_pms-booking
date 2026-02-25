@@ -1,0 +1,49 @@
+{% extends "booking/layout/base.html" %}
+{% block title %}Process Payment - Booking {{ booking.booking_reference }}{% endblock %}
+
+{% block content %}
+<div class="container-xl">
+  <div class="page-header">
+    <h2 class="page-title">Process Payment</h2>
+    <p class="text-muted">Booking Reference: {{ booking.booking_reference }}</p>
+  </div>
+
+  <div class="row">
+    <div class="col-md-6">
+      <div class="card">
+        <div class="card-body">
+          <form method="POST" action="{{ url_for('booking.process_payment', booking_id=booking.id) }}">
+            <div class="mb-3">
+              <label class="form-label">Payment Amount *</label>
+              <input type="number" name="amount" class="form-control" step="0.01" min="0.01" required>
+              <small class="form-hint">Enter the amount being paid</small>
+            </div>
+            
+            <div class="mb-3">
+              <label class="form-label">Payment Method *</label>
+              <select name="payment_method" class="form-select" required>
+                <option value="">Select payment method</option>
+                <option value="Cash">Cash</option>
+                <option value="Card">Credit Card</option>
+                <option value="Bank Transfer">Bank Transfer</option>
+                <option value="Mobile Money">Mobile Money</option>
+                <option value="Check">Check</option>
+              </select>
+            </div>
+            
+            <div class="mb-3">
+              <label class="form-label">Notes</label>
+              <textarea name="notes" class="form-control" rows="3" placeholder="Additional notes about this payment"></textarea>
+            </div>
+            
+            <div class="d-flex">
+              <button type="submit" class="btn btn-primary">Process Payment</button>
+              <a href="{{ url_for('booking.booking_success', booking_id=booking.id) }}" class="btn btn-outline-secondary">Cancel</a>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

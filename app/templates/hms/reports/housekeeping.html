@@ -1,0 +1,178 @@
+{% extends "hms/layout/base.html" %}
+{% block title %}Housekeeping Report - Hotel PMS{% endblock %}
+
+{% block head %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+{% endblock %}
+
+{% block content %}
+<div class="page-header d-print-none">
+  <div class="row align-items-center">
+    <div class="col">
+      <h2 class="page-title">Housekeeping report</h2>
+      <div class="text-muted mt-1">Cleaning times, productivity, and supply usage</div>
+    </div>
+    <div class="col-auto">
+      <div class="btn-list">
+        <button type="button" class="btn btn-outline-danger" id="btn-export-pdf">Export PDF</button>
+        <button type="button" class="btn btn-outline-success" id="btn-export-excel">Export Excel</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="card mb-3">
+  <div class="card-body">
+    <form method="get" action="#" class="row g-2 align-items-end">
+      <div class="col-md-3">
+        <label class="form-label">From</label>
+        <input type="date" name="from" class="form-control" value="2025-02-01">
+      </div>
+      <div class="col-md-3">
+        <label class="form-label">To</label>
+        <input type="date" name="to" class="form-control" value="2025-02-14">
+      </div>
+      <div class="col-md-2">
+        <button type="submit" class="btn btn-primary">Apply</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div class="row row-deck row-cards mb-3">
+  <div class="col-sm-6 col-lg-3">
+    <div class="card">
+      <div class="card-body">
+        <div class="subheader">Avg cleaning time</div>
+        <div class="h1 mb-0">{{ avg_cleaning_mins|default(28) }} min</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-sm-6 col-lg-3">
+    <div class="card">
+      <div class="card-body">
+        <div class="subheader">Rooms per staff/day</div>
+        <div class="h1 mb-0">{{ rooms_per_staff|default(14) }}</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-sm-6 col-lg-3">
+    <div class="card">
+      <div class="card-body">
+        <div class="subheader">Avg turnaround</div>
+        <div class="h1 mb-0">{{ turnaround_mins|default(45) }} min</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-sm-6 col-lg-3">
+    <div class="card">
+      <div class="card-body">
+        <div class="subheader">Tasks completed</div>
+        <div class="h1 mb-0">{{ tasks_completed|default(420) }}</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="row">
+  <div class="col-lg-6">
+    <div class="card">
+      <div class="card-header">
+        <h3 class="card-title">Cleaning time distribution</h3>
+      </div>
+      <div class="card-body">
+        <canvas id="cleaningTimeChart" height="120"></canvas>
+      </div>
+    </div>
+  </div>
+  <div class="col-lg-6">
+    <div class="card">
+      <div class="card-header">
+        <h3 class="card-title">Staff productivity</h3>
+      </div>
+      <div class="card-body">
+        <canvas id="productivityChart" height="120"></canvas>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="row mt-3">
+  <div class="col-lg-6">
+    <div class="card">
+      <div class="card-header">
+        <h3 class="card-title">Room turnaround time</h3>
+      </div>
+      <div class="card-body">
+        <canvas id="turnaroundChart" height="100"></canvas>
+      </div>
+    </div>
+  </div>
+  <div class="col-lg-6">
+    <div class="card">
+      <div class="card-header">
+        <h3 class="card-title">Supply usage</h3>
+      </div>
+      <div class="table-responsive">
+        <table class="table table-vcenter card-table">
+          <thead>
+            <tr>
+              <th>Item</th>
+              <th>Used</th>
+              <th>Per room</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><td>Towels</td><td>840</td><td>2.0</td></tr>
+            <tr><td>Toiletries (sets)</td><td>420</td><td>1.0</td></tr>
+            <tr><td>Linen sets</td><td>420</td><td>1.0</td></tr>
+            <tr><td>Cleaning solution (L)</td><td>42</td><td>0.1</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function() {
+  var ctx1 = document.getElementById('cleaningTimeChart');
+  if (ctx1) {
+    new Chart(ctx1, {
+      type: 'bar',
+      data: {
+        labels: ['15-20m','20-25m','25-30m','30-35m','35-40m','40+'],
+        datasets: [{ label: 'Rooms', data: [12, 45, 78, 52, 28, 15], backgroundColor: 'rgba(59, 130, 246, 0.8)' }]
+      },
+      options: { responsive: true, scales: { y: { beginAtZero: true } } }
+    });
+  }
+  var ctx2 = document.getElementById('productivityChart');
+  if (ctx2) {
+    new Chart(ctx2, {
+      type: 'bar',
+      data: {
+        labels: ['Maria','James','Anna','Paul','Lisa'],
+        datasets: [{ label: 'Rooms/day', data: [15, 14, 16, 13, 14], backgroundColor: 'rgba(34, 197, 94, 0.8)' }]
+      },
+      options: { responsive: true, scales: { y: { beginAtZero: true } } }
+    });
+  }
+  var ctx3 = document.getElementById('turnaroundChart');
+  if (ctx3) {
+    new Chart(ctx3, {
+      type: 'line',
+      data: {
+        labels: ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'],
+        datasets: [{ label: 'Avg mins', data: [42, 45, 43, 48, 44, 50, 46], borderColor: '#eab308', tension: 0.3 }]
+      },
+      options: { responsive: true, scales: { y: { beginAtZero: true } } }
+    });
+  }
+  document.getElementById('btn-export-pdf')?.addEventListener('click', function() { window.print(); });
+  document.getElementById('btn-export-excel')?.addEventListener('click', function() { alert('Backend: Excel export'); });
+})();
+</script>
+{% endblock %}

@@ -1,0 +1,221 @@
+{% extends "hms/layout/base.html" %}
+{% block title %}Accounting - Hotel PMS{% endblock %}
+
+{% block content %}
+<div class="container-xl">
+  <div class="page-header d-print-none">
+    <div class="row align-items-center">
+      <div class="col">
+        <h2 class="page-title">Accounting Dashboard</h2>
+        <div class="text-muted mt-1">Financial overview and management</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Summary Cards -->
+  <div class="row mb-4">
+    <div class="col-md-4">
+      <div class="card card-sm">
+        <div class="card-body">
+          <div class="row align-items-center">
+            <div class="col-auto">
+              <span class="bg-green text-white avatar">
+                <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M12 12m-9 0a9 9 0 1 0 18 0a9 9 0 1 0 -18 0" /><path d="M12 12m-3 0a3 3 0 1 0 6 0a3 3 0 1 0 -6 0" /><path d="M12 12l0 .01" /></svg>
+              </span>
+            </div>
+            <div class="col">
+              <div class="font-weight-medium">TSh {{ revenue|default(0)|format_number }}</div>
+              <div class="text-muted small">Revenue This Month</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-4">
+      <div class="card card-sm">
+        <div class="card-body">
+          <div class="row align-items-center">
+            <div class="col-auto">
+              <span class="bg-red text-white avatar">
+                <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M12 12m-9 0a9 9 0 1 0 18 0a9 9 0 1 0 -18 0" /><path d="M12 12m-3 0a3 3 0 1 0 6 0a3 3 0 1 0 -6 0" /><path d="M12 12l0 .01" /></svg>
+              </span>
+            </div>
+            <div class="col">
+              <div class="font-weight-medium">TSh {{ expenses|default(0)|format_number }}</div>
+              <div class="text-muted small">Expenses This Month</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-4">
+      <div class="card card-sm">
+        <div class="card-body">
+          <div class="row align-items-center">
+            <div class="col-auto">
+              <span class="bg-blue text-white avatar">
+                <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M12 12m-9 0a9 9 0 1 0 18 0a9 9 0 1 0 -18 0" /><path d="M12 12m-3 0a3 3 0 1 0 6 0a3 3 0 1 0 -6 0" /><path d="M12 12l0 .01" /></svg>
+              </span>
+            </div>
+            <div class="col">
+              <div class="font-weight-medium">TSh {{ profit|default(0)|format_number }}</div>
+              <div class="text-muted small">Net Profit</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Revenue Breakdown -->
+  <div class="row mb-4">
+    <div class="col-12">
+      <div class="card">
+        <div class="card-header">
+          <h3 class="card-title">Revenue Breakdown - This Month</h3>
+        </div>
+        <div class="card-body">
+          <div class="row">
+            <div class="col-md-6">
+              <div class="d-flex align-items-center">
+                <div class="me-3">
+                  <div class="bg-green text-white rounded p-3 d-inline-flex">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M12 12m-9 0a9 9 0 1 0 18 0a9 9 0 1 0 -18 0" /><path d="M12 12m-3 0a3 3 0 1 0 6 0a3 3 0 1 0 -6 0" /><path d="M12 12l0 .01" /></svg>
+                  </div>
+                </div>
+                <div>
+                  <div class="text-muted small">From Journal Entries</div>
+                  <div class="fw-bold">TSh {{ revenue_from_journal|default(0)|format_number }}</div>
+                </div>
+              </div>
+            </div>
+            <div class="col-md-6">
+              <div class="d-flex align-items-center">
+                <div class="me-3">
+                  <div class="bg-blue text-white rounded p-3 d-inline-flex">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M17 8v8a4 4 0 0 1 -4 4h-4a4 4 0 0 1 -4 -4v-8" /><path d="M9 3h6a2 2 0 0 1 2 2v0a2 2 0 0 1 -2 2h-6a2 2 0 0 1 -2 -2v0a2 2 0 0 1 2 -2" /></svg>
+                  </div>
+                </div>
+                <div>
+                  <div class="text-muted small">From Direct Payments</div>
+                  <div class="fw-bold">TSh {{ revenue_from_payments|default(0)|format_number }}</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Quick Actions -->
+  <div class="row mb-4">
+    <div class="col-12">
+      <div class="card">
+        <div class="card-header">
+          <h3 class="card-title">Quick Actions</h3>
+        </div>
+        <div class="card-body">
+          <div class="btn-list">
+            <a href="{{ url_for('hms.accounting_entry_create') }}" class="btn btn-primary">
+              <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M12 5v14" /><path d="M5 12h14" /></svg>
+              New Journal Entry
+            </a>
+            <a href="{{ url_for('hms.accounting_chart') }}" class="btn btn-outline-primary">
+              <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M3 21h18" /><path d="M5 21v-14l8 -4v18" /><path d="M19 21v-10l-6 -4" /></svg>
+              Chart of Accounts
+            </a>
+            <a href="{{ url_for('hms.accounting_entries') }}" class="btn btn-outline-primary">
+              <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M14 3v4a1 1 0 0 0 1 1h4" /><path d="M17 21h-10a2 2 0 0 1 -2 -2v-14a2 2 0 0 1 2 -2h7l5 5v11a2 2 0 0 1 -2 2z" /></svg>
+              View Entries
+            </a>
+            <a href="{{ url_for('hms.accounting_reports') }}" class="btn btn-outline-primary">
+              <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M9 14l6 -6" /><path d="M15 10h.01" /><path d="M12 21a9 9 0 0 0 .968 -.13" /></svg>
+              Financial Reports
+            </a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Recent Entries -->
+  <div class="row mb-4">
+    <div class="col-md-6">
+      <div class="card">
+        <div class="card-header">
+          <h3 class="card-title">Recent Journal Entries</h3>
+        </div>
+        <div class="card-body">
+          {% if recent_entries %}
+          <div class="table-responsive">
+            <table class="table table-vcenter table-sm">
+              <thead>
+                <tr>
+                  <th>Date</th>
+                  <th>Reference</th>
+                  <th>Description</th>
+                  <th class="text-end">Amount</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for entry in recent_entries %}
+                <tr>
+                  <td>{{ entry.date.strftime('%Y-%m-%d') }}</td>
+                  <td>{{ entry.reference or '-' }}</td>
+                  <td class="text-muted">{{ entry.description or '-' }}</td>
+                  <td class="text-end">
+                    {% set total = entry.lines|sum(attribute='debit') %}
+                    TSh {{ total|format_number }}
+                  </td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+          {% else %}
+          <p class="text-muted text-center py-4">No journal entries yet</p>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+    <div class="col-md-6">
+      <div class="card">
+        <div class="card-header">
+          <h3 class="card-title">Recent Payments</h3>
+        </div>
+        <div class="card-body">
+          {% if recent_payments %}
+          <div class="table-responsive">
+            <table class="table table-vcenter table-sm">
+              <thead>
+                <tr>
+                  <th>Date</th>
+                  <th>Booking</th>
+                  <th>Method</th>
+                  <th class="text-end">Amount</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for payment in recent_payments %}
+                <tr>
+                  <td>{{ payment.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
+                  <td>#{{ payment.booking_id }}</td>
+                  <td>{{ payment.payment_method or '-' }}</td>
+                  <td class="text-end text-success">
+                    +TSh {{ payment.amount|format_number }}
+                  </td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+          {% else %}
+          <p class="text-muted text-center py-4">No payments yet</p>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

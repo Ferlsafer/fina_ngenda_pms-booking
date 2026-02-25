@@ -1,0 +1,268 @@
+{% extends "booking/base.html" %}
+
+{% block title %}Book Your Stay - Ngenda Hotel{% endblock %}
+
+{% block content %}
+
+<!-- Booking Form Hero -->
+<div class="booking-hero" style="background: linear-gradient(135deg, #f0ad4e 0%, #d4953c 100%); padding: 80px 0; text-align: center; color: white;">
+    <div class="container">
+        <h1 style="font-size: 3rem; font-weight: 700; margin-bottom: 10px; text-shadow: 2px 2px 4px rgba(0,0,0,0.3);">Complete Your Booking</h1>
+        <p style="font-size: 1.2rem; opacity: 0.95;">Fill in your details to reserve your room</p>
+    </div>
+</div>
+
+<!-- Booking Form -->
+<div class="section-full p-tb90">
+    <div class="container">
+        <div class="row justify-content-center">
+            <div class="col-lg-8">
+                <!-- Booking Summary Card -->
+                <div class="card mb-4 border-0 shadow-lg" style="border-radius: 15px; overflow: hidden;">
+                    <div class="card-header" style="background: #f8f9fa; border-bottom: 1px solid #eee; padding: 20px;">
+                        <h4 style="margin: 0; color: #1a1a1a; font-weight: 600;">
+                            <i class="fa fa-clipboard-check me-2" style="color: #f0ad4e;"></i>
+                            Booking Details
+                        </h4>
+                    </div>
+                    <div class="card-body p-4">
+                        <!-- Flash Messages -->
+                        {% with messages = get_flashed_messages(with_categories=true) %}
+                          {% if messages %}
+                            {% for category, message in messages %}
+                            <div class="alert alert-{{ 'danger' if category == 'error' else 'warning' if category == 'warning' else 'info' }} alert-dismissible fade show" role="alert">
+                                <i class="fa fa-{{ 'exclamation-circle' if category == 'error' else 'exclamation-triangle' if category == 'warning' else 'info-circle' }} me-2"></i>
+                                {{ message }}
+                                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                            </div>
+                            {% endfor %}
+                          {% endif %}
+                        {% endwith %}
+                        
+                        {% if selected_room_type %}
+                        <div class="alert alert-info d-flex align-items-center" style="background: #e7f3ff; border-left: 4px solid #007bff;">
+                            <i class="fa fa-info-circle me-2" style="color: #007bff; font-size: 1.2rem;"></i>
+                            <span style="color: #004085;">You're booking: <strong>Room Type ID {{ selected_room_type }}</strong></span>
+                        </div>
+                        {% endif %}
+                        
+                        <form method="POST" action="{{ url_for('booking.book') }}" class="booking-form">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            
+                            <!-- Guest Information -->
+                            <h5 class="mb-3" style="color: #1a1a1a; font-weight: 600; border-bottom: 2px solid #f0ad4e; padding-bottom: 10px; display: inline-block;">
+                                <i class="fa fa-user me-2" style="color: #f0ad4e;"></i>Guest Information
+                            </h5>
+                            
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label" style="font-weight: 500;">Full Name <span class="text-danger">*</span></label>
+                                    <input type="text" name="guest_name" class="form-control" placeholder="John Doe" required>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label" style="font-weight: 500;">Email Address <span class="text-danger">*</span></label>
+                                    <input type="email" name="guest_email" class="form-control" placeholder="john@example.com" required>
+                                </div>
+                            </div>
+                            
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label" style="font-weight: 500;">Phone Number <span class="text-danger">*</span></label>
+                                    <input type="tel" name="guest_phone" class="form-control" placeholder="+255 123 456 789" required>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label" style="font-weight: 500;">Number of Adults</label>
+                                    <select name="adults" class="form-control">
+                                        <option value="1">1 Adult</option>
+                                        <option value="2" selected>2 Adults</option>
+                                        <option value="3">3 Adults</option>
+                                        <option value="4">4 Adults</option>
+                                    </select>
+                                </div>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label class="form-label" style="font-weight: 500;">Number of Children</label>
+                                <select name="children" class="form-control">
+                                    <option value="0">No Children</option>
+                                    <option value="1">1 Child</option>
+                                    <option value="2">2 Children</option>
+                                    <option value="3">3 Children</option>
+                                </select>
+                            </div>
+
+                            <!-- Stay Details -->
+                            <h5 class="mb-3 mt-4" style="color: #1a1a1a; font-weight: 600; border-bottom: 2px solid #f0ad4e; padding-bottom: 10px; display: inline-block;">
+                                <i class="fa fa-calendar me-2" style="color: #f0ad4e;"></i>Stay Details
+                            </h5>
+                            
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label" style="font-weight: 500;">Check-in Date <span class="text-danger">*</span></label>
+                                    <input type="date" name="check_in" class="form-control" value="{{ check_in or '' }}" required>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label" style="font-weight: 500;">Check-out Date <span class="text-danger">*</span></label>
+                                    <input type="date" name="check_out" class="form-control" value="{{ check_out or '' }}" required>
+                                </div>
+                            </div>
+
+                            <!-- Room Selection -->
+                            <h5 class="mb-3 mt-4" style="color: #1a1a1a; font-weight: 600; border-bottom: 2px solid #f0ad4e; padding-bottom: 10px; display: inline-block;">
+                                <i class="fa fa-bed me-2" style="color: #f0ad4e;"></i>Room Selection
+                            </h5>
+                            
+                            <div class="mb-3">
+                                <label class="form-label" style="font-weight: 500;">Select Room Type <span class="text-danger">*</span></label>
+                                <select name="room_type_id" class="form-control" required>
+                                    <option value="">-- Choose a Room --</option>
+                                    {% for rt in room_types %}
+                                    <option value="{{ rt.id }}" {% if selected_room_type == rt.id %}selected{% endif %}>
+                                        {{ rt.name }} - {{ currency_symbol }} {{ rt.base_price|format_number }} per night
+                                    </option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+
+                            <!-- Special Requests -->
+                            <h5 class="mb-3 mt-4" style="color: #1a1a1a; font-weight: 600; border-bottom: 2px solid #f0ad4e; padding-bottom: 10px; display: inline-block;">
+                                <i class="fa fa-comment-dots me-2" style="color: #f0ad4e;"></i>Special Requests
+                            </h5>
+                            
+                            <div class="mb-4">
+                                <label class="form-label" style="font-weight: 500;">Special Requests or Requirements</label>
+                                <textarea name="special_requests" class="form-control" rows="4" placeholder="Any special requests? (e.g., early check-in, late check-out, dietary requirements, etc.)"></textarea>
+                                <div class="form-text">Optional: Let us know if you have any special needs</div>
+                            </div>
+
+                            <!-- Submit Button -->
+                            <div class="d-grid gap-2">
+                                <button type="submit" class="btn btn-primary btn-lg" style="background: #f0ad4e; border: none; font-weight: 600; padding: 15px; border-radius: 10px; font-size: 1.1rem;">
+                                    <i class="fa fa-check-circle me-2"></i>Confirm Booking
+                                </button>
+                            </div>
+                            
+                            <div class="text-center mt-3">
+                                <p style="color: #666; font-size: 0.9rem; margin: 0;">
+                                    <i class="fa fa-lock me-1" style="color: #28a745;"></i>
+                                    Your information is secure and will not be shared.
+                                </p>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- Booking Benefits -->
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <div class="benefit-card text-center p-4" style="background: #f8f9fa; border-radius: 10px; height: 100%;">
+                            <i class="fa fa-check-circle" style="font-size: 2.5rem; color: #28a745; margin-bottom: 15px;"></i>
+                            <h5 style="font-weight: 600; margin-bottom: 10px;">Best Price Guarantee</h5>
+                            <p style="color: #666; font-size: 0.9rem; margin: 0;">Book direct and get the best rates</p>
+                        </div>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <div class="benefit-card text-center p-4" style="background: #f8f9fa; border-radius: 10px; height: 100%;">
+                            <i class="fa fa-times-circle" style="font-size: 2.5rem; color: #dc3545; margin-bottom: 15px;"></i>
+                            <h5 style="font-weight: 600; margin-bottom: 10px;">Free Cancellation</h5>
+                            <p style="color: #666; font-size: 0.9rem; margin: 0;">Cancel up to 24 hours before check-in</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Sidebar -->
+            <div class="col-lg-4">
+                <div class="sidebar-card card border-0 shadow-lg mb-4" style="border-radius: 15px; overflow: hidden; position: sticky; top: 20px;">
+                    <div class="card-body p-4">
+                        <h5 class="mb-3" style="color: #1a1a1a; font-weight: 600;">Need Help?</h5>
+                        <p style="color: #666; font-size: 0.95rem; line-height: 1.6;">
+                            Our team is available 24/7 to assist you with your booking.
+                        </p>
+                        
+                        <div class="contact-info mt-4">
+                            <div class="d-flex align-items-center mb-3">
+                                <i class="fa fa-phone" style="color: #f0ad4e; font-size: 1.2rem; margin-right: 10px; width: 25px;"></i>
+                                <span style="color: #555;">+255 123 456 789</span>
+                            </div>
+                            <div class="d-flex align-items-center mb-3">
+                                <i class="fa fa-envelope" style="color: #f0ad4e; font-size: 1.2rem; margin-right: 10px; width: 25px;"></i>
+                                <span style="color: #555;">info@ngendahotel.co.tz</span>
+                            </div>
+                            <div class="d-flex align-items-center">
+                                <i class="fa fa-whatsapp" style="color: #25D366; font-size: 1.2rem; margin-right: 10px; width: 25px;"></i>
+                                <span style="color: #555;">+255 123 456 789</span>
+                            </div>
+                        </div>
+
+                        <div class="mt-4 pt-4" style="border-top: 1px solid #eee;">
+                            <a href="https://wa.me/255123456789" target="_blank" class="btn btn-outline-success w-100" style="border-radius: 10px;">
+                                <i class="fa fa-whatsapp me-2"></i>Chat on WhatsApp
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Date validation
+const checkInInput = document.querySelector('input[name="check_in"]');
+const checkOutInput = document.querySelector('input[name="check_out"]');
+const form = document.querySelector('.booking-form');
+
+if (checkInInput && checkOutInput) {
+    // Set minimum date to today
+    const today = new Date().toISOString().split('T')[0];
+    checkInInput.min = today;
+    checkOutInput.min = today;
+
+    checkInInput.addEventListener('change', function() {
+        const minCheckOut = new Date(this.value);
+        minCheckOut.setDate(minCheckOut.getDate() + 1);
+        checkOutInput.min = minCheckOut.toISOString().split('T')[0];
+        
+        // Clear check-out if it's invalid
+        if (checkOutInput.value && new Date(checkOutInput.value) <= new Date(this.value)) {
+            checkOutInput.value = '';
+        }
+    });
+
+    checkOutInput.addEventListener('change', function() {
+        const maxCheckIn = new Date(this.value);
+        maxCheckIn.setDate(maxCheckIn.getDate() - 1);
+        checkInInput.max = maxCheckIn.toISOString().split('T')[0];
+    });
+
+    // Form submission validation
+    if (form) {
+        form.addEventListener('submit', function(e) {
+            const checkIn = new Date(checkInInput.value);
+            const checkOut = new Date(checkOutInput.value);
+            
+            if (!checkInInput.value || !checkOutInput.value) {
+                e.preventDefault();
+                alert('Please select both check-in and check-out dates.');
+                return false;
+            }
+            
+            if (checkOut <= checkIn) {
+                e.preventDefault();
+                alert('Check-out date must be after check-in date.');
+                return false;
+            }
+            
+            console.log('Date validation passed:', {
+                checkIn: checkInInput.value,
+                checkOut: checkOutInput.value
+            });
+        });
+    }
+}
+</script>
+{% endblock %}

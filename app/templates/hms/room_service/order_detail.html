@@ -1,0 +1,131 @@
+{% extends "hms/layout/base.html" %}
+{% block title %}Order #{{ order.id }} - Room Service{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h2 class="page-title">Room Service Order #{{ order.id }}</h2>
+</div>
+
+<div class="row">
+  <div class="col-md-8">
+    <div class="card">
+      <div class="card-header">
+        <h3 class="card-title">Order Details</h3>
+        <span class="badge bg-{{ 'warning' if order.status == 'pending' else 'info' if order.status == 'accepted' else 'primary' if order.status == 'preparing' else 'success' if order.status == 'delivered' else 'secondary' }} ms-2">
+          {{ order.status|title }}
+        </span>
+      </div>
+      <div class="card-body">
+        <div class="row mb-3">
+          <div class="col-md-6">
+            <strong>Room:</strong> {{ order.room.room_number if order.room else 'N/A' }}<br>
+            <strong>Guest:</strong> {{ order.guest_name or 'N/A' }}<br>
+            <strong>Charge to Room:</strong> {{ 'Yes' if order.charge_to_room else 'No' }}
+          </div>
+          <div class="col-md-6">
+            <strong>Ordered:</strong> {{ order.created_at.strftime('%Y-%m-%d %H:%M') }}<br>
+            {% if order.delivery_time %}
+            <strong>Delivery Time:</strong> {{ order.delivery_time.strftime('%Y-%m-%d %H:%M') }}<br>
+            {% endif %}
+            {% if order.delivered_at %}
+            <strong>Delivered:</strong> {{ order.delivered_at.strftime('%Y-%m-%d %H:%M') }}
+            {% endif %}
+          </div>
+        </div>
+        
+        {% if order.special_instructions %}
+        <div class="alert alert-info">
+          <strong>Special Instructions:</strong> {{ order.special_instructions }}
+        </div>
+        {% endif %}
+        
+        <h4>Order Items</h4>
+        <table class="table table-vcenter">
+          <thead>
+            <tr><th>Item</th><th>Qty</th><th>Price</th><th>Total</th></tr>
+          </thead>
+          <tbody>
+            {% for item in order.items %}
+            <tr>
+              <td>{{ item.menu_item.name if item.menu_item else 'Unknown' }}</td>
+              <td>{{ item.quantity }}</td>
+              <td>${{ "%.2f"|format(item.unit_price) }}</td>
+              <td>${{ "%.2f"|format(item.unit_price * item.quantity) }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+          <tfoot>
+            <tr>
+              <td colspan="3" class="text-end"><strong>Subtotal:</strong></td>
+              <td>${{ "%.2f"|format(order.subtotal) }}</td>
+            </tr>
+            <tr>
+              <td colspan="3" class="text-end"><strong>Tax:</strong></td>
+              <td>${{ "%.2f"|format(order.tax) }}</td>
+            </tr>
+            <tr class="table-primary">
+              <td colspan="3" class="text-end"><strong>Total:</strong></td>
+              <td><strong>${{ "%.2f"|format(order.total) }}</strong></td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+    </div>
+  </div>
+  
+  <div class="col-md-4">
+    <div class="card">
+      <div class="card-header"><h3 class="card-title">Actions</h3></div>
+      <div class="card-body">
+        <div class="d-grid gap-2">
+          {% if order.status == 'pending' %}
+          <button class="btn btn-success" onclick="updateStatus('accepted')">Accept Order</button>
+          {% endif %}
+          {% if order.status == 'accepted' %}
+          <button class="btn btn-primary" onclick="updateStatus('preparing')">Start Preparing</button>
+          {% endif %}
+          {% if order.status == 'preparing' %}
+          <button class="btn btn-warning" onclick="updateStatus('ready')">Mark Ready</button>
+          {% endif %}
+          {% if order.status == 'ready' %}
+          <button class="btn btn-info" onclick="updateStatus('out_for_delivery')">Send for Delivery</button>
+          {% endif %}
+          {% if order.status == 'out_for_delivery' %}
+          <button class="btn btn-success" onclick="updateStatus('delivered')">Mark Delivered</button>
+          {% endif %}
+          {% if order.status not in ['delivered', 'cancelled'] %}
+          <button class="btn btn-danger" onclick="updateStatus('cancelled')">Cancel Order</button>
+          {% endif %}
+        </div>
+        
+        <hr>
+        <a href="{{ url_for('hms.room_service_orders') }}" class="btn btn-outline-secondary">Back to Orders</a>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function updateStatus(status) {
+  if (!confirm('Update order status to ' + status + '?')) return;
+  
+  fetch('/hms/room-service/order/{{ order.id }}/status', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({status: status})
+  })
+  .then(r => r.json())
+  .then(result => {
+    if (result.success) {
+      alert(result.message);
+      location.reload();
+    } else {
+      alert('Error: ' + result.error);
+    }
+  })
+  .catch(err => alert('Network error'));
+}
+</script>
+{% endblock %}

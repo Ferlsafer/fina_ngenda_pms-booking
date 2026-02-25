@@ -1,0 +1,166 @@
+{% extends "hms/layout/base.html" %}
+{% block title %}Hotels - Superadmin{% endblock %}
+
+{% block content %}
+<div class="container-xl">
+  <!-- Page header -->
+  <div class="page-header d-print-none">
+    <div class="row align-items-center">
+      <div class="col">
+        <h2 class="page-title">Hotels</h2>
+        <div class="text-muted mt-1">Manage all properties in the system</div>
+      </div>
+      <div class="col-auto ms-auto d-print-none">
+        <a href="{{ '#' }}" class="btn btn-primary">
+          <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+            <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+            <line x1="12" y1="5" x2="12" y2="19" />
+            <line x1="5" y1="12" x2="19" y2="12" />
+          </svg>
+          Add Hotel
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <!-- Hotels Table -->
+  <div class="card">
+    <div class="table-responsive">
+      <table class="table table-vcenter card-table">
+        <thead>
+          <tr>
+            <th>Hotel</th>
+            <th>Location</th>
+            <th>Owner</th>
+            <th>Contact</th>
+            <th>Created</th>
+            <th class="w-1"></th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for hotel in hotels %}
+          <tr id="hotel-{{ hotel.id }}">
+            <td>
+              <div class="d-flex py-1 align-items-center">
+                <span class="avatar avatar-sm me-3 rounded" style="background-color: #206bc4; color: white;">{{ hotel.name[0]|upper }}</span>
+                <div class="flex-fill">
+                  <div class="font-weight-medium">{{ hotel.name }}</div>
+                  <div class="text-muted small">{{ hotel.display_name or hotel.name }}</div>
+                </div>
+              </div>
+            </td>
+            <td>
+              {% if hotel.location %}
+                <div>{{ hotel.location }}</div>
+                <div class="text-muted small">{{ hotel.city or '' }}, {{ hotel.country or '' }}</div>
+              {% else %}
+                <span class="text-muted">No location set</span>
+              {% endif %}
+            </td>
+            <td>
+              {% if hotel.owner %}
+                <div>{{ hotel.owner.name }}</div>
+                <div class="text-muted small">{{ hotel.owner.email }}</div>
+              {% else %}
+                <span class="text-muted">No owner assigned</span>
+              {% endif %}
+            </td>
+            <td>
+              {% if hotel.phone %}
+                <div>{{ hotel.phone }}</div>
+              {% endif %}
+              {% if hotel.email %}
+                <div class="text-muted small">{{ hotel.email }}</div>
+              {% endif %}
+            </td>
+            <td>
+              <div class="text-muted">{{ hotel.created_at.strftime('%Y-%m-%d') if hotel.created_at else 'N/A' }}</div>
+              <div class="text-muted small">{{ hotel.created_at.strftime('%H:%M') if hotel.created_at else '' }}</div>
+            </td>
+            <td>
+              <div class="dropdown">
+                <button class="btn btn-outline-primary btn-sm dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
+                  Actions
+                </button>
+                <div class="dropdown-menu">
+                  <a class="dropdown-item" href="{{ url_for('superadmin.view_hotel', hotel_id=hotel.id) }}">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="icon dropdown-item-icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                      <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+                      <path d="M10 12a2 2 0 1 0 4 0a2 2 0 0 0 -4 0" />
+                      <path d="M21 12c-2.4 4 -5.4 6 -9 6c-3.6 0 -6.6 -2 -9 -6c2.4 -4 5.4 -6 9 -6c3.6 0 6.6 2 9 6" />
+                    </svg>
+                    View Details
+                  </a>
+                  <a class="dropdown-item" href="{{ url_for('superadmin.edit_hotel', hotel_id=hotel.id) }}">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="icon dropdown-item-icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                      <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+                      <path d="M7 7h-1a2 2 0 0 0 -2 2v9a2 2 0 0 0 2 2h9a2 2 0 0 0 2 -2v-1" />
+                      <path d="M20.385 6.585a2.1 2.1 0 0 0 -2.97 -2.97l-8.415 8.385v3h3l8.385 -8.415z" />
+                      <path d="M16 5l3 3" />
+                    </svg>
+                    Edit Hotel
+                  </a>
+                  <a class="dropdown-item text-danger" href="#" onclick="confirmDelete({{ hotel.id }})">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="icon dropdown-item-icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                      <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+                      <path d="M4 7l1 12a2 2 0 0 0 2 2h8a2 2 0 0 0 2 -2l1 -12" />
+                      <path d="M9 7v-3a1 1 0 0 1 1 -1h4a1 1 0 0 1 1 1v3" />
+                      <line x1="10" y1="12" x2="10" y2="18" />
+                      <line x1="14" y1="12" x2="14" y2="18" />
+                    </svg>
+                    Delete Hotel
+                  </a>
+                </div>
+              </div>
+            </td>
+          </tr>
+          {% else %}
+          <tr>
+            <td colspan="6" class="text-center text-muted py-4">
+              <svg xmlns="http://www.w3.org/2000/svg" class="icon mb-2" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+                <path d="M3 21h18" />
+                <path d="M5 21v-14l8 -4v18" />
+                <path d="M19 21v-10l-6 -4" />
+              </svg>
+              <p>No hotels created yet</p>
+              <a href="{{ '#' }}" class="btn btn-primary">Create Hotel</a>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<script>
+function confirmDelete(hotelId) {
+  if (confirm('Are you sure you want to delete this hotel? This action cannot be undone and will remove all related data.')) {
+    // Construct the URL dynamically
+    const deleteUrl = `/superadmin/hotels/${hotelId}/delete`;
+    
+    // Send a POST request to delete the hotel
+    fetch(deleteUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      credentials: 'same-origin'  // Include cookies for session
+    })
+    .then(response => {
+      if (response.ok) {
+        // Reload the page to reflect changes
+        window.location.reload();
+      } else {
+        alert('Error deleting hotel. Please try again.');
+      }
+    })
+    .catch(error => {
+      console.error('Error:', error);
+      alert('Error deleting hotel. Please try again.');
+    });
+  }
+}
+</script>
+{% endblock %}

@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}Ngenda Hotel{% endblock %}</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/core@latest/dist/css/tabler.min.css">
+  <style>
+    /* Custom color variants for restaurant dashboard */
+    .bg-primary-lt { background-color: rgba(var(--tblr-primary-rgb), 0.1) !important; color: var(--tblr-primary) !important; }
+    .bg-azure-lt { background-color: rgba(var(--tblr-azure-rgb), 0.1) !important; color: var(--tblr-azure) !important; }
+    .bg-warning-lt { background-color: rgba(var(--tblr-warning-rgb), 0.1) !important; color: var(--tblr-warning) !important; }
+    .bg-success-lt { background-color: rgba(var(--tblr-success-rgb), 0.1) !important; color: var(--tblr-success) !important; }
+    .bg-pink-lt { background-color: rgba(var(--tblr-pink-rgb), 0.1) !important; color: var(--tblr-pink) !important; }
+    .bg-teal-lt { background-color: rgba(var(--tblr-teal-rgb), 0.1) !important; color: var(--tblr-teal) !important; }
+    .bg-indigo-lt { background-color: rgba(var(--tblr-indigo-rgb), 0.1) !important; color: var(--tblr-indigo) !important; }
+    
+    .btn-outline-pink { color: var(--tblr-pink); border-color: var(--tblr-pink); }
+    .btn-outline-pink:hover { background-color: var(--tblr-pink); color: #fff; }
+    .btn-outline-teal { color: var(--tblr-teal); border-color: var(--tblr-teal); }
+    .btn-outline-teal:hover { background-color: var(--tblr-teal); color: #fff; }
+    .btn-outline-indigo { color: var(--tblr-indigo); border-color: var(--tblr-indigo); }
+    .btn-outline-indigo:hover { background-color: var(--tblr-indigo); color: #fff; }
+    
+    .card-link-popup:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.1); transition: all 0.2s ease; }
+  </style>
+  {% block head %}{% endblock %}
+</head>
+<body>
+  <div class="page">
+    <header class="navbar navbar-expand-md navbar-light d-print-none">
+      <div class="container-xl">
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar-menu">
+          <span class="navbar-toggler-icon"></span>
+        </button>
+        <h1 class="navbar-brand navbar-brand-autodark d-none-navbar-horizontal pe-0 pe-md-3">
+          <a href="{{ url_for('hms.dashboard') }}">Ngenda Hotel</a>
+        </h1>
+        <div class="navbar-nav flex-row order-md-last">
+          <!-- Notification Dropdown -->
+          <div class="nav-item dropdown">
+            <a href="#" class="nav-link d-flex lh-1 text-reset p-0" data-bs-toggle="dropdown" aria-label="Notifications">
+              <span class="position-relative">
+                <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                  <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+                  <path d="M10 5a2 2 0 0 1 4 0a7 7 0 0 1 4 6v3a4 4 0 0 0 2 3h-16a4 4 0 0 0 2 -3v-3a7 7 0 0 1 4 -6" />
+                  <path d="M9 17v1a3 3 0 0 0 6 0v-1" />
+                </svg>
+                {% set unread_count = get_unread_notifications() %}
+                {% if unread_count > 0 %}
+                <span class="badge bg-red badge-pill position-absolute top-0 start-100 translate-middle">
+                  {{ unread_count }}
+                </span>
+                {% endif %}
+              </span>
+            </a>
+            <div class="dropdown-menu dropdown-menu-end dropdown-menu-card" style="width: 350px;">
+              <div class="card">
+                <div class="card-header">
+                  <h3 class="card-title">Notifications</h3>
+                  <div class="card-actions">
+                    <a href="/hms/notifications" class="btn btn-sm btn-link">
+                      View All
+                    </a>
+                    <a href="#" onclick="markAllAsRead(); return false;" class="btn btn-sm btn-link">
+                      Mark all read
+                    </a>
+                  </div>
+                </div>
+                <div class="list-group list-group-flush" style="max-height: 400px; overflow-y: auto;">
+                  {% for notification in get_recent_notifications() %}
+                  <a href="{{ notification.link or '#' }}" class="list-group-item list-group-item-action {% if not notification.is_read %}list-group-item-secondary{% endif %}">
+                    <div class="row g-2 align-items-center">
+                      <div class="col-auto">
+                        <span class="avatar avatar-{{ notification.color or 'secondary' }}">
+                          {% if notification.type == 'booking' %}
+                          <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                            <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+                            <path d="M4 7a2 2 0 0 1 2 -2h12a2 2 0 0 1 2 2v10a2 2 0 0 1 -2 2h-12a2 2 0 0 1 -2 -2v-10z" />
+                            <path d="M16 3v4" />
+                            <path d="M8 3v4" />
+                            <path d="M4 11h16" />
+                          </svg>
+                          {% elif notification.type == 'payment' %}
+                          <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                            <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+                            <circle cx="12" cy="12" r="9" />
+                            <line x1="12" y1="8" x2="12" y2="12" />
+                            <line x1="12" y1="16" x2="12.01" y2="16" />
+                          </svg>
+                          {% elif notification.type == 'task' %}
+                          <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                            <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+                            <path d="M14 3v4a1 1 0 0 0 1 1h4" />
+                            <path d="M17 21h-10a2 2 0 0 1 -2 -2v-14a2 2 0 0 1 2 -2h7l5 5v11a2 2 0 0 1 -2 2z" />
+                          </svg>
+                          {% elif notification.type == 'alert' %}
+                          <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                            <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+                            <path d="M12 9v2m0 4v.01" />
+                            <path d="M5 19h14a2 2 0 0 0 1.84 -2.75l-7.1 -12.25a2 2 0 0 0 -3.5 0l-7.1 12.25a2 2 0 0 0 1.75 2.75" />
+                          </svg>
+                          {% else %}
+                          <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                            <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+                            <circle cx="12" cy="12" r="9" />
+                            <line x1="12" y1="8" x2="12" y2="12" />
+                            <line x1="12" y1="16" x2="12.01" y2="16" />
+                          </svg>
+                          {% endif %}
+                        </span>
+                      </div>
+                      <div class="col">
+                        <div class="font-weight-medium">{{ notification.title }}</div>
+                        <div class="text-muted small">{{ notification.message|truncate(50) }}</div>
+                        <div class="text-muted small">{{ notification.created_at.strftime('%b %d, %H:%M') }}</div>
+                      </div>
+                    </div>
+                  </a>
+                  {% else %}
+                  <div class="text-center p-4">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="icon mb-2 text-muted" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                      <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+                      <circle cx="12" cy="12" r="9" />
+                      <line x1="9" y1="10" x2="9.01" y2="10" />
+                      <line x1="15" y1="10" x2="15.01" y2="10" />
+                      <path d="M9.5 15a3.5 3.5 0 0 1 5 0" />
+                    </svg>
+                    <p class="text-muted mb-0">No notifications</p>
+                  </div>
+                  {% endfor %}
+                </div>
+                <div class="card-footer text-center py-2">
+                  <a href="/hms/notifications" class="small">View all notifications</a>
+                </div>
+              </div>
+            </div>
+            
+            <script>
+            function markAllAsRead() {
+              fetch('/notifications/mark-all-read', {
+                method: 'POST',
+                headers: {
+                  'X-CSRFToken': getCSRFToken()
+                }
+              })
+              .then(response => response.json())
+              .then(data => {
+                if (data.success) {
+                  // Remove all unread badges and reload
+                  document.querySelectorAll('.list-group-item-secondary').forEach(item => {
+                    item.classList.remove('list-group-item-secondary');
+                  });
+                  const badge = document.querySelector('#notificationDropdown .badge');
+                  if (badge) badge.remove();
+                  location.reload();
+                }
+              });
+            }
+            
+            function getCSRFToken() {
+              const cookies = document.cookie.split(';');
+              for (let cookie of cookies) {
+                const [name, value] = cookie.trim().split('=');
+                if (name === 'csrf_token') {
+                  return value;
+                }
+              }
+              return '';
+            }
+            </script>
+          </div>
+          
+          <!-- User Menu -->
+          <div class="nav-item dropdown">
+            <a href="#" class="nav-link d-flex lh-1 text-reset p-0" data-bs-toggle="dropdown">
+              <span class="avatar avatar-sm">{{ current_user.email[0]|upper }}</span>
+              <div class="d-none d-xl-block ps-2">
+                <div>{{ current_user.email }}</div>
+                <div class="mt-0 small text-muted">{{ current_user.role }}</div>
+              </div>
+            </a>
+            <div class="dropdown-menu dropdown-menu-end">
+              <a class="dropdown-item" href="{{ url_for('hms.logout') }}">
+                <svg xmlns="http://www.w3.org/2000/svg" class="icon me-2" width="16" height="16" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M14 8v-2a2 2 0 0 0 -2 -2h-7a2 2 0 0 0 -2 2v12a2 2 0 0 0 2 2h7a2 2 0 0 0 2 -2v-2" /><path d="M7 12h14l-3 -3m0 6l3 -3" /></svg>
+                Logout
+              </a>
+            </div>
+          </div>
+        </div>
+      </div>
+    </header>
+    <header class="navbar-expand-md">
+      <div class="collapse navbar-collapse" id="navbar-menu">
+        <div class="navbar">
+          <div class="container-xl">
+            <ul class="navbar-nav">
+              {% if can_access_module('dashboard') %}
+              <li class="nav-item">
+                <a class="nav-link" href="{{ url_for('hms.dashboard') }}">
+                  <span class="nav-icon"><svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M5 12l-2 0l9 -9l9 9l-2 0" /><path d="M5 12l6 0l6 -6" /><path d="M5 12l6 0l6 6" /></svg></span>
+                  <span class="nav-link-title">Dashboard</span>
+                </a>
+              </li>
+              {% endif %}
+              {% if current_user.role and current_user.role.lower() == 'housekeeping' %}
+              <li class="nav-item">
+                <a class="nav-link" href="{{ url_for('hms.housekeeping_dashboard') }}">
+                  <span class="nav-icon"><svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M5 12l5 5l10 -10" /></svg></span>
+                  <span class="nav-link-title">Housekeeping</span>
+                </a>
+              </li>
+              {% endif %}
+              {% if current_user.role and current_user.role.lower() == 'kitchen' %}
+              <li class="nav-item">
+                <a class="nav-link" href="{{ url_for('hms.kitchen_dashboard') }}">
+                  <span class="nav-icon"><svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M12 9v2m0 4v.01" /><path d="M5 19h14a2 2 0 0 0 1.84 -2.75l-7.1 -12.25a2 2 0 0 0 -3.5 0l-7.1 12.25a2 2 0 0 0 1.75 2.75" /></svg></span>
+                  <span class="nav-link-title">Kitchen</span>
+                </a>
+              </li>
+              {% endif %}
+              {% if current_user.role and current_user.role.lower() == 'restaurant' %}
+              <li class="nav-item">
+                <a class="nav-link" href="{{ url_for('hms.restaurant_dashboard') }}">
+                  <span class="nav-icon"><svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M4 7h16" /><path d="M5 7l1 12h12l1 -12" /><path d="M9 7v-3a1 1 0 0 1 1 -1h4a1 1 0 0 1 1 1v3" /></svg></span>
+                  <span class="nav-link-title">Restaurant</span>
+                </a>
+              </li>
+              {% endif %}
+              {% if can_access_module('bookings') %}
+              <li class="nav-item">
+                <a class="nav-link" href="{{ url_for('hms.bookings') }}">
+                  <span class="nav-icon"><svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M4 7a2 2 0 0 1 2 -2h12a2 2 0 0 1 2 2v12a2 2 0 0 1 -2 2h-12a2 2 0 0 1 -2 -2v-12z" /></svg></span>
+                  <span class="nav-link-title">Bookings</span>
+                </a>
+              </li>
+              {% endif %}
+              {% if can_access_module('rooms') %}
+              <li class="nav-item">
+                <a class="nav-link" href="{{ url_for('hms.rooms') }}">
+                  <span class="nav-icon"><svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M3 21h18" /><path d="M5 21v-14l8 -4v18" /><path d="M19 21v-10l-6 -4" /></svg></span>
+                  <span class="nav-link-title">Rooms</span>
+                </a>
+              </li>
+              {% endif %}
+              {% if can_access_module('housekeeping') %}
+              <li class="nav-item">
+                <a class="nav-link" href="{{ url_for('hms.housekeeping') }}">
+                  <span class="nav-icon"><svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M5 12l5 5l10 -10" /></svg></span>
+                  <span class="nav-link-title">Housekeeping</span>
+                </a>
+              </li>
+              {% endif %}
+              {% if can_access_module('restaurant') %}
+              <li class="nav-item">
+                <a class="nav-link" href="{{ url_for('hms.restaurant') }}">
+                  <span class="nav-icon"><svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M4 7h16" /><path d="M5 7l1 12h12l1 -12" /><path d="M9 7v-3a1 1 0 0 1 1 -1h4a1 1 0 0 1 1 1v3" /></svg></span>
+                  <span class="nav-link-title">Restaurant</span>
+                </a>
+              </li>
+              {% endif %}
+              {% if can_access_module('inventory') %}
+              <li class="nav-item">
+                <a class="nav-link" href="{{ url_for('hms.inventory') }}">
+                  <span class="nav-icon"><svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M6 3v18" /><path d="M18 3v18" /><path d="M3 6h18" /><path d="M3 18h18" /></svg></span>
+                  <span class="nav-link-title">Inventory</span>
+                </a>
+              </li>
+              {% endif %}
+              {% if can_access_module('accounting') %}
+              <li class="nav-item">
+                <a class="nav-link" href="{{ url_for('hms.accounting') }}">
+                  <span class="nav-icon"><svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M9 14l6 -6" /><path d="M15 10h.01" /><path d="M12 21a9 9 0 0 0 .968 -.13" /></svg></span>
+                  <span class="nav-link-title">Accounting</span>
+                </a>
+              </li>
+              {% endif %}
+              {% if can_access_module('night_audit') %}
+              <li class="nav-item">
+                <a class="nav-link" href="{{ url_for('hms.night_audit') }}">
+                  <span class="nav-icon"><svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M6 4v16a2 2 0 0 0 2 2h8a2 2 0 0 0 2 -2v-12" /><path d="M6 4h12" /></svg></span>
+                  <span class="nav-link-title">Night Audit</span>
+                </a>
+              </li>
+              {% endif %}
+              {% if can_access_module('room_service') %}
+              <li class="nav-item">
+                <a class="nav-link" href="{{ url_for('hms.room_service_orders') }}">
+                  <span class="nav-icon"><svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M4 19a2 2 0 0 0 2 2h12a2 2 0 0 0 2 -2v-12a2 2 0 0 0 -2 -2h-4l-4 -4h-4a2 2 0 0 0 -2 2v12z" /><path d="M12 9h.01" /></svg></span>
+                  <span class="nav-link-title">Room Service</span>
+                </a>
+              </li>
+              {% endif %}
+              {% if can_access_module('settings') %}
+              <li class="nav-item">
+                <a class="nav-link" href="{{ url_for('hms.settings') }}">
+                  <span class="nav-icon"><svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M10.325 4.317c.426 -1.756 2.924 -1.756 3.35 0a1.724 1.724 0 0 0 2.573 1.066c1.543 -.94 3.31 .826 2.37 2.37a1.724 1.724 0 0 0 1.065 2.572c1.756 .426 1.756 2.924 0 3.35a1.724 1.724 0 0 0 -1.066 2.573c.94 1.543 -.826 3.31 -2.37 2.37a1.724 1.724 0 0 0 -2.572 1.065c-.426 1.756 -2.924 1.756 -3.35 0a1.724 1.724 0 0 0 -2.573 -1.066c-1.543 .94 -3.31 -.826 -2.37 -2.37a1.724 1.724 0 0 0 -1.065 -2.572c-1.756 -.426 -1.756 -2.924 0 -3.35a1.724 1.724 0 0 0 1.066 -2.573c-.94 -1.543 .826 -3.31 2.37 -2.37c1 .608 2.296 .07 2.572 -1.065z" /><path d="M9 12a3 3 0 1 0 6 0a3 3 0 0 0 -6 0" /></svg></span>
+                  <span class="nav-link-title">Settings</span>
+                </a>
+              </li>
+              {% endif %}
+            </ul>
+          </div>
+        </div>
+      </div>
+    </header>
+    <div class="page-wrapper">
+      <div class="page-body">
+        <div class="container-xl">
+          {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+              {% for category, msg in messages %}
+                <div class="alert alert-{{ 'danger' if category == 'error' else category }} alert-dismissible" role="alert">
+                  <div class="d-flex"><div>{{ msg }}</div></div>
+                  <a class="btn-close" data-bs-dismiss="alert" aria-label="close"></a>
+                </div>
+              {% endfor %}
+            {% endif %}
+          {% endwith %}
+          {% block content %}{% endblock %}
+        </div>
+      </div>
+    </div>
+  </div>
+  <script src="https://cdn.jsdelivr.net/npm/@tabler/core@latest/dist/js/tabler.min.js"></script>
+  {% block scripts %}{% endblock %}
+</body>
+</html>
