@@ -1,0 +1,80 @@
+{% extends "hms/layout/base.html" %}
+{% block title %}Inventory Categories{% endblock %}
+
+{% block content %}
+<div class="page-header d-print-none">
+  <div class="row align-items-center">
+    <div class="col">
+      <h2 class="page-title">Inventory Categories</h2>
+      <div class="text-muted mt-1">Organize your inventory items by category</div>
+    </div>
+    <div class="col-auto">
+      <div class="btn-list">
+        <a href="{{ url_for('hms.inventory_category_add') }}" class="btn btn-primary">
+          <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+            <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+            <line x1="12" y1="5" x2="12" y2="19" />
+            <line x1="5" y1="12" x2="19" y2="12" />
+          </svg>
+          Add Category
+        </a>
+        <a href="{{ url_for('hms.inventory') }}" class="btn btn-outline-secondary">
+          Back to Inventory
+        </a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-header">
+    <h3 class="card-title">All Categories</h3>
+  </div>
+  <div class="table-responsive">
+    <table class="table table-vcenter card-table">
+      <thead>
+        <tr>
+          <th>Category Name</th>
+          <th>Description</th>
+          <th>Items Count</th>
+          <th>Created</th>
+          <th class="w-1"></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for category in categories %}
+        <tr>
+          <td>
+            <strong>{{ category.name }}</strong>
+          </td>
+          <td class="text-muted">{{ category.description or '-' }}</td>
+          <td>
+            <span class="badge bg-blue">{{ category.items.count() }} items</span>
+          </td>
+          <td class="text-muted">{{ category.created_at.strftime('%d %b %Y') if category.created_at else '-' }}</td>
+          <td>
+            <div class="btn-list-sm">
+              <a href="{{ url_for('hms.inventory_category_edit', category_id=category.id) }}" class="btn btn-sm btn-outline-primary">
+                Edit
+              </a>
+              <form method="POST" action="{{ url_for('hms.inventory_category_delete', category_id=category.id) }}" class="d-inline">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <button type="submit" class="btn btn-sm btn-outline-danger" onclick="return confirm('Are you sure you want to delete this category? This cannot be undone.')">
+                  Delete
+                </button>
+              </form>
+            </div>
+          </td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="5" class="text-center text-muted py-4">
+            No categories found. Click "Add Category" to create one.
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

@@ -14,15 +14,59 @@
     .bg-pink-lt { background-color: rgba(var(--tblr-pink-rgb), 0.1) !important; color: var(--tblr-pink) !important; }
     .bg-teal-lt { background-color: rgba(var(--tblr-teal-rgb), 0.1) !important; color: var(--tblr-teal) !important; }
     .bg-indigo-lt { background-color: rgba(var(--tblr-indigo-rgb), 0.1) !important; color: var(--tblr-indigo) !important; }
-    
+
     .btn-outline-pink { color: var(--tblr-pink); border-color: var(--tblr-pink); }
     .btn-outline-pink:hover { background-color: var(--tblr-pink); color: #fff; }
     .btn-outline-teal { color: var(--tblr-teal); border-color: var(--tblr-teal); }
     .btn-outline-teal:hover { background-color: var(--tblr-teal); color: #fff; }
     .btn-outline-indigo { color: var(--tblr-indigo); border-color: var(--tblr-indigo); }
     .btn-outline-indigo:hover { background-color: var(--tblr-indigo); color: #fff; }
-    
+
     .card-link-popup:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.1); transition: all 0.2s ease; }
+
+    /* === IMPROVED LABEL VISIBILITY === */
+    /* Make all form labels more visible with darker color */
+    .form-label {
+      color: #1a1a1a !important;
+      font-weight: 500;
+      font-size: 0.875rem;
+    }
+    
+    /* Required field indicator should be red */
+    .form-label .required,
+    .form-label.required::after {
+      color: #d63031 !important;
+    }
+    
+    /* Labels in tables should also be visible */
+    th .form-label,
+    table .form-label {
+      color: #1a1a1a !important;
+    }
+    
+    /* Modal labels */
+    .modal-body .form-label {
+      color: #1a1a1a !important;
+    }
+    
+    /* Card header labels */
+    .card-header .form-label {
+      color: #1a1a1a !important;
+    }
+
+    /* === IMPROVED BADGE VISIBILITY === */
+    /* Make secondary badges more visible */
+    .badge.bg-secondary {
+      background-color: #6c757d !important;
+      color: #ffffff !important;
+      font-weight: 500;
+    }
+    
+    /* Make all badges have better contrast */
+    .badge {
+      font-weight: 500;
+      letter-spacing: 0.3px;
+    }
   </style>
   {% block head %}{% endblock %}
 </head>

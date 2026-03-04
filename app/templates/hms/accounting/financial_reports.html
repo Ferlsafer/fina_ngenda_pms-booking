@@ -1,0 +1,460 @@
+{% extends "hms/layout/base.html" %}
+{% block title %}Financial Reports - Hotel PMS{% endblock %}
+
+{% block head %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<style>
+  .financial-card { border-left: 4px solid; }
+  .financial-card.revenue { border-left-color: #22c55e; }
+  .financial-card.expense { border-left-color: #ef4444; }
+  .financial-card.profit { border-left-color: #3b82f6; }
+  .financial-card.outstanding { border-left-color: #f59e0b; }
+  
+  .metric-value { font-size: 1.75rem; font-weight: 600; }
+  .metric-label { font-size: 0.875rem; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px; }
+  .metric-change { font-size: 0.75rem; font-weight: 500; }
+  .metric-change.positive { color: #22c55e; }
+  .metric-change.negative { color: #ef4444; }
+  
+  .table-financial { font-size: 0.875rem; }
+  .table-financial th { font-weight: 600; text-transform: uppercase; font-size: 0.75rem; letter-spacing: 0.5px; }
+  .table-financial td { vertical-align: middle; }
+  .table-financial .amount { font-family: 'Courier New', monospace; font-weight: 500; text-align: right; }
+  .table-financial .positive { color: #22c55e; }
+  .table-financial .negative { color: #ef4444; }
+  
+  @media print {
+    .no-print { display: none !important; }
+    .card { box-shadow: none !important; border: 1px solid #dee2e6 !important; }
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-header d-print-none">
+  <div class="row align-items-center">
+    <div class="col">
+      <h2 class="page-title">Financial Reports</h2>
+      <div class="text-muted mt-1">Comprehensive financial analysis and reporting</div>
+    </div>
+    <div class="col-auto">
+      <div class="btn-list no-print">
+        <button type="button" class="btn btn-outline-primary" onclick="window.print()">
+          <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M17 17h2a2 2 0 0 0 2 -2v-4a2 2 0 0 0 -2 -2h-2v-4h-2l-4 -4h-6l-4 4h-2v4h2a2 2 0 0 0 2 2v4a2 2 0 0 0 2 2h2v-4h2v4h-2z" /></svg>
+          Print Report
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Date Range Filter -->
+<div class="card mb-3 no-print">
+  <div class="card-body">
+    <form method="get" action="{{ url_for('hms.accounting_reports') }}" class="row g-3 align-items-end">
+      <div class="col-md-2">
+        <label class="form-label">Period</label>
+        <select name="period" class="form-select" id="period-select">
+          <option value="today" {% if period == 'today' %}selected{% endif %}>Today</option>
+          <option value="this_week" {% if period == 'this_week' %}selected{% endif %}>This Week</option>
+          <option value="last_week" {% if period == 'last_week' %}selected{% endif %}>Last Week</option>
+          <option value="this_month" {% if period == 'this_month' %}selected{% endif %}>This Month</option>
+          <option value="last_month" {% if period == 'last_month' %}selected{% endif %}>Last Month</option>
+          <option value="this_quarter" {% if period == 'this_quarter' %}selected{% endif %}>This Quarter</option>
+          <option value="this_year" {% if period == 'this_year' %}selected{% endif %}>This Year</option>
+          <option value="custom" {% if period == 'custom' %}selected{% endif %}>Custom Range</option>
+        </select>
+      </div>
+      <div class="col-md-2 custom-date" id="start-date-col" style="display: none;">
+        <label class="form-label">From</label>
+        <input type="date" name="start_date" class="form-control" value="{{ start_date.strftime('%Y-%m-%d') if start_date else '' }}">
+      </div>
+      <div class="col-md-2 custom-date" id="end-date-col" style="display: none;">
+        <label class="form-label">To</label>
+        <input type="date" name="end_date" class="form-control" value="{{ end_date.strftime('%Y-%m-%d') if end_date else '' }}">
+      </div>
+      <div class="col-md-2">
+        <button type="submit" class="btn btn-primary w-100">
+          <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M10 18h4v-2a2 2 0 0 0 2 -2v-9a2 2 0 0 0 -2 -2h-4a2 2 0 0 0 -2 2v9a2 2 0 0 0 2 2v2z" /></svg>
+          Apply Filter
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Key Financial Metrics -->
+<div class="row row-deck row-cards mb-4">
+  <div class="col-sm-6 col-lg-3">
+    <div class="card financial-card revenue">
+      <div class="card-body">
+        <div class="metric-label">Total Revenue (Invoiced)</div>
+        <div class="metric-value mt-2">TSh {{ "%.0f"|format(total_invoice_revenue|default(0)) }}</div>
+        <div class="mt-2">
+          <span class="metric-change positive">
+            <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="16" height="16" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M3 17l6 -6l4 4l8 -8" /><path d="M14 7l7 0l0 7" /></svg>
+            Cash Received: TSh {{ "%.0f"|format(total_payment_revenue|default(0)) }}
+          </span>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <div class="col-sm-6 col-lg-3">
+    <div class="card financial-card expense">
+      <div class="card-body">
+        <div class="metric-label">Total Expenses</div>
+        <div class="metric-value mt-2">TSh {{ "%.0f"|format(total_expenses|default(0)) }}</div>
+        <div class="mt-2 text-muted">
+          <small>From journal entries</small>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <div class="col-sm-6 col-lg-3">
+    <div class="card financial-card profit">
+      <div class="card-body">
+        <div class="metric-label">Net Profit / (Loss)</div>
+        <div class="metric-value mt-2 {% if gross_profit >= 0 %}positive{% else %}negative{% endif %}">
+          {% if gross_profit >= 0 %}+{% endif %}TSh {{ "%.0f"|format(gross_profit|default(0)) }}
+        </div>
+        <div class="mt-2">
+          <span class="metric-change {% if gross_profit_margin >= 0 %}positive{% else %}negative{% endif %}">
+            Margin: {{ "%.1f"|format(gross_profit_margin|default(0)) }}%
+          </span>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <div class="col-sm-6 col-lg-3">
+    <div class="card financial-card outstanding">
+      <div class="card-body">
+        <div class="metric-label">Outstanding Receivables</div>
+        <div class="metric-value mt-2">TSh {{ "%.0f"|format(outstanding_receivables|default(0)) }}</div>
+        <div class="mt-2 text-muted">
+          <small>Unpaid invoices</small>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Charts Row -->
+<div class="row mb-4">
+  <div class="col-lg-8">
+    <div class="card">
+      <div class="card-header">
+        <h3 class="card-title">Daily Revenue Trend</h3>
+      </div>
+      <div class="card-body">
+        <canvas id="revenueTrendChart" height="100"></canvas>
+      </div>
+    </div>
+  </div>
+  
+  <div class="col-lg-4">
+    <div class="card">
+      <div class="card-header">
+        <h3 class="card-title">Revenue by Payment Method</h3>
+      </div>
+      <div class="card-body">
+        {% if payment_method_labels %}
+        <canvas id="paymentMethodChart" height="200"></canvas>
+        {% else %}
+        <div class="text-center text-muted py-5">
+          <svg xmlns="http://www.w3.org/2000/svg" class="icon mb-3" width="48" height="48" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M9 7m-4 0a4 4 0 1 0 8 0a4 4 0 1 0 -8 0" /><path d="M9 7v10a4 4 0 0 0 8 0v-1m0 -2a4 4 0 0 0 -8 0" /><path d="M15 7m-2 0a2 2 0 1 0 4 0a2 2 0 1 0 -4 0" /><path d="M15 9v8a2 2 0 0 0 4 0v-1m0 -2a2 2 0 0 0 -4 0" /></svg>
+          <p>No payment method data available</p>
+          <small>Payments have not been recorded yet</small>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Profit & Loss Statement -->
+<div class="card mb-4">
+  <div class="card-header">
+    <h3 class="card-title">Profit & Loss Statement</h3>
+    <div class="card-actions">
+      <span class="badge bg-secondary">{{ start_date.strftime('%d %b %Y') }} - {{ end_date.strftime('%d %b %Y') }}</span>
+    </div>
+  </div>
+  <div class="card-body">
+    <div class="table-responsive">
+      <table class="table table-financial table-vcenter">
+        <thead>
+          <tr>
+            <th>Description</th>
+            <th class="text-end">Amount (TSh)</th>
+            <th class="text-end">% of Revenue</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr class="table-success">
+            <td><strong>REVENUE</strong></td>
+            <td class="amount"><strong>{{ "%.2f"|format(total_payment_revenue|default(0)) }}</strong></td>
+            <td class="text-end">100.0%</td>
+          </tr>
+          <tr>
+            <td class="ps-4">- Invoiced Revenue</td>
+            <td class="amount">{{ "%.2f"|format(total_invoice_revenue|default(0)) }}</td>
+            <td class="text-end">{{ "%.1f"|format((total_invoice_revenue / total_payment_revenue * 100) if total_payment_revenue > 0 else 0) }}%</td>
+          </tr>
+          
+          <tr class="table-danger">
+            <td><strong>EXPENSES</strong></td>
+            <td class="amount"><strong>{{ "%.2f"|format(total_expenses|default(0)) }}</strong></td>
+            <td class="text-end">{{ "%.1f"|format((total_expenses / total_payment_revenue * 100) if total_payment_revenue > 0 else 0) }}%</td>
+          </tr>
+          
+          {% for expense in expense_labels %}
+          <tr>
+            <td class="ps-4">- {{ expense }}</td>
+            <td class="amount">{{ "%.2f"|format(expense_values[loop.index0] if loop.index0 < expense_values|length else 0) }}</td>
+            <td class="text-end">{{ "%.1f"|format((expense_values[loop.index0] / total_payment_revenue * 100) if total_payment_revenue > 0 and loop.index0 < expense_values|length else 0) }}%</td>
+          </tr>
+          {% endfor %}
+          
+          <tr class="table-primary">
+            <td><strong>NET PROFIT / (LOSS)</strong></td>
+            <td class="amount {% if gross_profit >= 0 %}positive{% else %}negative{% endif %}">
+              <strong>{% if gross_profit >= 0 %}+{% endif %}{{ "%.2f"|format(gross_profit|default(0)) }}</strong>
+            </td>
+            <td class="text-end {% if gross_profit_margin >= 0 %}positive{% else %}negative{% endif %}">
+              <strong>{{ "%.1f"|format(gross_profit_margin|default(0)) }}%</strong>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- Revenue Breakdown -->
+<div class="row">
+  <div class="col-lg-6">
+    <div class="card">
+      <div class="card-header">
+        <h3 class="card-title">Expense Breakdown</h3>
+      </div>
+      <div class="card-body">
+        {% if expense_labels and expense_values|sum > 0 %}
+        <canvas id="expenseBreakdownChart" height="200"></canvas>
+        {% else %}
+        <div class="text-center text-muted py-5">
+          <svg xmlns="http://www.w3.org/2000/svg" class="icon mb-3" width="48" height="48" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M9 7m-4 0a4 4 0 1 0 8 0a4 4 0 1 0 -8 0" /><path d="M9 7v10a4 4 0 0 0 8 0v-1m0 -2a4 4 0 0 0 -8 0" /><path d="M15 7m-2 0a2 2 0 1 0 4 0a2 2 0 1 0 -4 0" /><path d="M15 9v8a2 2 0 0 0 4 0v-1m0 -2a2 2 0 0 0 -4 0" /></svg>
+          <p>No expense data available</p>
+          <small>Record expenses through journal entries to see breakdown</small>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+  
+  <div class="col-lg-6">
+    <div class="card">
+      <div class="card-header">
+        <h3 class="card-title">Financial Summary</h3>
+      </div>
+      <div class="card-body">
+        <div class="table-responsive">
+          <table class="table table-financial table-vcenter">
+            <thead>
+              <tr>
+                <th>Metric</th>
+                <th class="text-end">Value</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Total Revenue (Invoiced)</td>
+                <td class="amount">TSh {{ "%.2f"|format(total_invoice_revenue|default(0)) }}</td>
+              </tr>
+              <tr>
+                <td>Total Cash Received</td>
+                <td class="amount">TSh {{ "%.2f"|format(total_payment_revenue|default(0)) }}</td>
+              </tr>
+              <tr>
+                <td>Total Expenses</td>
+                <td class="amount">TSh {{ "%.2f"|format(total_expenses|default(0)) }}</td>
+              </tr>
+              <tr class="table-primary">
+                <td><strong>Net Profit</strong></td>
+                <td class="amount {% if gross_profit >= 0 %}positive{% else %}negative{% endif %}">
+                  <strong>TSh {{ "%.2f"|format(gross_profit|default(0)) }}</strong>
+                </td>
+              </tr>
+              <tr>
+                <td>Profit Margin</td>
+                <td class="amount {% if gross_profit_margin >= 0 %}positive{% else %}negative{% endif %}">
+                  {{ "%.2f"|format(gross_profit_margin|default(0)) }}%
+                </td>
+              </tr>
+              <tr class="table-warning">
+                <td>Outstanding Receivables</td>
+                <td class="amount">TSh {{ "%.2f"|format(outstanding_receivables|default(0)) }}</td>
+              </tr>
+              <tr>
+                <td>Accounts Payable</td>
+                <td class="amount">TSh {{ "%.2f"|format(accounts_payable|default(0)) }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Show/hide custom date inputs
+(function() {
+  var periodSelect = document.getElementById('period-select');
+  if (periodSelect) {
+    periodSelect.addEventListener('change', function() {
+      var customDates = document.querySelectorAll('.custom-date');
+      if (this.value === 'custom') {
+        customDates.forEach(function(el) { el.style.display = 'block'; });
+      } else {
+        customDates.forEach(function(el) { el.style.display = 'none'; });
+      }
+    });
+  }
+})();
+
+// Revenue Trend Chart
+var ctx1 = document.getElementById('revenueTrendChart');
+if (ctx1) {
+  var dailyLabels = {{ daily_labels|tojson|default('[]') }};
+  var dailyValues = {{ daily_values|tojson|default('[]') }};
+  new Chart(ctx1, {
+    type: 'line',
+    data: {
+      labels: dailyLabels,
+      datasets: [{
+        label: 'Daily Revenue',
+        data: dailyValues,
+        borderColor: '#3b82f6',
+        backgroundColor: 'rgba(59, 130, 246, 0.1)',
+        fill: true,
+        tension: 0.4,
+        pointRadius: 4,
+        pointHoverRadius: 6
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: true,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            label: function(context) {
+              return 'TSh ' + context.parsed.y.toLocaleString('en-TZ', {minimumFractionDigits: 0, maximumFractionDigits: 0});
+            }
+          }
+        }
+      },
+      scales: {
+        y: {
+          beginAtZero: true,
+          ticks: {
+            callback: function(value) {
+              return 'TSh ' + value.toLocaleString('en-TZ', {notation: 'compact', compactDisplay: 'short'});
+            }
+          }
+        }
+      }
+    }
+  });
+}
+
+// Payment Method Chart
+var ctx2 = document.getElementById('paymentMethodChart');
+if (ctx2) {
+  var pmLabels = {{ payment_method_labels|tojson|default('[]') }};
+  var pmValues = {{ payment_method_values|tojson|default('[]') }};
+  new Chart(ctx2, {
+    type: 'doughnut',
+    data: {
+      labels: pmLabels,
+      datasets: [{
+        data: pmValues,
+        backgroundColor: [
+          '#3b82f6', '#22c55e', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#64748b'
+        ],
+        borderWidth: 2,
+        borderColor: '#ffffff'
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: true,
+      plugins: {
+        legend: { position: 'bottom' },
+        tooltip: {
+          callbacks: {
+            label: function(context) {
+              var value = context.parsed;
+              var total = context.dataset.data.reduce(function(a, b) { return a + b; }, 0);
+              var percentage = total > 0 ? ((value / total) * 100).toFixed(1) : 0;
+              return context.label + ': TSh ' + value.toLocaleString('en-TZ', {minimumFractionDigits: 0}) + ' (' + percentage + '%)';
+            }
+          }
+        }
+      }
+    }
+  });
+}
+
+// Expense Breakdown Chart
+var ctx3 = document.getElementById('expenseBreakdownChart');
+if (ctx3) {
+  var expLabels = {{ expense_labels|tojson|default('[]') }};
+  var expValues = {{ expense_values|tojson|default('[]') }};
+  new Chart(ctx3, {
+    type: 'bar',
+    data: {
+      labels: expLabels,
+      datasets: [{
+        label: 'Expenses',
+        data: expValues,
+        backgroundColor: 'rgba(239, 68, 68, 0.8)',
+        borderColor: '#ef4444',
+        borderWidth: 1
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: true,
+      indexAxis: 'y',
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            label: function(context) {
+              return 'TSh ' + context.parsed.x.toLocaleString('en-TZ', {minimumFractionDigits: 0});
+            }
+          }
+        }
+      },
+      scales: {
+        x: {
+          beginAtZero: true,
+          ticks: {
+            callback: function(value) {
+              return 'TSh ' + value.toLocaleString('en-TZ', {notation: 'compact', compactDisplay: 'short'});
+            }
+          }
+        }
+      }
+    }
+  });
+}
+</script>
+{% endblock %}

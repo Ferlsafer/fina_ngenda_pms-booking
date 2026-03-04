@@ -1,0 +1,109 @@
+{% extends "hms/layout/base.html" %}
+{% block title %}{{ 'Edit' if category else 'Add' }} Inventory Category{% endblock %}
+
+{% block content %}
+<div class="page-header d-print-none">
+  <div class="row align-items-center">
+    <div class="col">
+      <h2 class="page-title">{{ 'Edit' if category else 'Add' }} Inventory Category</h2>
+    </div>
+  </div>
+</div>
+
+<div class="row row-cards">
+  <div class="col-md-8">
+    <form class="card" method="POST" action="{{ url_for('hms.inventory_category_edit', category_id=category.id) if category else url_for('hms.inventory_category_add') }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <div class="card-body">
+        <div class="mb-3">
+          <label class="form-label required">Category Name</label>
+          <input type="text" name="name" class="form-control" value="{{ category.name if category else '' }}" placeholder="e.g., Food & Beverage, Cleaning Supplies, Office Supplies" required autofocus>
+          <small class="text-muted">Choose a descriptive name for this category</small>
+        </div>
+
+        <div class="mb-3">
+          <label class="form-label">Description</label>
+          <textarea name="description" class="form-control" rows="3" placeholder="Optional description of what items belong in this category">{{ category.description if category else '' }}</textarea>
+        </div>
+
+        <div class="form-footer d-flex">
+          <button type="submit" class="btn btn-primary me-2">
+            <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+              <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+              <path d="M12 5v14" />
+              <path d="M5 12h14" />
+            </svg>
+            {{ 'Update' if category else 'Create' }} Category
+          </button>
+          <a href="{{ url_for('hms.inventory_categories') }}" class="btn btn-outline-secondary">
+            Cancel
+          </a>
+        </div>
+      </div>
+    </form>
+  </div>
+
+  <div class="col-md-4">
+    <div class="card">
+      <div class="card-header">
+        <h3 class="card-title">Category Tips</h3>
+      </div>
+      <div class="card-body">
+        <ul class="list-unstyled space-y-3">
+          <li class="d-flex align-items-start">
+            <svg xmlns="http://www.w3.org/2000/svg" class="icon text-success me-2" width="20" height="20" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+              <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+              <circle cx="12" cy="12" r="10" />
+              <path d="M9 12l2 2l4 -4" />
+            </svg>
+            <div>
+              <strong>Use clear names</strong>
+              <div class="text-muted small">Make category names descriptive and easy to understand</div>
+            </div>
+          </li>
+          <li class="d-flex align-items-start">
+            <svg xmlns="http://www.w3.org/2000/svg" class="icon text-success me-2" width="20" height="20" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+              <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+              <circle cx="12" cy="12" r="10" />
+              <path d="M9 12l2 2l4 -4" />
+            </svg>
+            <div>
+              <strong>Group similar items</strong>
+              <div class="text-muted small">Put related items together for easier management</div>
+            </div>
+          </li>
+          <li class="d-flex align-items-start">
+            <svg xmlns="http://www.w3.org/2000/svg" class="icon text-success me-2" width="20" height="20" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+              <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+              <circle cx="12" cy="12" r="10" />
+              <path d="M9 12l2 2l4 -4" />
+            </svg>
+            <div>
+              <strong>Cannot delete if in use</strong>
+              <div class="text-muted small">Categories with items cannot be deleted</div>
+            </div>
+          </li>
+        </ul>
+      </div>
+    </div>
+
+    {% if category %}
+    <div class="card mt-3">
+      <div class="card-header">
+        <h3 class="card-title">Category Stats</h3>
+      </div>
+      <div class="card-body">
+        <div class="mb-3">
+          <div class="text-muted small">Items in this category</div>
+          <div class="h2 mb-0">{{ category.items.count() }}</div>
+        </div>
+        <div>
+          <div class="text-muted small">Created</div>
+          <div class="small">{{ category.created_at.strftime('%d %b %Y, %H:%M') if category.created_at else '-' }}</div>
+        </div>
+      </div>
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

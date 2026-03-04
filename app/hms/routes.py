@@ -1756,56 +1756,236 @@ def accounting_entry_create():
 @hms_bp.route('/accounting/reports')
 @login_required
 def accounting_reports():
-    """Financial Reports"""
+    """Comprehensive Financial Reports"""
     hotel_id = get_current_hotel_id()
     if not hotel_id or not can_access_module('accounting'):
         flash("Access denied.", "danger")
         return redirect(url_for("hms.dashboard"))
+
+    try:
+        # Get period from query params
+        period = request.args.get('period', 'this_month')
+        custom_start = request.args.get('start_date')
+        custom_end = request.args.get('end_date')
+        today = date.today()
+
+        # Calculate date range
+        if custom_start and custom_end:
+            start_date = datetime.strptime(custom_start, '%Y-%m-%d').date()
+            end_date = datetime.strptime(custom_end, '%Y-%m-%d').date()
+        elif period == 'today':
+            start_date = today
+            end_date = today
+        elif period == 'this_week':
+            start_date = today - timedelta(days=today.weekday())
+            end_date = today
+        elif period == 'last_week':
+            start_date = today - timedelta(days=today.weekday() + 7)
+            end_date = today - timedelta(days=today.weekday() + 1)
+        elif period == 'this_month':
+            start_date = today.replace(day=1)
+            end_date = today.replace(day=monthrange(today.year, today.month)[1])
+        elif period == 'last_month':
+            first_day = today.replace(day=1) - timedelta(days=1)
+            start_date = first_day.replace(day=1)
+            end_date = first_day.replace(day=monthrange(first_day.year, first_day.month)[1])
+        elif period == 'this_quarter':
+            quarter = (today.month - 1) // 3 + 1
+            quarter_start = date(today.year, (quarter - 1) * 3 + 1, 1)
+            quarter_end = date(today.year, quarter * 3, monthrange(today.year, quarter * 3)[1])
+            start_date = quarter_start
+            end_date = quarter_end
+        elif period == 'this_year':
+            start_date = today.replace(month=1, day=1)
+            end_date = today.replace(month=12, day=31)
+        else:
+            start_date = today.replace(day=1)
+            end_date = today
+
+        # ========== REVENUE METRICS ==========
+        # Total revenue from invoices (excluding deleted)
+        total_invoice_revenue = db.session.query(db.func.coalesce(db.func.sum(Invoice.total), 0)).join(
+            Booking
+        ).filter(
+            Invoice.hotel_id == hotel_id,
+            Invoice.deleted_at.is_(None),
+            Invoice.created_at >= datetime.combine(start_date, datetime.min.time()),
+            Invoice.created_at <= datetime.combine(end_date, datetime.max.time())
+        ).scalar() or 0
+
+        # Revenue from payments (actual cash received)
+        total_payment_revenue = db.session.query(db.func.coalesce(db.func.sum(Payment.amount), 0)).join(
+            Booking
+        ).filter(
+            Payment.hotel_id == hotel_id,
+            Payment.deleted_at.is_(None),
+            Payment.status.in_(['completed', 'confirmed']),
+            Payment.created_at >= datetime.combine(start_date, datetime.min.time()),
+            Payment.created_at <= datetime.combine(end_date, datetime.max.time())
+        ).scalar() or 0
+        
+        # If no data for selected period, get all-time data and show message
+        if total_payment_revenue == 0:
+            total_payment_revenue = db.session.query(db.func.coalesce(db.func.sum(Payment.amount), 0)).join(
+                Booking
+            ).filter(
+                Payment.hotel_id == hotel_id,
+                Payment.deleted_at.is_(None),
+                Payment.status.in_(['completed', 'confirmed'])
+            ).scalar() or 0
+            flash("No payment data for selected period. Showing all-time data.", "info")
+
+        # Revenue by payment method
+        payment_methods = db.session.query(
+            Payment.payment_method,
+            db.func.coalesce(db.func.sum(Payment.amount), 0)
+        ).filter(
+            Payment.hotel_id == hotel_id,
+            Payment.deleted_at.is_(None),
+            Payment.status.in_(['completed', 'confirmed']),
+            Payment.created_at >= datetime.combine(start_date, datetime.min.time()),
+            Payment.created_at <= datetime.combine(end_date, datetime.max.time())
+        ).group_by(Payment.payment_method).all()
+        
+        # If no payment methods for period, get all-time
+        if not payment_methods:
+            payment_methods = db.session.query(
+                Payment.payment_method,
+                db.func.coalesce(db.func.sum(Payment.amount), 0)
+            ).filter(
+                Payment.hotel_id == hotel_id,
+                Payment.deleted_at.is_(None),
+                Payment.status.in_(['completed', 'confirmed'])
+            ).group_by(Payment.payment_method).all()
+
+        # ========== EXPENSES METRICS ==========
+        # Total expenses from journal entries (debit side)
+        total_expenses = db.session.query(db.func.coalesce(db.func.sum(JournalLine.debit), 0)).join(
+            JournalEntry
+        ).filter(
+            JournalEntry.hotel_id == hotel_id,
+            JournalEntry.date >= start_date,
+            JournalEntry.date <= end_date,
+            JournalEntry.deleted_at.is_(None)
+        ).scalar() or 0
+
+        # Expenses by account category
+        expenses_by_category = db.session.query(
+            ChartOfAccount.name,
+            db.func.coalesce(db.func.sum(JournalLine.debit), 0)
+        ).join(
+            JournalLine, JournalLine.account_id == ChartOfAccount.id
+        ).join(
+            JournalEntry, JournalEntry.id == JournalLine.journal_entry_id
+        ).filter(
+            ChartOfAccount.hotel_id == hotel_id,
+            ChartOfAccount.type.in_(['expense', 'Expense', 'EXPENSE']),
+            JournalEntry.hotel_id == hotel_id,
+            JournalEntry.date >= start_date,
+            JournalEntry.date <= end_date,
+            JournalEntry.deleted_at.is_(None),
+            JournalLine.deleted_at.is_(None)
+        ).group_by(ChartOfAccount.name).all()
+
+        # ========== OUTSTANDING BALANCES ==========
+        # Outstanding receivables (unpaid invoices)
+        outstanding_receivables = db.session.query(db.func.coalesce(db.func.sum(Invoice.total), 0)).filter(
+            Invoice.hotel_id == hotel_id,
+            Invoice.deleted_at.is_(None),
+            Invoice.status.in_(['Unpaid', 'Partial'])
+        ).scalar() or 0
+
+        # Accounts payable (if tracked in journal)
+        accounts_payable = db.session.query(db.func.coalesce(db.func.sum(JournalLine.credit), 0)).join(
+            ChartOfAccount
+        ).filter(
+            ChartOfAccount.hotel_id == hotel_id,
+            ChartOfAccount.type.in_(['liability', 'Liability', 'LIABILITY']),
+            JournalLine.deleted_at.is_(None)
+        ).scalar() or 0
+
+        # ========== DAILY REVENUE TREND ==========
+        # Use PostgreSQL-compatible date truncation
+        daily_revenue = db.session.query(
+            db.func.date_trunc('day', Payment.created_at).label('payment_date'),
+            db.func.coalesce(db.func.sum(Payment.amount), 0)
+        ).filter(
+            Payment.hotel_id == hotel_id,
+            Payment.deleted_at.is_(None),
+            Payment.status.in_(['completed', 'confirmed']),
+            Payment.created_at >= datetime.combine(start_date, datetime.min.time()),
+            Payment.created_at <= datetime.combine(end_date, datetime.max.time())
+        ).group_by(db.func.date_trunc('day', Payment.created_at)).order_by(
+            db.func.date_trunc('day', Payment.created_at)
+        ).all()
+        
+        # If no daily data for period, get last 7 days of all-time data
+        if not daily_revenue:
+            daily_revenue = db.session.query(
+                db.func.date_trunc('day', Payment.created_at).label('payment_date'),
+                db.func.coalesce(db.func.sum(Payment.amount), 0)
+            ).filter(
+                Payment.hotel_id == hotel_id,
+                Payment.deleted_at.is_(None),
+                Payment.status.in_(['completed', 'confirmed'])
+            ).group_by(db.func.date_trunc('day', Payment.created_at)).order_by(
+                db.func.date_trunc('day', Payment.created_at)
+            ).limit(7).all()
+
+        # ========== PROFIT & LOSS ==========
+        gross_profit = float(total_payment_revenue) - float(total_expenses)
+        gross_profit_margin = (gross_profit / float(total_payment_revenue) * 100) if total_payment_revenue > 0 else 0
+
+        # ========== PREPARE CHART DATA ==========
+        # Daily revenue for chart - handle datetime from PostgreSQL date_trunc
+        daily_labels = []
+        daily_values = []
+        for d in daily_revenue:
+            if hasattr(d[0], 'strftime'):
+                daily_labels.append(d[0].strftime('%Y-%m-%d'))
+            else:
+                # Convert date to string if it's already a date object
+                daily_labels.append(str(d[0])[:10])
+            daily_values.append(float(d[1]))
+
+        # Payment method breakdown
+        payment_method_labels = [pm[0] or 'Unknown' for pm in payment_methods]
+        payment_method_values = [float(pm[1]) for pm in payment_methods]
+
+        # Expense categories
+        expense_labels = [cat[0] or 'Other' for cat in expenses_by_category]
+        expense_values = [float(cat[1]) for cat in expenses_by_category]
+
+        return render_template("hms/accounting/financial_reports.html",
+                             # Date range
+                             start_date=start_date,
+                             end_date=end_date,
+                             period=period,
+                             # Revenue
+                             total_invoice_revenue=float(total_invoice_revenue),
+                             total_payment_revenue=float(total_payment_revenue),
+                             # Expenses
+                             total_expenses=float(total_expenses),
+                             # Profit
+                             gross_profit=gross_profit,
+                             gross_profit_margin=gross_profit_margin,
+                             # Outstanding
+                             outstanding_receivables=float(outstanding_receivables),
+                             accounts_payable=float(accounts_payable),
+                             # Chart data
+                             daily_labels=daily_labels,
+                             daily_values=daily_values,
+                             payment_method_labels=payment_method_labels,
+                             payment_method_values=payment_method_values,
+                             expense_labels=expense_labels,
+                             expense_values=expense_values)
     
-    # Get period from query params
-    period = request.args.get('period', 'this_month')
-    today = date.today()
-    
-    # Calculate date range
-    if period == 'today':
-        start_date = today
-        end_date = today
-    elif period == 'this_week':
-        start_date = today - timedelta(days=today.weekday())
-        end_date = today
-    elif period == 'this_month':
-        start_date = today.replace(day=1)
-        end_date = today.replace(day=monthrange(today.year, today.month)[1])
-    else:
-        start_date = today.replace(day=1)
-        end_date = today
-    
-    # Get revenue and expenses
-    revenue = db.session.query(db.func.coalesce(db.func.sum(JournalLine.credit), 0)).join(
-        JournalEntry
-    ).filter(
-        JournalEntry.hotel_id == hotel_id,
-        JournalEntry.date >= start_date,
-        JournalEntry.date <= end_date,
-        JournalEntry.deleted_at.is_(None)
-    ).scalar()
-    
-    expenses = db.session.query(db.func.coalesce(db.func.sum(JournalLine.debit), 0)).join(
-        JournalEntry
-    ).filter(
-        JournalEntry.hotel_id == hotel_id,
-        JournalEntry.date >= start_date,
-        JournalEntry.date <= end_date,
-        JournalEntry.deleted_at.is_(None)
-    ).scalar()
-    
-    return render_template("hms/accounting/reports.html",
-                         revenue=revenue,
-                         expenses=expenses,
-                         profit=revenue - expenses,
-                         start_date=start_date,
-                         end_date=end_date,
-                         period=period)
+    except Exception as e:
+        import traceback
+        error_detail = traceback.format_exc()
+        print(f"ERROR in accounting_reports: {error_detail}")
+        flash(f"Error generating report: {str(e)}", "danger")
+        return redirect(url_for("hms.dashboard"))
 
 
 # =============================================================================
@@ -1840,6 +2020,138 @@ def inventory():
                          total_items=total_items,
                          low_stock=low_stock,
                          low_stock_items=low_stock_items)
+
+
+@hms_bp.route('/inventory/categories')
+@login_required
+def inventory_categories():
+    """Inventory categories list"""
+    hotel_id = get_current_hotel_id()
+    if not hotel_id:
+        flash("Please select a hotel first.", "warning")
+        return redirect(url_for("hms.dashboard"))
+
+    categories = InventoryCategory.query.filter_by(
+        hotel_id=hotel_id,
+        deleted_at=None
+    ).order_by(InventoryCategory.name).all()
+
+    return render_template("hms/inventory/categories.html", categories=categories)
+
+
+@hms_bp.route('/inventory/categories/add', methods=['GET', 'POST'])
+@login_required
+def inventory_category_add():
+    """Add inventory category"""
+    hotel_id = get_current_hotel_id()
+    if not hotel_id:
+        flash("Please select a hotel first.", "warning")
+        return redirect(url_for("hms.dashboard"))
+
+    if request.method == 'POST':
+        name = request.form.get('name', '').strip()
+        description = request.form.get('description', '').strip()
+
+        if not name:
+            flash("Category name is required.", "error")
+            return redirect(url_for('hms.inventory_category_add'))
+
+        # Check if category already exists
+        existing = InventoryCategory.query.filter_by(
+            name=name,
+            hotel_id=hotel_id,
+            deleted_at=None
+        ).first()
+
+        if existing:
+            flash(f"Category '{name}' already exists.", "error")
+            return redirect(url_for('hms.inventory_category_add'))
+
+        # Create new category
+        category = InventoryCategory(
+            hotel_id=hotel_id,
+            name=name,
+            description=description or None
+        )
+
+        db.session.add(category)
+        db.session.commit()
+
+        flash(f"Category '{name}' added successfully.", "success")
+        return redirect(url_for('hms.inventory_categories'))
+
+    return render_template("hms/inventory/category_form.html", category=None)
+
+
+@hms_bp.route('/inventory/categories/edit/<int:category_id>', methods=['GET', 'POST'])
+@login_required
+def inventory_category_edit(category_id):
+    """Edit inventory category"""
+    hotel_id = get_current_hotel_id()
+    if not hotel_id:
+        flash("Please select a hotel first.", "warning")
+        return redirect(url_for("hms.dashboard"))
+
+    category = InventoryCategory.query.get_or_404(category_id)
+
+    if request.method == 'POST':
+        name = request.form.get('name', '').strip()
+        description = request.form.get('description', '').strip()
+
+        if not name:
+            flash("Category name is required.", "error")
+            return redirect(url_for('hms.inventory_category_edit', category_id=category_id))
+
+        # Check if name is already taken by another category
+        existing = InventoryCategory.query.filter_by(
+            name=name,
+            hotel_id=hotel_id,
+            deleted_at=None
+        ).first()
+
+        if existing and existing.id != category_id:
+            flash(f"Category '{name}' already exists.", "error")
+            return redirect(url_for('hms.inventory_category_edit', category_id=category_id))
+
+        category.name = name
+        category.description = description or None
+
+        db.session.commit()
+
+        flash(f"Category '{name}' updated successfully.", "success")
+        return redirect(url_for('hms.inventory_categories'))
+
+    return render_template("hms/inventory/category_form.html", category=category)
+
+
+@hms_bp.route('/inventory/categories/delete/<int:category_id>', methods=['POST'])
+@login_required
+def inventory_category_delete(category_id):
+    """Delete inventory category (soft delete)"""
+    hotel_id = get_current_hotel_id()
+    if not hotel_id:
+        flash("Please select a hotel first.", "warning")
+        return redirect(url_for("hms.dashboard"))
+
+    category = InventoryCategory.query.get_or_404(category_id)
+
+    # Check if category has items
+    item_count = InventoryItem.query.filter_by(
+        category_id=category_id,
+        deleted_at=None
+    ).count()
+
+    if item_count > 0:
+        flash(f"Cannot delete category. {item_count} items are using it.", "error")
+        return redirect(url_for('hms.inventory_categories'))
+
+    # Soft delete
+    from datetime import datetime
+    category.deleted_at = datetime.utcnow()
+    db.session.commit()
+
+    flash("Category deleted successfully.", "success")
+    return redirect(url_for('hms.inventory_categories'))
 
 
 @hms_bp.route('/inventory/items')
@@ -1889,26 +2201,25 @@ def inventory_item_add():
         try:
             # Get form data
             name = request.form.get('name', '').strip()
-            description = request.form.get('description', '').strip()
             category_id = request.form.get('category_id')
             unit = request.form.get('unit', '').strip()
+            initial_stock = request.form.get('initial_stock', '0')
             reorder_level = request.form.get('reorder_level', '0')
-            current_stock = request.form.get('current_stock', '0')
-            average_cost = request.form.get('average_cost', '0')
-            
+            cost_per_unit = request.form.get('cost_per_unit', '0')
+
             # Validation
             if not name:
                 flash("Item name is required.", "error")
                 return render_inventory_add_form()
-            
+
             if not category_id:
                 flash("Category is required.", "error")
                 return render_inventory_add_form()
-            
+
             if not unit:
                 flash("Unit is required.", "error")
                 return render_inventory_add_form()
-            
+
             # Auto-generate SKU from item name
             import re
             sku_base = re.sub(r'[^a-zA-Z0-9]', '', name.upper())[:8]
@@ -1916,24 +2227,23 @@ def inventory_item_add():
                 InventoryItem.sku.like(f'{sku_base}%')
             ).count()
             sku = f"{sku_base}-{sku_count + 1:03d}"
-            
+
             # Check if SKU already exists (unlikely but possible)
             existing_item = InventoryItem.query.filter_by(sku=sku, hotel_id=hotel_id, deleted_at=None).first()
             if existing_item:
                 flash(f"Item with SKU '{sku}' already exists.", "error")
                 return render_inventory_add_form()
-            
+
             # Create new inventory item
             item = InventoryItem(
                 hotel_id=hotel_id,
                 category_id=int(category_id),
                 sku=sku,
                 name=name,
-                description=description,
                 unit=unit,
                 reorder_level=float(reorder_level) if reorder_level else 0,
-                current_stock=float(current_stock) if current_stock else 0,
-                average_cost=float(average_cost) if average_cost else 0
+                current_stock=float(initial_stock) if initial_stock else 0,
+                average_cost=float(cost_per_unit) if cost_per_unit else 0
             )
             
             db.session.add(item)
@@ -1951,6 +2261,80 @@ def inventory_item_add():
     return render_inventory_add_form()
 
 
+@hms_bp.route('/inventory/items/edit/<int:item_id>', methods=['GET', 'POST'])
+@login_required
+def inventory_item_edit(item_id):
+    """Edit inventory item"""
+    hotel_id = get_current_hotel_id()
+    if not hotel_id:
+        flash("Please select a hotel first.", "warning")
+        return redirect(url_for("hms.dashboard"))
+
+    item = InventoryItem.query.get_or_404(item_id)
+
+    def render_inventory_edit_form():
+        """Helper function to render the edit item form"""
+        categories = InventoryCategory.query.filter_by(
+            hotel_id=hotel_id,
+            deleted_at=None
+        ).order_by(InventoryCategory.name).all()
+        return render_template("hms/inventory/item_form.html",
+                             categories=categories,
+                             item=item,
+                             title="Edit Inventory Item")
+
+    if request.method == 'POST':
+        try:
+            # Get form data
+            name = request.form.get('name', '').strip()
+            category_id = request.form.get('category_id')
+            unit = request.form.get('unit', '').strip()
+            initial_stock = request.form.get('initial_stock', '0')
+            reorder_level = request.form.get('reorder_level', '0')
+            cost_per_unit = request.form.get('cost_per_unit', '0')
+
+            # Validation
+            if not name:
+                flash("Item name is required.", "error")
+                return render_inventory_edit_form()
+
+            if not category_id:
+                flash("Category is required.", "error")
+                return render_inventory_edit_form()
+
+            if not unit:
+                flash("Unit is required.", "error")
+                return render_inventory_edit_form()
+
+            # Update item
+            item.name = name
+            item.category_id = int(category_id)
+            item.unit = unit
+            item.current_stock = float(initial_stock) if initial_stock else 0
+            item.reorder_level = float(reorder_level) if reorder_level else 0
+            item.average_cost = float(cost_per_unit) if cost_per_unit else 0
+
+            db.session.commit()
+
+            flash(f"Item '{name}' updated successfully.", "success")
+            return redirect(url_for('hms.inventory_items'))
+
+        except Exception as e:
+            db.session.rollback()
+            app.logger.error(f"Error updating item: {str(e)}")
+            flash("An error occurred while updating the item. Please try again.", "error")
+            return render_inventory_edit_form()
+
+    return render_inventory_edit_form()
+
+
+@hms_bp.route('/inventory/items/update/<int:item_id>', methods=['POST'])
+@login_required
+def update_item(item_id):
+    """Update inventory item (alias for edit)"""
+    return inventory_item_edit(item_id)
+
+
 @hms_bp.route('/inventory/suppliers')
 @login_required
 def inventory_suppliers():
@@ -1959,14 +2343,119 @@ def inventory_suppliers():
     if not hotel_id:
         flash("Please select a hotel first.", "warning")
         return redirect(url_for("hms.dashboard"))
-    
+
     suppliers = Supplier.query.filter_by(
         hotel_id=hotel_id,
         deleted_at=None
     ).order_by(Supplier.name).all()
-    
+
     return render_template("hms/inventory/suppliers.html", suppliers=suppliers)
 
+
+@hms_bp.route('/inventory/menu-ingredients')
+@login_required
+def manage_menu_ingredients():
+    """Manage menu item ingredients (link menu items to inventory)"""
+    hotel_id = get_current_hotel_id()
+    if not hotel_id:
+        flash("Please select a hotel first.", "warning")
+        return redirect(url_for("hms.dashboard"))
+
+    menu_item_id = request.args.get('menu_item_id', type=int)
+    
+    # Get all menu items for this hotel
+    menu_items = MenuItem.query.filter_by(
+        hotel_id=hotel_id,
+        deleted_at=None
+    ).order_by(MenuItem.name).all()
+    
+    selected_menu_item = None
+    linked_ingredients = []
+    inventory_items = []
+    
+    if menu_item_id:
+        selected_menu_item = MenuItem.query.get_or_404(menu_item_id)
+        
+        # Get linked ingredients
+        linked_ingredients = MenuItemInventory.query.filter_by(
+            menu_item_id=menu_item_id
+        ).all()
+        
+        # Get all inventory items for selection
+        inventory_items = InventoryItem.query.filter_by(
+            hotel_id=hotel_id,
+            deleted_at=None
+        ).order_by(InventoryItem.name).all()
+    
+    return render_template("hms/inventory/menu_ingredients.html",
+                         menu_items=menu_items,
+                         selected_menu_item=selected_menu_item,
+                         linked_ingredients=linked_ingredients,
+                         inventory_items=inventory_items)
+
+
+@hms_bp.route('/inventory/menu-ingredients/add/<int:menu_item_id>', methods=['POST'])
+@login_required
+def add_menu_ingredient(menu_item_id):
+    """Add ingredient to menu item"""
+    hotel_id = get_current_hotel_id()
+    if not hotel_id:
+        flash("Please select a hotel first.", "warning")
+        return redirect(url_for("hms.dashboard"))
+    
+    menu_item = MenuItem.query.get_or_404(menu_item_id)
+    inventory_item_id = request.form.get('inventory_item_id', type=int)
+    quantity_needed = request.form.get('quantity_needed', type=float)
+    
+    if not inventory_item_id:
+        flash("Please select an inventory item.", "error")
+        return redirect(url_for('hms.manage_menu_ingredients', menu_item_id=menu_item_id))
+    
+    if not quantity_needed or quantity_needed <= 0:
+        flash("Quantity needed must be greater than 0.", "error")
+        return redirect(url_for('hms.manage_menu_ingredients', menu_item_id=menu_item_id))
+    
+    # Check if link already exists
+    existing = MenuItemInventory.query.filter_by(
+        menu_item_id=menu_item_id,
+        inventory_item_id=inventory_item_id
+    ).first()
+    
+    if existing:
+        flash("This ingredient is already linked to the menu item.", "error")
+        return redirect(url_for('hms.manage_menu_ingredients', menu_item_id=menu_item_id))
+    
+    # Create new link
+    link = MenuItemInventory(
+        menu_item_id=menu_item_id,
+        inventory_item_id=inventory_item_id,
+        quantity_needed=quantity_needed
+    )
+    
+    db.session.add(link)
+    db.session.commit()
+    
+    flash("Ingredient added successfully.", "success")
+    return redirect(url_for('hms.manage_menu_ingredients', menu_item_id=menu_item_id))
+
+
+@hms_bp.route('/inventory/menu-ingredients/remove/<int:link_id>', methods=['POST'])
+@login_required
+def remove_menu_ingredient(link_id):
+    """Remove ingredient from menu item"""
+    hotel_id = get_current_hotel_id()
+    if not hotel_id:
+        flash("Please select a hotel first.", "warning")
+        return redirect(url_for("hms.dashboard"))
+    
+    link = MenuItemInventory.query.get_or_404(link_id)
+    menu_item_id = link.menu_item_id
+    
+    db.session.delete(link)
+    db.session.commit()
+    
+    flash("Ingredient removed successfully.", "success")
+    return redirect(url_for('hms.manage_menu_ingredients', menu_item_id=menu_item_id))
 
 @hms_bp.route('/inventory/suppliers/add', methods=['GET', 'POST'])
 @login_required
@@ -3347,6 +3836,46 @@ def check_business_date_lock(transaction_date=None):
     return False, None
 
 
+@hms_bp.route('/night-audit/reset-business-date', methods=['POST'])
+@login_required
+def reset_business_date():
+    """Reset business date to today (for admin use when date is stuck)"""
+    hotel_id = get_current_hotel_id()
+    if not hotel_id:
+        flash("Please select a hotel first.", "warning")
+        return redirect(url_for("hms.dashboard"))
+
+    from datetime import datetime
+    
+    try:
+        # Get or create business date
+        biz_date = BusinessDate.query.filter_by(hotel_id=hotel_id).first()
+        
+        if not biz_date:
+            # Create new business date for today
+            biz_date = BusinessDate(
+                hotel_id=hotel_id,
+                current_business_date=date.today(),
+                is_closed=False
+            )
+            db.session.add(biz_date)
+            flash(f"✅ Business date initialized to today: {date.today().strftime('%B %d, %Y')}", "success")
+        else:
+            # Reset existing business date to today
+            biz_date.current_business_date = date.today()
+            biz_date.is_closed = False
+            biz_date.updated_at = datetime.now()
+            flash(f"✅ Business date reset to today: {date.today().strftime('%B %d, %Y')}", "success")
+        
+        db.session.commit()
+        
+    except Exception as e:
+        db.session.rollback()
+        flash(f"❌ Error resetting business date: {str(e)}", "danger")
+    
+    return redirect(url_for("hms.night_audit"))
+
+
 @hms_bp.route('/night-audit')
 @login_required
 def night_audit():
@@ -3740,6 +4269,7 @@ def settings_users():
     # Role hierarchy for permission checks
     ROLE_HIERARCHY = {
         'superadmin': 100,
+        'admin': 95,
         'owner': 90,
         'manager': 80,
         'restaurant_manager': 70,
@@ -3768,7 +4298,18 @@ def settings_users():
             flash("Name and email are required.", "danger")
             return redirect(url_for('hms.settings_users'))
 
-        if not role_id:
+        # Handle role validation - allow superadmin to keep their role when editing themselves
+        if user_id:
+            # Editing existing user
+            user_to_edit = User.query.get_or_404(user_id)
+            if not role_id and user_to_edit.role_id:
+                # Keep existing role if no new role selected
+                role_id = user_to_edit.role_id
+            elif not role_id:
+                flash("Role is required.", "danger")
+                return redirect(url_for('hms.settings_users'))
+        elif not role_id:
+            # Creating new user - role is required
             flash("Role is required.", "danger")
             return redirect(url_for('hms.settings_users'))
 
@@ -3777,6 +4318,19 @@ def settings_users():
         if not role:
             flash("Invalid role selected.", "danger")
             return redirect(url_for('hms.settings_users'))
+
+        # Check for duplicate email (for new users or when changing email)
+        existing_user = User.query.filter_by(email=email).first()
+        if existing_user:
+            if user_id:
+                # Editing - only error if email changed to someone else's
+                if existing_user.id != int(user_id):
+                    flash(f"Email '{email}' is already in use by another user.", "danger")
+                    return redirect(url_for('hms.settings_users'))
+            else:
+                # Creating new user
+                flash(f"Email '{email}' is already in use.", "danger")
+                return redirect(url_for('hms.settings_users'))
 
         # Role hierarchy check - can't create/update roles >= own role
         target_role = role.name.lower()
@@ -3811,6 +4365,11 @@ def settings_users():
                 flash("Password is required for new users.", "danger")
                 return redirect(url_for('hms.settings_users'))
 
+            # Validate hotel_id
+            if not hotel_id:
+                flash("Please select a hotel first.", "danger")
+                return redirect(url_for('hms.settings_users'))
+
             user = User(
                 hotel_id=hotel_id,
                 name=name,
@@ -3823,7 +4382,20 @@ def settings_users():
             db.session.add(user)
             flash(f"User '{user.name}' created successfully.", "success")
 
-        db.session.commit()
+        try:
+            db.session.commit()
+        except Exception as e:
+            db.session.rollback()
+            error_msg = str(e)
+            if 'duplicate' in error_msg.lower() or 'unique' in error_msg.lower():
+                if 'email' in error_msg.lower():
+                    flash(f"Email '{email}' is already in use.", "danger")
+                else:
+                    flash("A user with this information already exists.", "danger")
+            else:
+                flash(f"Database error: {error_msg}", "danger")
+            return redirect(url_for('hms.settings_users'))
+        
         return redirect(url_for('hms.settings_users'))
 
     users = User.query.filter_by(hotel_id=hotel_id).all()
@@ -3901,6 +4473,7 @@ def settings_users_set_password():
     # Check role hierarchy
     ROLE_HIERARCHY = {
         'superadmin': 100,
+        'admin': 95,
         'owner': 90,
         'manager': 80,
         'restaurant_manager': 70,

@@ -65,14 +65,14 @@
     <div class="card-header">
       <h3 class="card-title">Current Business Date</h3>
     </div>
-    <div class="card-body text-center">
+    <div class="card-body">
       {% if biz_date %}
-        <div class="row">
+        <div class="row align-items-center">
           <div class="col-md-6">
             <h4>📅 {{ biz_date.current_business_date.strftime('%B %d, %Y') }}</h4>
-            <p class="text-muted mt-2">Status: 
+            <p class="text-muted mt-2">Status:
               {% if biz_date.is_closed %}
-                <span class="badge bg-danger">🔒 LOCKED (Previous Day)</span>
+                <span class="badge bg-danger">🔒 LOCKED</span>
               {% else %}
                 <span class="badge bg-success">✅ OPEN</span>
               {% endif %}
@@ -80,23 +80,41 @@
           </div>
           <div class="col-md-6 text-end">
             {% if not biz_date.is_closed %}
-            <form method="POST" action="{{ url_for('hms.run_night_audit') }}">
-              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-              <button type="submit" class="btn btn-danger btn-lg" onclick="return confirm('Are you sure you want to close the business day? This will: 1) Post room charges, 2) Lock all transactions, 3) Advance to next day.'); document.forms[0].submit();">
-                <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
-                  <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
-                  <circle cx="12" cy="12" r="9" />
-                  <line x1="12" y1="8" x2="12" y2="12" />
-                  <line x1="12" y1="16" x2="12.01" y2="16" />
-                </svg>
-                Close Business Day & Advance
-              </button>
-            </form>
-            <p class="text-muted small mt-2">Posts revenue, closes today, advances to tomorrow</p>
+            <div class="alert alert-success mb-3">
+              <h5 class="alert-heading">✅ Business Day is OPEN</h5>
+              <p class="mb-2">You can process transactions for {{ biz_date.current_business_date.strftime('%B %d, %Y') }}</p>
+              <form method="POST" action="{{ url_for('hms.run_night_audit') }}" class="d-inline">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <button type="submit" class="btn btn-danger" onclick="return confirm('Are you sure you want to close the business day? This will: 1) Post room charges, 2) Lock all transactions, 3) Advance to next day.');">
+                  <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="20" height="20" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                    <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+                    <circle cx="12" cy="12" r="9" />
+                    <line x1="12" y1="8" x2="12" y2="12" />
+                    <line x1="12" y1="16" x2="12.01" y2="16" />
+                  </svg>
+                  Close Business Day & Advance
+                </button>
+              </form>
+              <p class="text-muted small mt-2 mb-0">⚠️ This will post revenue, lock today, and advance to tomorrow</p>
+            </div>
             {% else %}
-            <div class="alert alert-success">
-              <h5>✅ Business Day Open</h5>
-              <p class="mb-0">Ready to accept transactions for {{ biz_date.current_business_date.strftime('%B %d, %Y') }}</p>
+            <div class="alert alert-warning mb-3">
+              <h5 class="alert-heading">🔒 Business Day Closed</h5>
+              <p class="mb-2">Previous day is locked. Current business date: <strong>{{ biz_date.current_business_date.strftime('%B %d, %Y') }}</strong></p>
+              {% if biz_date.current_business_date < today %}
+              <hr class="my-2">
+              <form method="POST" action="{{ url_for('hms.reset_business_date') }}" class="d-inline">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <button type="submit" class="btn btn-primary" onclick="return confirm('Reset business date to today? This will unlock the day and set it to {{ today.strftime('%B %d, %Y') }}.');">
+                  <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="16" height="16" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                    <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+                    <path d="M4.05 11a8 8 0 1 1 .5 4m-.5 5v-5h5" />
+                  </svg>
+                  Reset to Today
+                </button>
+              </form>
+              <p class="text-muted small mt-2 mb-0">Business date is in the past. Click to reset to today.</p>
+              {% endif %}
             </div>
             {% endif %}
           </div>
