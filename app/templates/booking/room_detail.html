@@ -40,14 +40,6 @@ function changeHeroImage(src) {
 }
 </script>
 
-<!-- Debug Info (remove after testing) -->
-{% if room.images|length == 0 %}
-<div class="alert alert-warning m-3">
-    <strong>No images found for this room.</strong> Please add images in HMS Admin.
-    <br>Room ID: {{ room.id }}
-    <br>Images count: {{ room.images|length }}
-</div>
-{% endif %}
 
 <!-- Room Details Content -->
 <div class="section-full p-tb90">
@@ -230,7 +222,7 @@ function changeHeroImage(src) {
             Experience luxury and comfort at Ngenda Hotel & Apartments. Book now and enjoy exceptional hospitality.
         </p>
         <div class="d-flex justify-content-center gap-3 flex-wrap">
-            <a href="{{ url_for('booking.book', room_type=room.id) }}" class="btn btn-light btn-lg px-5" style="border-radius: 10px; font-weight: 600;">
+            <a href="{{ url_for('booking.book', room_type_id=room.id) }}" class="btn btn-light btn-lg px-5" style="border-radius: 10px; font-weight: 600;">
                 <i class="fa fa-calendar-check me-2"></i>Book Online
             </a>
             <a href="https://wa.me/255123456789" target="_blank" class="btn btn-outline-light btn-lg px-5" style="border-radius: 10px; font-weight: 600;">
@@ -270,67 +262,6 @@ $(document).ready(function() {
         console.log('Owl Carousel not initialized - conditions not met');
     }
 
-    // Date validation and availability check
-    const checkInInput = document.getElementById('check_in');
-    const checkOutInput = document.getElementById('check_out');
-    const bookNowBtn = document.getElementById('book-now-btn');
-    const availabilityMsg = document.getElementById('availability-message');
-    const roomId = {{ room.id }};
-
-    function checkAvailability() {
-        const checkIn = checkInInput.value;
-        const checkOut = checkOutInput.value;
-        
-        if (!checkIn || !checkOut) return;
-        
-        if (new Date(checkOut) <= new Date(checkIn)) {
-            availabilityMsg.className = 'alert alert-warning';
-            availabilityMsg.innerHTML = '<i class="fa fa-exclamation-triangle me-2"></i>Check-out date must be after check-in date.';
-            availabilityMsg.style.display = 'block';
-            bookNowBtn.disabled = true;
-            return;
-        }
-        
-        // Check availability via AJAX
-        fetch(`/check-availability?room_type_id=${roomId}&check_in=${checkIn}&check_out=${checkOut}`)
-            .then(response => response.json())
-            .then(data => {
-                if (data.success && data.available) {
-                    availabilityMsg.className = 'alert alert-success';
-                    availabilityMsg.innerHTML = '<i class="fa fa-check-circle me-2"></i>Rooms available for selected dates!';
-                    availabilityMsg.style.display = 'block';
-                    bookNowBtn.disabled = false;
-                } else {
-                    availabilityMsg.className = 'alert alert-danger';
-                    availabilityMsg.innerHTML = '<i class="fa fa-times-circle me-2"></i>Sorry, no rooms available for selected dates. Please try different dates.';
-                    availabilityMsg.style.display = 'block';
-                    bookNowBtn.disabled = true;
-                }
-            })
-            .catch(error => {
-                console.error('Error checking availability:', error);
-                availabilityMsg.className = 'alert alert-info';
-                availabilityMsg.innerHTML = '<i class="fa fa-info-circle me-2"></i>Unable to check availability. Please proceed to book.';
-                availabilityMsg.style.display = 'block';
-                bookNowBtn.disabled = false;
-            });
-    }
-
-    if (checkInInput && checkOutInput) {
-        checkInInput.addEventListener('change', function() {
-            const minCheckOut = new Date(this.value);
-            minCheckOut.setDate(minCheckOut.getDate() + 1);
-            checkOutInput.min = minCheckOut.toISOString().split('T')[0];
-            checkAvailability();
-        });
-
-        checkOutInput.addEventListener('change', function() {
-            const maxCheckIn = new Date(this.value);
-            maxCheckIn.setDate(maxCheckIn.getDate() - 1);
-            checkInInput.max = maxCheckIn.toISOString().split('T')[0];
-            checkAvailability();
-        });
-    }
 });
 </script>
 {% endblock %}

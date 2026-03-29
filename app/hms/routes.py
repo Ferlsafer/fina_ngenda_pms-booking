@@ -1,13 +1,11 @@
-"""
-HMS (Hotel Management System) - Consolidated Routes
-Core routes for the HMS admin interface.
-"""
 from flask import Blueprint, render_template, redirect, url_for, flash, request, jsonify, session, current_app
 from flask_login import login_user, logout_user, current_user, login_required
 from werkzeug.security import check_password_hash, generate_password_hash
 from datetime import datetime, date, timedelta
 from decimal import Decimal
 from calendar import monthrange
+from sqlalchemy.orm import joinedload
+import re
 import secrets
 import hashlib
 import uuid
@@ -27,7 +25,6 @@ from app.models import (
     ROOM_STATUSES
 )
 
-# Import housekeeping service module for business logic
 from app.hms_housekeeping_service import (
     RoomStatusManager,
     TaskPriorityScorer,
@@ -42,7 +39,6 @@ from app.hms_housekeeping_service import (
     complete_cleaning_task
 )
 
-# Import booking service module for business logic
 from app.hms_booking_service import (
     BookingService,
     BookingStateMachine,
@@ -53,7 +49,6 @@ from app.hms_booking_service import (
     is_room_available
 )
 
-# Import room service module for business logic
 from app.hms_room_service import (
     RoomManagementService,
     RoomStatusValidator,
@@ -63,7 +58,6 @@ from app.hms_room_service import (
     get_room_availability
 )
 
-# Import restaurant service module for business logic
 from app.hms_restaurant_service import (
     RestaurantPaymentService,
     RestaurantAccountingService,
@@ -73,16 +67,11 @@ from app.hms_restaurant_service import (
     calculate_order_total
 )
 
-# Import restaurant routes for kitchen functionality
 try:
     from app.hms_restaurant_full import bp as restaurant_bp
 except ImportError:
-    # Fallback if hms_restaurant_full is not available
     restaurant_bp = None
 
-# =============================================================================
-# DECORATORS
-# =============================================================================
 
 def role_required(*roles):
     """Decorator to restrict access to specific roles."""
@@ -105,14 +94,9 @@ def role_required(*roles):
         return decorated_function
     return decorator
 
-# =============================================================================
-# JOURNAL ENTRY HELPERS
-# =============================================================================
-
 def create_journal_entry(hotel_id, date, reference, description, debit_lines, credit_lines):
-    """Helper function to create a journal entry with multiple lines"""
+    """Create a balanced journal entry with multiple debit and credit lines."""
     try:
-        # Create journal entry
         entry = JournalEntry(
             hotel_id=hotel_id,
             date=date,
@@ -121,9 +105,8 @@ def create_journal_entry(hotel_id, date, reference, description, debit_lines, cr
             created_by=current_user.id
         )
         db.session.add(entry)
-        db.session.flush()  # Get the entry ID
-        
-        # Add debit lines
+        db.session.flush()
+
         for account_id, amount, memo in debit_lines:
             debit_line = JournalLine(
                 journal_entry_id=entry.id,
@@ -133,8 +116,7 @@ def create_journal_entry(hotel_id, date, reference, description, debit_lines, cr
                 description=memo
             )
             db.session.add(debit_line)
-        
-        # Add credit lines
+
         for account_id, amount, memo in credit_lines:
             credit_line = JournalLine(
                 journal_entry_id=entry.id,
@@ -154,14 +136,13 @@ def create_journal_entry(hotel_id, date, reference, description, debit_lines, cr
         raise e
 
 def get_or_create_revenue_accounts(hotel_id):
-    """Get or create standard revenue accounts for a hotel"""
+    """Get or create standard revenue accounts for a hotel."""
     accounts = {
         'Room Revenue': ChartOfAccount.query.filter_by(hotel_id=hotel_id, name='Room Revenue', deleted_at=None).first(),
         'Food & Beverage': ChartOfAccount.query.filter_by(hotel_id=hotel_id, name='Food & Beverage', deleted_at=None).first(),
         'Other Revenue': ChartOfAccount.query.filter_by(hotel_id=hotel_id, name='Other Revenue', deleted_at=None).first()
     }
-    
-    # Create missing accounts if they don't exist
+
     for account_name, account in accounts.items():
         if not account:
             account = ChartOfAccount(
@@ -172,21 +153,21 @@ def get_or_create_revenue_accounts(hotel_id):
             )
             db.session.add(account)
             accounts[account_name] = account
-    
+
     if any(not acc for acc in accounts.values()):
         db.session.commit()
-    
+
     return accounts
 
+
 def get_or_create_asset_accounts(hotel_id):
-    """Get or create standard asset accounts for a hotel"""
+    """Get or create standard asset accounts for a hotel."""
     accounts = {
         'Cash': ChartOfAccount.query.filter_by(hotel_id=hotel_id, name='Cash', deleted_at=None).first(),
         'Bank': ChartOfAccount.query.filter_by(hotel_id=hotel_id, name='Bank', deleted_at=None).first(),
         'Accounts Receivable': ChartOfAccount.query.filter_by(hotel_id=hotel_id, name='Accounts Receivable', deleted_at=None).first()
     }
     
-    # Create missing accounts if they don't exist
     for account_name, account in accounts.items():
         if not account:
             account = ChartOfAccount(
@@ -202,10 +183,6 @@ def get_or_create_asset_accounts(hotel_id):
         db.session.commit()
     
     return accounts
-
-# =============================================================================
-# ACCESS CONTROL HELPERS
-# =============================================================================
 
 def get_allowed_hotel_ids():
     """Return list of hotel IDs the current user is allowed to access."""
@@ -239,74 +216,22 @@ def require_hotel_access(hotel_id):
     """Return True if current user can access this hotel_id."""
     if not hotel_id:
         return False
-    allowed = get_allowed_hotel_ids()
-    return hotel_id in allowed
+    return hotel_id in get_allowed_hotel_ids()
 
 
-def can_access_module(module_name):
-    """Check if current user can access a module."""
+def is_manager_or_above():
+    """Return True if the user can make changes (superadmin or manager).
+    Owners have read-only portfolio access and cannot modify hotel configuration or staff.
+    """
     if not current_user.is_authenticated:
         return False
     if current_user.is_superadmin:
         return True
-    user_role = current_user.role.lower() if current_user.role else 'staff'
-    module_access = {
-        'dashboard': ['all'],
-        'bookings': ['manager', 'owner', 'superadmin', 'receptionist'],
-        'rooms': ['manager', 'owner', 'superadmin', 'receptionist'],
-        'housekeeping': ['manager', 'owner', 'superadmin', 'housekeeping', 'housekeeping_manager'],
-        'restaurant': ['manager', 'owner', 'superadmin', 'receptionist', 'kitchen', 'restaurant_manager'],
-        'inventory': ['manager', 'owner', 'superadmin', 'housekeeping', 'housekeeping_manager'],
-        'accounting': ['manager', 'owner', 'superadmin', 'restaurant_manager'],
-        'night_audit': ['manager', 'owner', 'superadmin'],
-        'room_service': ['manager', 'owner', 'superadmin', 'kitchen', 'restaurant_manager', 'receptionist'],
-        'settings': ['manager', 'owner', 'superadmin', 'restaurant_manager', 'housekeeping_manager'],
-    }
-    allowed_roles = module_access.get(module_name, ['manager', 'owner', 'superadmin'])
-    return 'all' in allowed_roles or user_role in allowed_roles
+    role = (current_user.role or '').lower()
+    return role == 'manager'
 
 hms_bp = Blueprint('hms', __name__, url_prefix='/hms')
 
-
-# =============================================================================
-# ACCESS CONTROL HELPERS
-# =============================================================================
-
-def get_allowed_hotel_ids():
-    if not current_user.is_authenticated:
-        return []
-    if current_user.is_superadmin:
-        return [h.id for h in Hotel.query.all()]
-    if current_user.role == "owner" and current_user.owner_id:
-        return [h.id for h in Hotel.query.filter_by(owner_id=current_user.owner_id).all()]
-    if current_user.hotel_id:
-        return [current_user.hotel_id]
-    return []
-
-
-def get_current_hotel_id():
-    if not current_user.is_authenticated:
-        return None
-    if not current_user.is_superadmin and current_user.hotel_id:
-        return current_user.hotel_id
-    hotel_id = session.get('hotel_id')
-    if hotel_id:
-        return int(hotel_id)
-    if current_user.is_superadmin:
-        first = Hotel.query.first()
-        return first.id if first else None
-    return None
-
-
-def require_hotel_access(hotel_id):
-    if not hotel_id:
-        return False
-    return hotel_id in get_allowed_hotel_ids()
-
-
-# =============================================================================
-# AUTH ROUTES
-# =============================================================================
 
 @hms_bp.route('/login', methods=['GET', 'POST'])
 @limiter.limit("5 per minute")
@@ -322,7 +247,10 @@ def login():
             login_user(user)
             if not user.is_superadmin and user.hotel_id:
                 session['hotel_id'] = user.hotel_id
-            next_url = request.args.get("next") or url_for('hms.dashboard')
+            next_url = request.args.get("next", "")
+            # Reject absolute URLs and protocol-relative URLs to prevent open redirect
+            if not next_url or next_url.startswith(('//', 'http://', 'https://')):
+                next_url = url_for('hms.dashboard')
             return redirect(next_url)
         flash("Invalid email or password.", "danger")
     return render_template("hms/auth/login.html")
@@ -335,6 +263,7 @@ def logout():
 
 
 @hms_bp.route('/forgot-password', methods=['GET', 'POST'])
+@limiter.limit("3 per hour")
 def forgot_password():
     """Request password reset"""
     if request.method == 'POST':
@@ -347,7 +276,6 @@ def forgot_password():
         user = User.query.filter_by(email=email).first()
         
         if user:
-            # Generate reset token
             import secrets
             from datetime import datetime, timedelta
             
@@ -355,16 +283,10 @@ def forgot_password():
             user.reset_token = token
             user.reset_token_expires = datetime.utcnow() + timedelta(seconds=current_app.config.get('MAIL_RESET_TOKEN_EXPIRY', 3600))
             db.session.commit()
-            
-            # Send email
-            try:
-                from app.utils.email_service import send_password_reset_email
-                send_password_reset_email(user, token)
-                flash('If an account exists with that email, a password reset link has been sent.', 'info')
-            except Exception as e:
-                current_app.logger.error(f"Email send failed: {str(e)}")
-                # Fallback: show token for development
-                flash(f'Email not configured. Reset token (dev only): {token}', 'warning')
+
+            from app.utils.email_service import send_password_reset_email
+            send_password_reset_email(user, token)
+            flash('If an account exists with that email, a password reset link has been sent.', 'info')
         else:
             # Always show same message to prevent email enumeration
             flash('If an account exists with that email, a password reset link has been sent.', 'info')
@@ -380,8 +302,7 @@ def reset_password(token):
     from datetime import datetime
     
     user = User.query.filter_by(reset_token=token).first()
-    
-    # Validate token
+
     if not user:
         flash('Invalid reset token.', 'danger')
         return redirect(url_for('hms.forgot_password'))
@@ -393,19 +314,22 @@ def reset_password(token):
     if request.method == 'POST':
         password = request.form.get('password', '')
         confirm_password = request.form.get('confirm_password', '')
-        
-        # Validate password
+
         if len(password) < 8:
             flash('Password must be at least 8 characters.', 'danger')
             return render_template('hms/auth/reset_password.html', token=token)
-        
+        if not re.search(r'[A-Z]', password):
+            flash('Password must contain at least one uppercase letter.', 'danger')
+            return render_template('hms/auth/reset_password.html', token=token)
+        if not re.search(r'[0-9]', password):
+            flash('Password must contain at least one number.', 'danger')
+            return render_template('hms/auth/reset_password.html', token=token)
         if password != confirm_password:
             flash('Passwords do not match.', 'danger')
             return render_template('hms/auth/reset_password.html', token=token)
         
-        # Update password
         user.password_hash = generate_password_hash(password)
-        user.reset_token = None  # Invalidate token
+        user.reset_token = None
         user.reset_token_expires = None
         db.session.commit()
         
@@ -414,10 +338,6 @@ def reset_password(token):
     
     return render_template('hms/auth/reset_password.html', token=token)
 
-
-# =============================================================================
-# DASHBOARD
-# =============================================================================
 
 @hms_bp.route('/')
 @login_required
@@ -429,14 +349,11 @@ def dashboard():
         flash("No hotel assigned.", "warning")
         return redirect(url_for("hms.login"))
 
-    # Get user role
     user_role = current_user.role.lower() if current_user.role else 'staff'
     if current_user.is_superadmin:
         user_role = 'superadmin'
 
-    # Restrict main dashboard to manager, owner, superadmin only
     if user_role not in ['manager', 'owner', 'superadmin']:
-        # Redirect other roles to their specific dashboards
         if user_role == 'housekeeping':
             return redirect(url_for('hms.housekeeping_dashboard'))
         elif user_role == 'kitchen':
@@ -449,7 +366,6 @@ def dashboard():
             flash("Access denied. Insufficient permissions.", "danger")
             return redirect(url_for('hms.login'))
 
-    # Filter queries by hotel
     q_rooms = Room.query.filter(Room.hotel_id.in_(hotel_ids))
     q_bookings = Booking.query.filter(Booking.hotel_id.in_(hotel_ids))
 
@@ -488,10 +404,8 @@ def dashboard():
         "occupancy_rate": occupancy_rate
     }
 
-    # Show only 3 recent bookings (View All button shows more)
     recent_bookings = q_bookings.order_by(Booking.created_at.desc()).limit(3).all()
 
-    # Revenue chart data (last 7 days)
     revenue_labels = []
     revenue_data = []
     for i in range(6, -1, -1):
@@ -504,13 +418,11 @@ def dashboard():
         ).scalar()
         revenue_data.append(float(rev) if rev else 0)
 
-    # Get notifications for current user
     notifications = Notification.query.filter_by(
         user_id=current_user.id,
         is_archived=False
     ).order_by(Notification.created_at.desc()).limit(5).all()
     
-    # Convert to alerts format
     alerts = []
     for n in notifications:
         alerts.append({
@@ -523,7 +435,6 @@ def dashboard():
             'icon': n.icon
         })
     
-    # Add mock alerts if no notifications
     if not alerts:
         alerts = [
             {'title': 'Welcome!', 'message': 'Your HMS dashboard is ready', 'level': 'info', 'severity': 'low', 'type': 'system'},
@@ -534,10 +445,6 @@ def dashboard():
                           revenue_labels=revenue_labels, revenue_data=revenue_data,
                           alerts=alerts)
 
-
-# =============================================================================
-# ROOMS
-# =============================================================================
 
 @hms_bp.route('/rooms')
 @login_required
@@ -589,7 +496,7 @@ def rooms_type_add():
         amenities_input = request.form.get("amenities", "").strip()
         short_description = request.form.get("short_description", "").strip()
         description = request.form.get("description", "").strip()
-        category = request.form.get("category", "").strip()  # classic, superior, deluxe, executive
+        category = request.form.get("category", "").strip()
         price_usd = request.form.get("price_usd", type=float)
         
         if not name or base_price is None:
@@ -613,14 +520,16 @@ def rooms_type_add():
             price_usd=price_usd
         )
         db.session.add(rt)
-        db.session.flush()  # Get the ID
+        db.session.flush()
 
-        # Handle image uploads
+        _allowed_image_exts = {'png', 'jpg', 'jpeg', 'gif', 'webp'}
         if 'room_images' in request.files:
             files = request.files.getlist('room_images')
             for i, file in enumerate(files):
                 if file and file.filename:
-                    ext = file.filename.rsplit('.', 1)[1].lower() if '.' in file.filename else 'jpg'
+                    ext = file.filename.rsplit('.', 1)[1].lower() if '.' in file.filename else ''
+                    if ext not in _allowed_image_exts:
+                        continue
                     filename = f"room_type_{rt.id}_{uuid.uuid4().hex[:8]}.{ext}"
                     upload_dir = os.path.join(current_app.root_path, 'static', 'uploads', 'rooms')
                     os.makedirs(upload_dir, exist_ok=True)
@@ -659,7 +568,6 @@ def rooms_add():
             return redirect(url_for("hms.rooms_add"))
 
         try:
-            # Use RoomManagementService for safe room creation
             room, message = RoomManagementService.create_room(
                 hotel_id=hid,
                 room_number=room_number,
@@ -712,7 +620,6 @@ def rooms_update(room_id):
         if floor:
             room.floor = floor
         
-        # Use safe status change if status is being updated
         if status and status != room.status:
             success, message = RoomManagementService.change_room_status(
                 room, status, reason=reason, user_id=current_user.id
@@ -746,7 +653,6 @@ def rooms_change_status(room_id):
         return redirect(url_for("hms.rooms"))
     
     try:
-        # Use RoomManagementService for safe status change with validation
         success, message = RoomManagementService.change_room_status(
             room,
             new_status,
@@ -774,12 +680,10 @@ def rooms_delete(room_id):
         flash("Access denied.", "danger")
         return redirect(url_for("hms.rooms"))
 
-    # Check if room is occupied
     if room.status == "Occupied":
         flash("Cannot delete an occupied room.", "warning")
         return redirect(url_for("hms.rooms"))
 
-    # Check for active bookings (bookings that reference this room)
     from app.models import Booking
     active_bookings = Booking.query.filter_by(room_id=room.id).filter(
         Booking.status.in_(['Reserved', 'CheckedIn', 'CheckedOut'])
@@ -797,10 +701,6 @@ def rooms_delete(room_id):
     return redirect(url_for("hms.rooms"))
 
 
-# =============================================================================
-# TRANSACTION BLOCKING MIDDLEWARE
-# =============================================================================
-
 def check_business_date_lock():
     """Check if current business date is locked and block transactions"""
     hotel_id = get_current_hotel_id()
@@ -812,10 +712,6 @@ def check_business_date_lock():
         return True
     
     return False
-
-# =============================================================================
-# BOOKINGS
-# =============================================================================
 
 @hms_bp.route('/bookings', methods=['GET', 'POST'])
 @login_required
@@ -849,13 +745,11 @@ def bookings_new():
         return redirect(url_for("hms.bookings"))
 
     if request.method == "POST":
-        # Phase 2 Fix: Check if business date is locked
         is_locked, lock_msg = check_business_date_lock()
         if is_locked:
             flash(lock_msg, "error")
             return redirect(url_for("hms.bookings"))
-        
-        # Guest handling
+
         guest_id = request.form.get("guest_id", type=int)
         is_new_guest = request.form.get("is_new_guest") == "on"
 
@@ -876,7 +770,6 @@ def bookings_new():
                 flash("Guest not found.", "danger")
                 return redirect(url_for("hms.bookings_new"))
 
-        # Booking details
         room_id = request.form.get("room_id", type=int)
         check_in_str = request.form.get("check_in")
         check_out_str = request.form.get("check_out")
@@ -906,7 +799,6 @@ def bookings_new():
             return redirect(url_for("hms.bookings_new"))
 
         try:
-            # Use BookingService to create booking with proper validation
             booking, message = BookingService.create_booking(
                 hotel_id=hid,
                 guest=guest,
@@ -933,10 +825,8 @@ def bookings_new():
             flash(f"Failed to create booking: {str(e)}", "danger")
             return redirect(url_for("hms.bookings_new"))
 
-    # GET - show form
     guests = Guest.query.filter_by(hotel_id=hid).order_by(Guest.name).limit(100).all()
 
-    # Get room categories
     room_types = RoomType.query.filter_by(hotel_id=hid, is_active=True).all()
     categories = list(set(rt.category for rt in room_types if rt.category))
     prices = {rt.category: float(rt.base_price) for rt in room_types if rt.category}
@@ -956,14 +846,12 @@ def bookings_check_in(booking_id):
         flash("Access denied.", "danger")
         return redirect(url_for("hms.bookings"))
 
-    # Phase 2 Fix: Check if business date is locked
     is_locked, lock_msg = check_business_date_lock()
     if is_locked:
         flash(lock_msg, "error")
         return redirect(url_for("hms.bookings"))
 
     try:
-        # Use BookingService for proper check-in with validation
         success, message = BookingService.check_in(booking, user_id=current_user.id)
 
         if success:
@@ -987,21 +875,18 @@ def bookings_check_out(booking_id):
         flash("Access denied.", "danger")
         return redirect(url_for("hms.bookings"))
 
-    # Phase 2 Fix: Check if business date is locked
     is_locked, lock_msg = check_business_date_lock()
     if is_locked:
         flash(lock_msg, "error")
         return redirect(url_for("hms.bookings"))
 
     try:
-        # Use BookingService for proper check-out with balance validation
         success, message = BookingService.check_out(booking, user_id=current_user.id)
 
         if success:
             db.session.commit()
             flash(message, "success")
         else:
-            # If balance issue, redirect to payment
             if "balance" in message.lower():
                 return redirect(url_for('hms.bookings_payment', booking_id=booking.id))
             flash(message, "warning")
@@ -1021,13 +906,11 @@ def bookings_cancel(booking_id):
         flash("Access denied.", "danger")
         return redirect(url_for("hms.bookings"))
 
-    # Validate booking can be cancelled
     if booking.status != "Reserved":
         flash(f"Cannot cancel booking with status {booking.status}. Only Reserved bookings can be cancelled.", "warning")
         return redirect(url_for("hms.bookings"))
 
     try:
-        # Use BookingService for proper cancellation with fee calculation
         reason = request.form.get('cancellation_reason', '').strip()
         success, message = BookingService.cancel_booking(
             booking,
@@ -1056,18 +939,15 @@ def bookings_no_show(booking_id):
         flash("Access denied.", "danger")
         return redirect(url_for("hms.bookings"))
 
-    # Validate booking can be marked as no-show
     if booking.status != "Reserved":
         flash(f"Cannot mark no-show for booking with status {booking.status}. Only Reserved bookings can be marked as no-show.", "warning")
         return redirect(url_for("hms.bookings"))
 
-    # Validate check-in date has passed
     if booking.check_in_date >= date.today():
         flash("Cannot mark as no-show before check-in date.", "warning")
         return redirect(url_for("hms.bookings"))
 
     try:
-        # Use BookingService for proper no-show handling with fee
         success, message = BookingService.mark_no_show(
             booking,
             user_id=current_user.id
@@ -1099,12 +979,11 @@ def bookings_payment(booking_id):
         return redirect(url_for("hms.bookings"))
 
     if request.method == "POST":
-        # Phase 2 Fix: Check if business date is locked
         is_locked, lock_msg = check_business_date_lock()
         if is_locked:
             flash(lock_msg, "error")
             return redirect(url_for("hms.bookings"))
-        
+
         amount = request.form.get("amount", type=float)
         method = request.form.get("payment_method", "Cash")
 
@@ -1118,12 +997,8 @@ def bookings_payment(booking_id):
         pay = Payment(hotel_id=booking.hotel_id, invoice_id=inv.id,
                      amount=Decimal(str(amount)), payment_method=method, booking_id=booking.id)
         db.session.add(pay)
-        
-        # Create journal entry for this payment
-        # Debit: Cash/Bank account (Asset increases)
-        # Credit: Revenue account (Revenue increases)
+
         try:
-            # Get or create default accounts
             cash_account = ChartOfAccount.query.filter(
                 ChartOfAccount.hotel_id == booking.hotel_id,
                 ChartOfAccount.type == "Asset",
@@ -1137,7 +1012,7 @@ def bookings_payment(booking_id):
                 )
                 db.session.add(cash_account)
                 db.session.flush()
-            
+
             revenue_account = ChartOfAccount.query.filter(
                 ChartOfAccount.hotel_id == booking.hotel_id,
                 ChartOfAccount.type == "Revenue",
@@ -1151,8 +1026,7 @@ def bookings_payment(booking_id):
                 )
                 db.session.add(revenue_account)
                 db.session.flush()
-            
-            # Create journal entry
+
             journal_entry = JournalEntry(
                 hotel_id=booking.hotel_id,
                 reference=f"PAY-{pay.id}",
@@ -1161,8 +1035,7 @@ def bookings_payment(booking_id):
             )
             db.session.add(journal_entry)
             db.session.flush()
-            
-            # Debit line (Cash increases)
+
             debit_line = JournalLine(
                 journal_entry_id=journal_entry.id,
                 account_id=cash_account.id,
@@ -1172,8 +1045,7 @@ def bookings_payment(booking_id):
                 invoice_id=inv.id
             )
             db.session.add(debit_line)
-            
-            # Credit line (Revenue increases)
+
             credit_line = JournalLine(
                 journal_entry_id=journal_entry.id,
                 account_id=revenue_account.id,
@@ -1185,7 +1057,6 @@ def bookings_payment(booking_id):
             db.session.add(credit_line)
             
         except Exception as e:
-            # Log error but don't fail the payment
             current_app.logger.error(f"Failed to create journal entry: {e}")
         
         db.session.commit()
@@ -1220,12 +1091,15 @@ def bookings_available_rooms():
     if check_out_d <= check_in_d:
         return jsonify({'success': False, 'error': 'Check-out must be after check-in'}), 400
 
-    all_rooms = Room.query.filter(Room.hotel_id == hotel_id, Room.is_active == True).all()
-    booked_room_ids = db.session.query(Booking.room_id).filter(
-        Booking.hotel_id == hotel_id, Booking.status.in_(("Reserved", "CheckedIn")),
-        Booking.check_in_date < check_out_d, Booking.check_out_date > check_in_d
+    all_rooms = Room.query.options(joinedload(Room.room_type)).filter(
+        Room.hotel_id == hotel_id, Room.is_active == True
     ).all()
-    booked_room_ids = [r[0] for r in booked_room_ids]
+    booked_room_ids = set(
+        r[0] for r in db.session.query(Booking.room_id).filter(
+            Booking.hotel_id == hotel_id, Booking.status.in_(("Reserved", "CheckedIn")),
+            Booking.check_in_date < check_out_d, Booking.check_out_date > check_in_d
+        ).all()
+    )
 
     available = []
     for room in all_rooms:
@@ -1291,14 +1165,12 @@ def api_available_rooms():
     if check_out <= check_in:
         return jsonify({'success': False, 'error': 'Check-out must be after check-in'}), 400
     
-    # Get room types in category
     room_types = RoomType.query.filter_by(hotel_id=hotel_id, category=category, is_active=True).all()
     room_type_ids = [rt.id for rt in room_types]
-    
+
     if not room_type_ids:
         return jsonify({'success': True, 'rooms': []})
-    
-    # Get booked rooms for the period
+
     booked_room_ids = db.session.query(Booking.room_id).filter(
         Booking.hotel_id == hotel_id,
         Booking.room_id.isnot(None),
@@ -1307,8 +1179,7 @@ def api_available_rooms():
         Booking.check_out_date > check_in
     ).all()
     booked_room_ids = [r[0] for r in booked_room_ids]
-    
-    # Get available rooms
+
     available_rooms = Room.query.filter(
         Room.hotel_id == hotel_id,
         Room.room_type_id.in_(room_type_ids),
@@ -1333,10 +1204,6 @@ def api_available_rooms():
     return jsonify({'success': True, 'rooms': rooms_data})
 
 
-# =============================================================================
-# HOUSEKEEPING
-# =============================================================================
-
 @hms_bp.route('/housekeeping')
 @login_required
 def housekeeping():
@@ -1346,10 +1213,8 @@ def housekeeping():
         flash("Please select a hotel first.", "warning")
         return redirect(url_for("hms.dashboard"))
 
-    # Get all rooms with their status
     rooms = Room.query.filter_by(hotel_id=hotel_id).order_by(Room.floor, Room.room_number).all()
 
-    # Get housekeeping tasks by status - sorted by priority
     pending_tasks = HousekeepingTask.query.filter_by(
         hotel_id=hotel_id, status='pending'
     ).order_by(HousekeepingTask.priority.desc(), HousekeepingTask.created_at.desc()).all()
@@ -1364,7 +1229,6 @@ def housekeeping():
         db.func.date(HousekeepingTask.completed_at) == date.today()
     ).count()
 
-    # Count by room status
     status_counts = {
         'Vacant': len([r for r in rooms if r.status == 'Vacant']),
         'Occupied': len([r for r in rooms if r.status == 'Occupied']),
@@ -1394,7 +1258,6 @@ def housekeeping_create_task(room_id):
     notes = request.form.get('notes', '')
 
     try:
-        # Use service function to create task with proper validation
         task = create_cleaning_task(
             room=room,
             task_type=task_type,
@@ -1426,7 +1289,6 @@ def housekeeping_assign_task(task_id):
     
     try:
         if staff_id:
-            # Validate staff member exists and has appropriate role
             staff = User.query.get(staff_id)
             if not staff or staff.hotel_id != task.hotel_id:
                 flash("Invalid staff member selected.", "danger")
@@ -1455,15 +1317,13 @@ def housekeeping_start_task(task_id):
         return redirect(url_for("hms.housekeeping"))
 
     try:
-        # Validate task can be started
         if task.status != 'pending':
             flash(f"Task cannot be started (current status: {task.status})", "warning")
             return redirect(url_for("hms.housekeeping"))
         
         task.status = 'in_progress'
         task.started_at = datetime.utcnow()
-        
-        # Auto-assign to current user if not assigned
+
         if not task.completed_by:
             task.completed_by = current_user.id
         
@@ -1486,7 +1346,6 @@ def housekeeping_complete_task(task_id):
         return redirect(url_for("hms.housekeeping"))
 
     try:
-        # Validate task can be completed
         if task.status != 'in_progress':
             flash(f"Task must be in progress to complete (current: {task.status})", "warning")
             return redirect(url_for("hms.housekeeping"))
@@ -1516,7 +1375,6 @@ def housekeeping_clean_room(room_id):
         return redirect(url_for("hms.housekeeping"))
 
     try:
-        # Use service function with proper validation
         success, message = quick_clean_room(room, user_id=current_user.id)
         
         if success:
@@ -1541,7 +1399,6 @@ def housekeeping_dirty_room(room_id):
         return redirect(url_for("hms.housekeeping"))
 
     try:
-        # Use service function with proper validation
         success, message = quick_dirty_room(room, user_id=current_user.id)
         
         if success:
@@ -1556,10 +1413,6 @@ def housekeeping_dirty_room(room_id):
     return redirect(url_for("hms.housekeeping"))
 
 
-# =============================================================================
-# ACCOUNTING
-# =============================================================================
-
 @hms_bp.route('/accounting')
 @login_required
 def accounting():
@@ -1573,11 +1426,9 @@ def accounting():
         flash("Access denied. Accountant or Manager role required.", "danger")
         return redirect(url_for("hms.dashboard"))
 
-    # Get summary stats
     today = date.today()
     first_day = today.replace(day=1)
 
-    # Get revenue and expense account IDs
     revenue_accounts = ChartOfAccount.query.filter_by(
         hotel_id=hotel_id, type="Revenue"
     ).all()
@@ -1588,10 +1439,8 @@ def accounting():
     ).all()
     expense_account_ids = [a.id for a in expense_accounts]
 
-    # Revenue this month (sum of credits to revenue accounts + payments)
     revenue = 0
     if revenue_account_ids:
-        # Revenue from journal entries
         revenue_from_journal = db.session.query(db.func.coalesce(db.func.sum(JournalLine.credit), 0)).join(
             JournalEntry
         ).filter(
@@ -1603,7 +1452,6 @@ def accounting():
         ).scalar()
         revenue += revenue_from_journal
     
-    # Revenue from payments this month
     revenue_from_payments = db.session.query(db.func.coalesce(db.func.sum(Payment.amount), 0)).filter(
         Payment.hotel_id == hotel_id,
         Payment.created_at >= first_day,
@@ -1612,7 +1460,6 @@ def accounting():
     ).scalar()
     revenue += revenue_from_payments
 
-    # Expenses this month (sum of debits to expense accounts)
     expenses = 0
     if expense_account_ids:
         expenses = db.session.query(db.func.coalesce(db.func.sum(JournalLine.debit), 0)).join(
@@ -1625,13 +1472,11 @@ def accounting():
             JournalLine.deleted_at.is_(None)
         ).scalar()
 
-    # Recent journal entries
     recent_entries = JournalEntry.query.filter_by(
         hotel_id=hotel_id,
         deleted_at=None
     ).order_by(JournalEntry.date.desc()).limit(10).all()
 
-    # Recent payments
     recent_payments = Payment.query.filter_by(
         hotel_id=hotel_id,
         deleted_at=None
@@ -1661,7 +1506,6 @@ def accounting_chart():
         ChartOfAccount.type, ChartOfAccount.name
     ).all()
     
-    # Calculate balances
     for account in accounts:
         lines = JournalLine.query.filter_by(account_id=account.id).all()
         account.balance = sum((line.debit or 0) - (line.credit or 0) for line in lines)
@@ -1703,7 +1547,6 @@ def accounting_entry_create():
         credits = request.form.getlist("credit[]")
         
         try:
-            # Create journal entry
             entry = JournalEntry(
                 hotel_id=hotel_id,
                 date=datetime.strptime(entry_date, '%Y-%m-%d').date(),
@@ -1712,7 +1555,6 @@ def accounting_entry_create():
             db.session.add(entry)
             db.session.flush()
             
-            # Create journal lines
             total_debit = 0
             total_credit = 0
             
@@ -1732,7 +1574,6 @@ def accounting_entry_create():
                         total_debit += debit
                         total_credit += credit
             
-            # Verify balance
             if abs(total_debit - total_credit) > 0.01:
                 db.session.rollback()
                 flash("Debits and credits must balance!", "danger")
@@ -1747,7 +1588,6 @@ def accounting_entry_create():
             flash(f"Error creating entry: {str(e)}", "danger")
             return redirect(url_for("hms.accounting_entry_create"))
     
-    # GET - show form
     from datetime import date
     accounts = ChartOfAccount.query.filter_by(hotel_id=hotel_id).all()
     return render_template("hms/accounting/entry_form.html", accounts=accounts, today=date.today())
@@ -1763,13 +1603,11 @@ def accounting_reports():
         return redirect(url_for("hms.dashboard"))
 
     try:
-        # Get period from query params
         period = request.args.get('period', 'this_month')
         custom_start = request.args.get('start_date')
         custom_end = request.args.get('end_date')
         today = date.today()
 
-        # Calculate date range
         if custom_start and custom_end:
             start_date = datetime.strptime(custom_start, '%Y-%m-%d').date()
             end_date = datetime.strptime(custom_end, '%Y-%m-%d').date()
@@ -1802,8 +1640,6 @@ def accounting_reports():
             start_date = today.replace(day=1)
             end_date = today
 
-        # ========== REVENUE METRICS ==========
-        # Total revenue from invoices (excluding deleted)
         total_invoice_revenue = db.session.query(db.func.coalesce(db.func.sum(Invoice.total), 0)).join(
             Booking
         ).filter(
@@ -1813,7 +1649,6 @@ def accounting_reports():
             Invoice.created_at <= datetime.combine(end_date, datetime.max.time())
         ).scalar() or 0
 
-        # Revenue from payments (actual cash received)
         total_payment_revenue = db.session.query(db.func.coalesce(db.func.sum(Payment.amount), 0)).join(
             Booking
         ).filter(
@@ -1824,7 +1659,6 @@ def accounting_reports():
             Payment.created_at <= datetime.combine(end_date, datetime.max.time())
         ).scalar() or 0
         
-        # If no data for selected period, get all-time data and show message
         if total_payment_revenue == 0:
             total_payment_revenue = db.session.query(db.func.coalesce(db.func.sum(Payment.amount), 0)).join(
                 Booking
@@ -1835,7 +1669,6 @@ def accounting_reports():
             ).scalar() or 0
             flash("No payment data for selected period. Showing all-time data.", "info")
 
-        # Revenue by payment method
         payment_methods = db.session.query(
             Payment.payment_method,
             db.func.coalesce(db.func.sum(Payment.amount), 0)
@@ -1847,7 +1680,6 @@ def accounting_reports():
             Payment.created_at <= datetime.combine(end_date, datetime.max.time())
         ).group_by(Payment.payment_method).all()
         
-        # If no payment methods for period, get all-time
         if not payment_methods:
             payment_methods = db.session.query(
                 Payment.payment_method,
@@ -1858,8 +1690,6 @@ def accounting_reports():
                 Payment.status.in_(['completed', 'confirmed'])
             ).group_by(Payment.payment_method).all()
 
-        # ========== EXPENSES METRICS ==========
-        # Total expenses from journal entries (debit side)
         total_expenses = db.session.query(db.func.coalesce(db.func.sum(JournalLine.debit), 0)).join(
             JournalEntry
         ).filter(
@@ -1869,7 +1699,6 @@ def accounting_reports():
             JournalEntry.deleted_at.is_(None)
         ).scalar() or 0
 
-        # Expenses by account category
         expenses_by_category = db.session.query(
             ChartOfAccount.name,
             db.func.coalesce(db.func.sum(JournalLine.debit), 0)
@@ -1887,15 +1716,12 @@ def accounting_reports():
             JournalLine.deleted_at.is_(None)
         ).group_by(ChartOfAccount.name).all()
 
-        # ========== OUTSTANDING BALANCES ==========
-        # Outstanding receivables (unpaid invoices)
         outstanding_receivables = db.session.query(db.func.coalesce(db.func.sum(Invoice.total), 0)).filter(
             Invoice.hotel_id == hotel_id,
             Invoice.deleted_at.is_(None),
             Invoice.status.in_(['Unpaid', 'Partial'])
         ).scalar() or 0
 
-        # Accounts payable (if tracked in journal)
         accounts_payable = db.session.query(db.func.coalesce(db.func.sum(JournalLine.credit), 0)).join(
             ChartOfAccount
         ).filter(
@@ -1904,8 +1730,7 @@ def accounting_reports():
             JournalLine.deleted_at.is_(None)
         ).scalar() or 0
 
-        # ========== DAILY REVENUE TREND ==========
-        # Use PostgreSQL-compatible date truncation
+        # Use PostgreSQL date_trunc for daily grouping
         daily_revenue = db.session.query(
             db.func.date_trunc('day', Payment.created_at).label('payment_date'),
             db.func.coalesce(db.func.sum(Payment.amount), 0)
@@ -1919,7 +1744,6 @@ def accounting_reports():
             db.func.date_trunc('day', Payment.created_at)
         ).all()
         
-        # If no daily data for period, get last 7 days of all-time data
         if not daily_revenue:
             daily_revenue = db.session.query(
                 db.func.date_trunc('day', Payment.created_at).label('payment_date'),
@@ -1932,47 +1756,36 @@ def accounting_reports():
                 db.func.date_trunc('day', Payment.created_at)
             ).limit(7).all()
 
-        # ========== PROFIT & LOSS ==========
         gross_profit = float(total_payment_revenue) - float(total_expenses)
         gross_profit_margin = (gross_profit / float(total_payment_revenue) * 100) if total_payment_revenue > 0 else 0
 
-        # ========== PREPARE CHART DATA ==========
-        # Daily revenue for chart - handle datetime from PostgreSQL date_trunc
+        # Handle datetime from PostgreSQL date_trunc vs plain date objects
         daily_labels = []
         daily_values = []
         for d in daily_revenue:
             if hasattr(d[0], 'strftime'):
                 daily_labels.append(d[0].strftime('%Y-%m-%d'))
             else:
-                # Convert date to string if it's already a date object
                 daily_labels.append(str(d[0])[:10])
             daily_values.append(float(d[1]))
 
-        # Payment method breakdown
         payment_method_labels = [pm[0] or 'Unknown' for pm in payment_methods]
         payment_method_values = [float(pm[1]) for pm in payment_methods]
 
-        # Expense categories
         expense_labels = [cat[0] or 'Other' for cat in expenses_by_category]
         expense_values = [float(cat[1]) for cat in expenses_by_category]
 
         return render_template("hms/accounting/financial_reports.html",
-                             # Date range
                              start_date=start_date,
                              end_date=end_date,
                              period=period,
-                             # Revenue
                              total_invoice_revenue=float(total_invoice_revenue),
                              total_payment_revenue=float(total_payment_revenue),
-                             # Expenses
                              total_expenses=float(total_expenses),
-                             # Profit
                              gross_profit=gross_profit,
                              gross_profit_margin=gross_profit_margin,
-                             # Outstanding
                              outstanding_receivables=float(outstanding_receivables),
                              accounts_payable=float(accounts_payable),
-                             # Chart data
                              daily_labels=daily_labels,
                              daily_values=daily_values,
                              payment_method_labels=payment_method_labels,
@@ -1988,10 +1801,6 @@ def accounting_reports():
         return redirect(url_for("hms.dashboard"))
 
 
-# =============================================================================
-# INVENTORY
-# =============================================================================
-
 @hms_bp.route('/inventory')
 @login_required
 def inventory():
@@ -2001,7 +1810,6 @@ def inventory():
         flash("Please select a hotel first.", "warning")
         return redirect(url_for("hms.dashboard"))
     
-    # Get summary stats
     total_items = InventoryItem.query.filter_by(hotel_id=hotel_id, deleted_at=None).count()
     low_stock = InventoryItem.query.filter(
         InventoryItem.hotel_id == hotel_id,
@@ -2009,7 +1817,6 @@ def inventory():
         InventoryItem.current_stock <= InventoryItem.reorder_level
     ).count()
     
-    # Get low stock items
     low_stock_items = InventoryItem.query.filter(
         InventoryItem.hotel_id == hotel_id,
         InventoryItem.deleted_at.is_(None),
@@ -2056,7 +1863,6 @@ def inventory_category_add():
             flash("Category name is required.", "error")
             return redirect(url_for('hms.inventory_category_add'))
 
-        # Check if category already exists
         existing = InventoryCategory.query.filter_by(
             name=name,
             hotel_id=hotel_id,
@@ -2067,7 +1873,6 @@ def inventory_category_add():
             flash(f"Category '{name}' already exists.", "error")
             return redirect(url_for('hms.inventory_category_add'))
 
-        # Create new category
         category = InventoryCategory(
             hotel_id=hotel_id,
             name=name,
@@ -2102,7 +1907,6 @@ def inventory_category_edit(category_id):
             flash("Category name is required.", "error")
             return redirect(url_for('hms.inventory_category_edit', category_id=category_id))
 
-        # Check if name is already taken by another category
         existing = InventoryCategory.query.filter_by(
             name=name,
             hotel_id=hotel_id,
@@ -2135,7 +1939,6 @@ def inventory_category_delete(category_id):
 
     category = InventoryCategory.query.get_or_404(category_id)
 
-    # Check if category has items
     item_count = InventoryItem.query.filter_by(
         category_id=category_id,
         deleted_at=None
@@ -2145,7 +1948,6 @@ def inventory_category_delete(category_id):
         flash(f"Cannot delete category. {item_count} items are using it.", "error")
         return redirect(url_for('hms.inventory_categories'))
 
-    # Soft delete
     from datetime import datetime
     category.deleted_at = datetime.utcnow()
     db.session.commit()
@@ -2168,7 +1970,6 @@ def inventory_items():
         deleted_at=None
     ).order_by(InventoryItem.name).all()
     
-    # Get categories for filter dropdown
     categories = InventoryCategory.query.filter_by(
         hotel_id=hotel_id,
         deleted_at=None
@@ -2187,7 +1988,7 @@ def inventory_item_add():
         return redirect(url_for("hms.dashboard"))
     
     def render_inventory_add_form():
-        """Helper function to render the add item form"""
+        """Render the add item form with categories."""
         categories = InventoryCategory.query.filter_by(
             hotel_id=hotel_id,
             deleted_at=None
@@ -2199,7 +2000,6 @@ def inventory_item_add():
     
     if request.method == 'POST':
         try:
-            # Get form data
             name = request.form.get('name', '').strip()
             category_id = request.form.get('category_id')
             unit = request.form.get('unit', '').strip()
@@ -2207,7 +2007,6 @@ def inventory_item_add():
             reorder_level = request.form.get('reorder_level', '0')
             cost_per_unit = request.form.get('cost_per_unit', '0')
 
-            # Validation
             if not name:
                 flash("Item name is required.", "error")
                 return render_inventory_add_form()
@@ -2220,7 +2019,6 @@ def inventory_item_add():
                 flash("Unit is required.", "error")
                 return render_inventory_add_form()
 
-            # Auto-generate SKU from item name
             import re
             sku_base = re.sub(r'[^a-zA-Z0-9]', '', name.upper())[:8]
             sku_count = InventoryItem.query.filter_by(hotel_id=hotel_id, deleted_at=None).filter(
@@ -2228,13 +2026,11 @@ def inventory_item_add():
             ).count()
             sku = f"{sku_base}-{sku_count + 1:03d}"
 
-            # Check if SKU already exists (unlikely but possible)
             existing_item = InventoryItem.query.filter_by(sku=sku, hotel_id=hotel_id, deleted_at=None).first()
             if existing_item:
                 flash(f"Item with SKU '{sku}' already exists.", "error")
                 return render_inventory_add_form()
 
-            # Create new inventory item
             item = InventoryItem(
                 hotel_id=hotel_id,
                 category_id=int(category_id),
@@ -2273,7 +2069,7 @@ def inventory_item_edit(item_id):
     item = InventoryItem.query.get_or_404(item_id)
 
     def render_inventory_edit_form():
-        """Helper function to render the edit item form"""
+        """Render the edit item form with categories."""
         categories = InventoryCategory.query.filter_by(
             hotel_id=hotel_id,
             deleted_at=None
@@ -2285,7 +2081,6 @@ def inventory_item_edit(item_id):
 
     if request.method == 'POST':
         try:
-            # Get form data
             name = request.form.get('name', '').strip()
             category_id = request.form.get('category_id')
             unit = request.form.get('unit', '').strip()
@@ -2293,7 +2088,6 @@ def inventory_item_edit(item_id):
             reorder_level = request.form.get('reorder_level', '0')
             cost_per_unit = request.form.get('cost_per_unit', '0')
 
-            # Validation
             if not name:
                 flash("Item name is required.", "error")
                 return render_inventory_edit_form()
@@ -2306,7 +2100,6 @@ def inventory_item_edit(item_id):
                 flash("Unit is required.", "error")
                 return render_inventory_edit_form()
 
-            # Update item
             item.name = name
             item.category_id = int(category_id)
             item.unit = unit
@@ -2363,7 +2156,6 @@ def manage_menu_ingredients():
 
     menu_item_id = request.args.get('menu_item_id', type=int)
     
-    # Get all menu items for this hotel
     menu_items = MenuItem.query.filter_by(
         hotel_id=hotel_id,
         deleted_at=None
@@ -2376,12 +2168,10 @@ def manage_menu_ingredients():
     if menu_item_id:
         selected_menu_item = MenuItem.query.get_or_404(menu_item_id)
         
-        # Get linked ingredients
         linked_ingredients = MenuItemInventory.query.filter_by(
             menu_item_id=menu_item_id
         ).all()
         
-        # Get all inventory items for selection
         inventory_items = InventoryItem.query.filter_by(
             hotel_id=hotel_id,
             deleted_at=None
@@ -2415,7 +2205,6 @@ def add_menu_ingredient(menu_item_id):
         flash("Quantity needed must be greater than 0.", "error")
         return redirect(url_for('hms.manage_menu_ingredients', menu_item_id=menu_item_id))
     
-    # Check if link already exists
     existing = MenuItemInventory.query.filter_by(
         menu_item_id=menu_item_id,
         inventory_item_id=inventory_item_id
@@ -2425,7 +2214,6 @@ def add_menu_ingredient(menu_item_id):
         flash("This ingredient is already linked to the menu item.", "error")
         return redirect(url_for('hms.manage_menu_ingredients', menu_item_id=menu_item_id))
     
-    # Create new link
     link = MenuItemInventory(
         menu_item_id=menu_item_id,
         inventory_item_id=inventory_item_id,
@@ -2467,14 +2255,13 @@ def supplier_add():
         return redirect(url_for("hms.dashboard"))
     
     def render_supplier_form():
-        """Helper function to render the supplier form"""
+        """Render the supplier form."""
         return render_template("hms/inventory/supplier_form.html", 
                              supplier=None, 
                              title="Add Supplier")
     
     if request.method == 'POST':
         try:
-            # Get form data
             name = request.form.get('name', '').strip()
             contact_person = request.form.get('contact_person', '').strip()
             email = request.form.get('email', '').strip()
@@ -2483,19 +2270,16 @@ def supplier_add():
             tax_id = request.form.get('tax_id', '').strip()
             payment_terms = request.form.get('payment_terms', '').strip()
             notes = request.form.get('notes', '').strip()
-            
-            # Validation
+
             if not name:
                 flash("Supplier name is required.", "error")
                 return render_supplier_form()
-            
-            # Check if supplier already exists
+
             existing_supplier = Supplier.query.filter_by(name=name, hotel_id=hotel_id, deleted_at=None).first()
             if existing_supplier:
                 flash(f"Supplier '{name}' already exists.", "error")
                 return render_supplier_form()
             
-            # Create new supplier
             supplier = Supplier(
                 hotel_id=hotel_id,
                 name=name,
@@ -2536,7 +2320,6 @@ def inventory_purchase_orders():
         hotel_id=hotel_id
     ).order_by(PurchaseOrder.order_date.desc()).limit(50).all()
     
-    # Get suppliers for filter dropdown
     suppliers = Supplier.query.filter_by(
         hotel_id=hotel_id,
         deleted_at=None
@@ -2556,18 +2339,14 @@ def purchase_order_add():
     
     if request.method == 'POST':
         try:
-            # Get form data
             supplier_id = request.form.get('supplier_id')
             expected_date = request.form.get('expected_date')
             notes = request.form.get('notes', '').strip()
-            
-            # Get items data
             item_ids = request.form.getlist('item_id[]')
             quantities = request.form.getlist('quantity[]')
             unit_costs = request.form.getlist('unit_cost[]')
             item_notes = request.form.getlist('item_notes[]')
-            
-            # Validation
+
             if not supplier_id:
                 flash("Supplier is required.", "error")
                 return render_purchase_order_form()
@@ -2576,12 +2355,10 @@ def purchase_order_add():
                 flash("At least one item is required.", "error")
                 return render_purchase_order_form()
             
-            # Generate PO number
             from datetime import datetime
             po_count = PurchaseOrder.query.filter_by(hotel_id=hotel_id).count()
             po_number = f"PO-{datetime.now().strftime('%Y%m%d')}-{po_count + 1:04d}"
             
-            # Create purchase order
             purchase_order = PurchaseOrder(
                 hotel_id=hotel_id,
                 po_number=po_number,
@@ -2592,9 +2369,7 @@ def purchase_order_add():
             )
             
             db.session.add(purchase_order)
-            db.session.flush()  # Get the PO ID
-            
-            # Add items
+            db.session.flush()
             total_amount = 0
             for i, item_id in enumerate(item_ids):
                 if item_id and i < len(quantities) and i < len(unit_costs):
@@ -2630,33 +2405,170 @@ def purchase_order_add():
 
 
 def render_purchase_order_form():
-    """Helper function to render the purchase order form"""
+    """Render the purchase order form with suppliers and items."""
     hotel_id = get_current_hotel_id()
-    
+
     suppliers = Supplier.query.filter_by(
         hotel_id=hotel_id,
         deleted_at=None
     ).order_by(Supplier.name).all()
-    
+
     items = InventoryItem.query.filter_by(
         hotel_id=hotel_id,
         deleted_at=None
     ).order_by(InventoryItem.name).all()
-    
-    return render_template("hms/inventory/purchase_order_form.html", 
-                         suppliers=suppliers, 
-                         items=items, 
-                         purchase_order=None, 
+
+    return render_template("hms/inventory/purchase_order_form.html",
+                         suppliers=suppliers,
+                         items=items,
+                         purchase_order=None,
                          title="New Purchase Order")
 
 
+@hms_bp.route('/inventory/items/<int:item_id>/view')
+@login_required
+def view_item(item_id):
+    """View inventory item details with stock history."""
+    hotel_id = get_current_hotel_id()
+    if not hotel_id:
+        flash("Please select a hotel first.", "warning")
+        return redirect(url_for("hms.dashboard"))
+
+    item = InventoryItem.query.filter_by(id=item_id, hotel_id=hotel_id, deleted_at=None).first_or_404()
+
+    from datetime import datetime, timedelta
+    thirty_days_ago = datetime.utcnow() - timedelta(days=30)
+
+    recent_movements = StockMovement.query.filter_by(item_id=item_id).order_by(
+        StockMovement.created_at.desc()
+    ).limit(20).all()
+
+    consumptions = StockMovement.query.filter(
+        StockMovement.item_id == item_id,
+        StockMovement.movement_type == 'consumption',
+        StockMovement.created_at >= thirty_days_ago
+    ).all()
+    thirty_day_consumption = sum(float(m.quantity) for m in consumptions)
+
+    days_left = None
+    if thirty_day_consumption > 0:
+        daily_rate = thirty_day_consumption / 30
+        days_left = int(float(item.current_stock) / daily_rate) if daily_rate > 0 else None
+
+    stats = {
+        'thirty_day_consumption': thirty_day_consumption,
+        'days_left': days_left,
+    }
+
+    history_movements = StockMovement.query.filter(
+        StockMovement.item_id == item_id,
+        StockMovement.created_at >= thirty_days_ago
+    ).order_by(StockMovement.created_at.asc()).all()
+
+    pending_pos = PurchaseOrderItem.query.join(PurchaseOrder).filter(
+        PurchaseOrder.hotel_id == hotel_id,
+        PurchaseOrderItem.item_id == item_id,
+        PurchaseOrder.status.in_(['draft', 'ordered'])
+    ).all()
+
+    return render_template(
+        "hms/inventory/view_item.html",
+        item=item,
+        recent_movements=recent_movements,
+        history_movements=history_movements,
+        pending_pos=pending_pos,
+        stats=stats,
+    )
 
 
-# =============================================================================
-# RESTAURANT / POS - Full Implementation
-# =============================================================================
+@hms_bp.route('/inventory/adjust-stock', methods=['GET', 'POST'])
+@login_required
+def adjust_stock():
+    """Adjust inventory item stock (manual correction or write-off)."""
+    hotel_id = get_current_hotel_id()
+    if not hotel_id:
+        flash("Please select a hotel first.", "warning")
+        return redirect(url_for("hms.dashboard"))
 
-# Restaurant constants (Week 1-3)
+    item_id = request.args.get('item_id', type=int) or request.form.get('item_id', type=int)
+    if not item_id:
+        flash("Item not specified.", "danger")
+        return redirect(url_for("hms.inventory_items"))
+
+    item = InventoryItem.query.filter_by(id=item_id, hotel_id=hotel_id, deleted_at=None).first_or_404()
+
+    if request.method == 'POST':
+        try:
+            adjustment_type = request.form.get('adjustment_type', 'adjustment')
+            quantity_str = request.form.get('quantity', '0').strip()
+            notes = request.form.get('notes', '').strip()
+
+            try:
+                quantity = Decimal(quantity_str)
+            except Exception:
+                flash("Invalid quantity.", "danger")
+                return render_template("hms/inventory/adjust_stock.html", item=item)
+
+            if quantity == 0:
+                flash("Quantity cannot be zero.", "danger")
+                return render_template("hms/inventory/adjust_stock.html", item=item)
+
+            previous_stock = item.current_stock
+            if adjustment_type == 'set':
+                new_stock = quantity
+                actual_change = new_stock - previous_stock
+            elif adjustment_type == 'subtract':
+                new_stock = previous_stock - abs(quantity)
+                actual_change = -abs(quantity)
+            else:
+                new_stock = previous_stock + quantity
+                actual_change = quantity
+
+            if new_stock < 0:
+                flash("Adjustment would result in negative stock.", "danger")
+                return render_template("hms/inventory/adjust_stock.html", item=item)
+
+            movement = StockMovement(
+                hotel_id=hotel_id,
+                item_id=item_id,
+                movement_type='adjustment',
+                quantity=abs(actual_change),
+                unit_cost=item.average_cost,
+                previous_stock=previous_stock,
+                new_stock=new_stock,
+                reference_type='manual_adjustment',
+                notes=notes,
+                created_by=current_user.id,
+            )
+            item.current_stock = new_stock
+            item.updated_at = datetime.utcnow()
+            db.session.add(movement)
+            db.session.commit()
+
+            flash(f"Stock adjusted successfully. New stock: {float(new_stock):.2f} {item.unit}", "success")
+            return redirect(url_for('hms.view_item', item_id=item_id))
+
+        except Exception as e:
+            db.session.rollback()
+            current_app.logger.error(f"Stock adjustment error: {str(e)}")
+            flash("An error occurred during adjustment.", "danger")
+
+    return render_template("hms/inventory/adjust_stock.html", item=item)
+
+
+@hms_bp.route('/inventory/purchase-orders/<int:po_id>/view')
+@login_required
+def view_po(po_id):
+    """View purchase order detail."""
+    hotel_id = get_current_hotel_id()
+    if not hotel_id:
+        flash("Please select a hotel first.", "warning")
+        return redirect(url_for("hms.dashboard"))
+
+    po = PurchaseOrder.query.filter_by(id=po_id, hotel_id=hotel_id).first_or_404()
+    return render_template("hms/inventory/view_po.html", po=po)
+
+
 ORDER_STATUSES = ['pending', 'preparing', 'ready', 'completed', 'cancelled']
 PAYMENT_STATUSES = ['unpaid', 'partial', 'paid', 'refunded']
 PAYMENT_METHODS = ['cash', 'card', 'mobile', 'room_charge']
@@ -2674,7 +2586,6 @@ def restaurant():
     tables = RestaurantTable.query.filter_by(hotel_id=hotel_id).count()
     categories = MenuCategory.query.filter_by(hotel_id=hotel_id, deleted_at=None).count()
     
-    # Get today's orders count
     from datetime import datetime, date
     today_start = datetime.combine(date.today(), datetime.min.time())
     today_end = datetime.combine(date.today(), datetime.max.time())
@@ -2684,13 +2595,11 @@ def restaurant():
         RestaurantOrder.created_at <= today_end
     ).count()
     
-    # Get pending orders
     pending_orders = RestaurantOrder.query.filter_by(
         hotel_id=hotel_id,
         status='pending'
     ).count()
-    
-    # Get available tables (not occupied)
+
     available_tables = RestaurantTable.query.filter_by(
         hotel_id=hotel_id,
         status='available'
@@ -2730,7 +2639,6 @@ def menu_item_add():
     hotel_id = get_current_hotel_id()
     
     if request.method == 'POST':
-        # Skip CSRF check for now
         if not hotel_id:
             flash("Please select a hotel first.", "warning")
             return redirect(url_for('hms.dashboard'))
@@ -2767,7 +2675,6 @@ def menu_item_add():
         flash(f"Menu item '{name}' added successfully.", "success")
         return redirect(url_for('hms.restaurant_menu'))
     
-    # GET request
     if not hotel_id:
         flash("Please select a hotel first.", "warning")
         return redirect(url_for('hms.dashboard'))
@@ -2810,7 +2717,6 @@ def restaurant_pos():
     tables = RestaurantTable.query.filter_by(hotel_id=hotel_id).order_by(RestaurantTable.table_number).all()
     menu_items = MenuItem.query.filter_by(hotel_id=hotel_id, deleted_at=None, is_available=True).all()
     
-    # Get active room service orders
     room_service_orders = RoomServiceOrder.query.filter_by(
         hotel_id=hotel_id
     ).filter(
@@ -2835,13 +2741,11 @@ def pos_order_create():
     room_service_order_id = request.form.get('room_service_order_id', type=int)
     order_type = request.form.get('order_type', 'dine_in')
 
-    # Validate table
     if table_id:
         table = RestaurantTable.query.get(table_id)
         if not table:
             return jsonify({'success': False, 'error': 'Invalid table selected', 'message': 'Please select a valid table'}), 400
 
-    # Get payment info (Week 1 Critical)
     payment_method = request.form.get('payment_method', None)
     try:
         paid_amount = float(request.form.get('paid_amount', 0) or 0)
@@ -2853,7 +2757,6 @@ def pos_order_create():
         discount_amount = 0
     server_id = request.form.get('server_id', type=int) or current_user.id
 
-    # Validate room charge payment (Phase 1.3 Fix)
     booking_id = None
     if payment_method == 'room_charge':
         booking_id = request.form.get('booking_id', type=int)
@@ -2864,7 +2767,6 @@ def pos_order_create():
                 'message': 'Please enter a valid booking/room number'
             }), 400
         
-        # Validate booking exists and is active
         booking = Booking.query.get(booking_id)
         if not booking:
             return jsonify({
@@ -2889,14 +2791,12 @@ def pos_order_create():
 
     server_id = request.form.get('server_id', type=int) or current_user.id
 
-    # Validate items
     item_ids = request.form.getlist('item_id[]')
     quantities = request.form.getlist('quantity[]')
 
     if not item_ids:
         return jsonify({'success': False, 'error': 'No items in order', 'message': 'Please add at least one item to the order'}), 400
 
-    # Validate quantities
     for i, qty in enumerate(quantities):
         try:
             qty_int = int(qty)
@@ -2905,7 +2805,6 @@ def pos_order_create():
         except (ValueError, TypeError):
             return jsonify({'success': False, 'error': f'Invalid quantity format for item {i+1}', 'message': 'Please enter valid quantities'}), 400
 
-    # Create restaurant order
     order = RestaurantOrder(
         hotel_id=hotel_id,
         table_id=table_id,
@@ -2917,11 +2816,10 @@ def pos_order_create():
         discount_amount=Decimal(str(discount_amount))
     )
 
-    # If linked to room service or room charge
     if room_service_order_id:
         order.booking_id = room_service_order_id
         order.guest_name = f"Room Service #{room_service_order_id}"
-    elif booking_id:  # Phase 1.3 Fix: Link booking for room charge
+    elif booking_id:
         order.booking_id = booking_id
         booking = Booking.query.get(booking_id)
         order.guest_name = f"Room Charge - {booking.guest_name}"
@@ -2929,7 +2827,6 @@ def pos_order_create():
     db.session.add(order)
     db.session.flush()
 
-    # Add order items
     item_ids = request.form.getlist('item_id[]')
     quantities = request.form.getlist('quantity[]')
     notes_list = request.form.getlist('notes[]')
@@ -2957,13 +2854,11 @@ def pos_order_create():
             except (ValueError, TypeError):
                 continue
 
-    # Calculate totals with tax (using config value)
     tax_rate = Decimal(str(current_app.config.get('DEFAULT_TAX_RATE', 18))) / 100
     order.subtotal = total
     order.tax = total * tax_rate
     order.total = order.subtotal + order.tax
     
-    # Process payment if provided (Week 1 Critical)
     if paid_amount > 0:
         order.paid_amount = Decimal(str(paid_amount))
         balance = RestaurantPaymentService.calculate_balance(order)
@@ -2974,7 +2869,6 @@ def pos_order_create():
         else:
             order.payment_status = 'partial'
     
-    # Update table status if dine-in
     if table_id:
         table = RestaurantTable.query.get(table_id)
         if table:
@@ -2982,12 +2876,10 @@ def pos_order_create():
 
     db.session.flush()
     
-    # Create accounting entry for the order (Week 1 Critical)
     RestaurantAccountingService.create_order_entry(order)
 
     db.session.commit()
 
-    # Generate user-friendly message
     payment_status_msg = 'Order created successfully'
     if paid_amount > 0:
         if order.payment_status == 'paid':
@@ -3015,11 +2907,9 @@ def pos_order_status(order_id):
     data = request.get_json(force=True, silent=True) or request.form
     status = data.get('status')
 
-    # Validate status
     if not status:
         return jsonify({'success': False, 'error': 'Status required', 'message': 'Please provide an order status'}), 400
 
-    # Handle payment if provided (Week 1 Critical)
     try:
         payment_amount = float(data.get('payment_amount', 0) or 0)
     except (ValueError, TypeError):
@@ -3032,7 +2922,6 @@ def pos_order_status(order_id):
     old_status = order.status
     order.status = status
 
-    # When order is completed, deduct inventory (Week 1 Critical)
     if status == 'completed' and old_status != 'completed':
         success, message = RestaurantInventoryService.deduct_inventory_for_order(order)
         if not success:
@@ -3040,23 +2929,19 @@ def pos_order_status(order_id):
             current_app.logger.warning(f"Inventory deduction failed for order {order.id}: {message}")
         order.completed_at = datetime.utcnow()
 
-        # Release table
         if order.table_id:
             table = RestaurantTable.query.get(order.table_id)
             if table:
                 table.status = 'available'
 
-    # When order is cancelled, restore inventory
     elif status == 'cancelled' and old_status != 'cancelled':
         RestaurantInventoryService.restore_inventory_for_cancelled_order(order)
 
-        # Release table
         if order.table_id:
             table = RestaurantTable.query.get(order.table_id)
             if table:
                 table.status = 'available'
 
-    # Process payment if provided
     if payment_amount > 0 and payment_method:
         success, message = RestaurantPaymentService.process_payment(
             order, Decimal(str(payment_amount)), payment_method, current_user.id
@@ -3064,7 +2949,6 @@ def pos_order_status(order_id):
 
     db.session.commit()
     
-    # Generate user-friendly message based on status
     status_messages = {
         'pending': 'Order is pending',
         'preparing': 'Order is being prepared',
@@ -3090,7 +2974,6 @@ def get_active_orders():
     if not hotel_id:
         return jsonify({'success': False, 'error': 'No hotel selected'}), 400
 
-    # Get all active orders (not completed or cancelled)
     active_orders = RestaurantOrder.query.filter(
         RestaurantOrder.hotel_id == hotel_id,
         RestaurantOrder.status.in_(['pending', 'preparing', 'ready'])
@@ -3121,47 +3004,39 @@ def get_active_orders():
 @hms_bp.route('/restaurant/pos/order/<int:order_id>/split', methods=['POST'])
 @login_required
 def split_order(order_id):
-    """Split an order into multiple child orders (Phase 1.4 Fix)"""
+    """Split an order into multiple child orders."""
     order = RestaurantOrder.query.get_or_404(order_id)
     if not require_hotel_access(order.hotel_id):
         return jsonify({'success': False, 'error': 'Access denied'}), 403
 
     data = request.get_json(force=True, silent=True) or request.form
     split_ways = int(data.get('split_ways', 2))
-    split_type = data.get('split_type', 'equal')  # 'equal' or 'custom'
+    split_type = data.get('split_type', 'equal')
 
     if split_ways < 2:
         return jsonify({'success': False, 'error': 'Split ways must be >= 2'}), 400
 
-    # Get order items for splitting
     order_items = list(order.items.all())
     if not order_items:
         return jsonify({'success': False, 'error': 'No items in order to split'}), 400
 
-    # Calculate per-person amounts
     per_person_amount = float(order.total) / split_ways
-    
-    # Phase 1.4 Fix: Actually create split child orders
     try:
         from datetime import datetime
         split_orders = []
         
-        # Distribute items across split orders
         items_per_split = len(order_items) // split_ways
         remaining_items = len(order_items) % split_ways
         
         item_index = 0
         for i in range(split_ways):
-            # Calculate items for this split
             num_items = items_per_split + (1 if i < remaining_items else 0)
             split_items = order_items[item_index:item_index + num_items]
             item_index += num_items
             
-            # Calculate total for this split
             split_total = sum(item.unit_price * item.quantity for item in split_items)
             split_tax = split_total * (float(order.tax) / float(order.subtotal)) if order.subtotal > 0 else 0
             
-            # Create child order
             child_order = RestaurantOrder(
                 hotel_id=order.hotel_id,
                 table_id=order.table_id,
@@ -3174,13 +3049,12 @@ def split_order(order_id):
                 payment_method=order.payment_method,
                 discount_amount=order.discount_amount / split_ways if order.discount_amount else 0,
                 special_instructions=f"Split from order #{order.id}",
-                parent_order_id=order.id  # Link to parent order
+                parent_order_id=order.id
             )
             
             db.session.add(child_order)
             db.session.flush()
             
-            # Copy items to child order
             for item in split_items:
                 child_item = RestaurantOrderItem(
                     order_id=child_order.id,
@@ -3191,14 +3065,12 @@ def split_order(order_id):
                 )
                 db.session.add(child_item)
             
-            # Calculate final totals
             child_order.subtotal = split_total
             child_order.tax = Decimal(str(split_tax))
             child_order.total = split_total + split_tax
             
             split_orders.append(child_order)
         
-        # Mark parent order as split/cancelled
         order.status = 'split'
         
         db.session.commit()
@@ -3222,6 +3094,39 @@ def split_order(order_id):
             'success': False,
             'error': f'Failed to split order: {str(e)}'
         }), 500
+
+
+@hms_bp.route('/restaurant/order/<int:order_id>')
+@login_required
+def order_detail(order_id):
+    """View restaurant order detail."""
+    hotel_id = get_current_hotel_id()
+    order = RestaurantOrder.query.filter_by(id=order_id, hotel_id=hotel_id).first_or_404()
+    return render_template("hms/restaurant/order_detail.html", order=order)
+
+
+@hms_bp.route('/restaurant/order/<int:order_id>/cancel', methods=['POST'])
+@login_required
+def cancel_order(order_id):
+    """Cancel a restaurant order."""
+    hotel_id = get_current_hotel_id()
+    order = RestaurantOrder.query.filter_by(id=order_id, hotel_id=hotel_id).first_or_404()
+
+    if order.status in ('completed', 'cancelled'):
+        flash("Cannot cancel an order that is already completed or cancelled.", "warning")
+        return redirect(url_for('hms.order_detail', order_id=order_id))
+
+    try:
+        order.status = 'cancelled'
+        order.completed_at = datetime.utcnow()
+        db.session.commit()
+        flash(f"Order #{order_id} has been cancelled.", "success")
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.error(f"Cancel order error: {str(e)}")
+        flash("An error occurred while cancelling the order.", "danger")
+
+    return redirect(url_for('hms.restaurant_pos'))
 
 
 @hms_bp.route('/restaurant/kitchen')
@@ -3258,7 +3163,6 @@ def kitchen_get_orders():
     from datetime import datetime
     now = datetime.utcnow()
     
-    # Get all active orders (pending, preparing, ready)
     orders = RestaurantOrder.query.filter_by(
         hotel_id=hotel_id
     ).filter(
@@ -3335,7 +3239,6 @@ def pos_order_add_item(order_id):
     if not item or item.hotel_id != order.hotel_id:
         return jsonify({'success': False, 'error': 'Invalid item'}), 400
     
-    # Add item to order using service
     try:
         result = RestaurantInventoryService.add_item_to_order(
             hotel_id=order.hotel_id,
@@ -3346,7 +3249,6 @@ def pos_order_add_item(order_id):
         )
         
         if result['success']:
-            # Create order item record
             order_item = RestaurantOrderItem(
                 order_id=order.id,
                 menu_item_id=menu_item_id,
@@ -3444,7 +3346,7 @@ def category_edit(category_id):
 @hms_bp.route('/restaurant/category/<int:category_id>/delete', methods=['POST'])
 @login_required
 def category_delete(category_id):
-    """Delete category (soft delete - Phase 1.6 Fix)"""
+    """Delete category (soft delete)."""
     hotel_id = get_current_hotel_id()
     if not hotel_id:
         flash("Please select a hotel first.", "warning")
@@ -3457,7 +3359,6 @@ def category_delete(category_id):
 
     category_name = category.name
     
-    # Phase 1.6 Fix: Soft delete instead of hard delete
     from datetime import datetime
     category.deleted_at = datetime.utcnow()
     db.session.commit()
@@ -3482,7 +3383,7 @@ def restaurant_tables():
 @hms_bp.route('/restaurant/tables/map')
 @login_required
 def restaurant_table_map():
-    """Table map view - drag and drop layout editor (Phase 1.7)"""
+    """Table map view - drag and drop layout editor."""
     hotel_id = get_current_hotel_id()
     if not hotel_id:
         flash("Please select a hotel first.", "warning")
@@ -3495,7 +3396,7 @@ def restaurant_table_map():
 @hms_bp.route('/restaurant/tables/layout', methods=['POST'])
 @login_required
 def save_table_layout():
-    """Save table positions from drag-drop (Phase 1.7)"""
+    """Save table positions from drag-drop."""
     hotel_id = get_current_hotel_id()
     if not hotel_id:
         return jsonify({'success': False, 'error': 'No hotel selected'}), 400
@@ -3504,7 +3405,6 @@ def save_table_layout():
     positions = data.get('positions', [])
     
     try:
-        # Update table positions
         for pos in positions:
             table_id = pos.get('id')
             x = pos.get('x', 0)
@@ -3561,10 +3461,6 @@ def table_add():
     return redirect(url_for('hms.restaurant_tables'))
 
 
-# =============================================================================
-# ROOM SERVICE
-# =============================================================================
-
 @hms_bp.route('/room-service')
 @login_required
 def room_service():
@@ -3574,7 +3470,6 @@ def room_service():
         flash("Please select a hotel first.", "warning")
         return redirect(url_for("hms.dashboard"))
     
-    # Get active orders
     active_orders = RoomServiceOrder.query.filter_by(
         hotel_id=hotel_id
     ).filter(
@@ -3624,7 +3519,6 @@ def room_service_order_create():
         special_instructions = request.form.get('special_instructions', '').strip()
         charge_to_room = request.form.get('charge_to_room') == 'on'
 
-        # Validate items
         item_ids = request.form.getlist('item_id[]')
         quantities = request.form.getlist('quantity[]')
 
@@ -3632,7 +3526,6 @@ def room_service_order_create():
             flash("Please add at least one item to the order", "danger")
             return redirect(url_for('hms.room_service_order_create'))
 
-        # Create order
         delivery_time = None
         if delivery_time_str:
             try:
@@ -3653,7 +3546,6 @@ def room_service_order_create():
         db.session.add(order)
         db.session.flush()
 
-        # Add items
         total = Decimal('0')
         for item_id, quantity in zip(item_ids, quantities):
             if item_id and quantity:
@@ -3669,7 +3561,6 @@ def room_service_order_create():
                     db.session.add(order_item)
                     total += Decimal(str(menu_item.price)) * qty
 
-        # Calculate totals
         tax_rate = Decimal(str(current_app.config.get('DEFAULT_TAX_RATE', 18))) / 100
         order.subtotal = total
         order.tax = total * tax_rate
@@ -3680,7 +3571,6 @@ def room_service_order_create():
         flash(f"Room service order #{order.id} created successfully!", "success")
         return redirect(url_for('hms.room_service_orders'))
 
-    # GET: Show form
     rooms = Room.query.filter_by(hotel_id=hotel_id, is_active=True).all()
     bookings = Booking.query.filter_by(hotel_id=hotel_id).filter(
         Booking.status.in_(['CheckedIn', 'Reserved'])
@@ -3727,7 +3617,6 @@ def room_service_order_status(order_id):
     old_status = order.status
     order.status = status
 
-    # Mark as delivered
     if status == 'delivered':
         order.delivered_at = datetime.utcnow()
         order.delivered_by = current_user.id
@@ -3787,12 +3676,10 @@ def room_service_delivery():
         flash("Please select a hotel first.", "warning")
         return redirect(url_for("hms.dashboard"))
 
-    # Get orders ready for delivery
     ready_orders = RoomServiceOrder.query.filter_by(
         hotel_id=hotel_id, status='ready'
     ).order_by(RoomServiceOrder.created_at).all()
 
-    # Get out for delivery
     delivery_orders = RoomServiceOrder.query.filter_by(
         hotel_id=hotel_id, status='out_for_delivery'
     ).order_by(RoomServiceOrder.created_at).all()
@@ -3801,10 +3688,6 @@ def room_service_delivery():
                          ready_orders=ready_orders,
                          delivery_orders=delivery_orders)
 
-
-# =============================================================================
-# NIGHT AUDIT
-# =============================================================================
 
 def check_business_date_lock(transaction_date=None):
     """
@@ -3829,7 +3712,6 @@ def check_business_date_lock(transaction_date=None):
     if not biz_date:
         return False, None  # No business date configured, allow transactions
     
-    # Check if transaction date matches locked business date
     if biz_date.is_closed and biz_date.current_business_date == transaction_date:
         return True, f"Cannot process transaction - business day {transaction_date.strftime('%B %d, %Y')} is locked"
     
@@ -3848,11 +3730,9 @@ def reset_business_date():
     from datetime import datetime
     
     try:
-        # Get or create business date
         biz_date = BusinessDate.query.filter_by(hotel_id=hotel_id).first()
-        
+
         if not biz_date:
-            # Create new business date for today
             biz_date = BusinessDate(
                 hotel_id=hotel_id,
                 current_business_date=date.today(),
@@ -3861,7 +3741,6 @@ def reset_business_date():
             db.session.add(biz_date)
             flash(f"✅ Business date initialized to today: {date.today().strftime('%B %d, %Y')}", "success")
         else:
-            # Reset existing business date to today
             biz_date.current_business_date = date.today()
             biz_date.is_closed = False
             biz_date.updated_at = datetime.now()
@@ -3885,20 +3764,15 @@ def night_audit():
         flash("Please select a hotel first.", "warning")
         return redirect(url_for("hms.dashboard"))
 
-    # Get business date
     biz_date = BusinessDate.query.filter_by(hotel_id=hotel_id).first()
     today = date.today()
-    
-    # Get recent audit logs
+
     audit_logs = NightAuditLog.query.filter_by(
         hotel_id=hotel_id
     ).order_by(NightAuditLog.audit_date.desc()).limit(10).all()
     
-    # Phase 2: Generate comprehensive reports
-    # Today's statistics
     from decimal import Decimal
-    
-    # Revenue today
+
     room_revenue_account = ChartOfAccount.query.filter_by(
         hotel_id=hotel_id,
         name='Room Revenue'
@@ -3913,7 +3787,6 @@ def night_audit():
         ).all()
         today_revenue = sum(line.credit for line in revenue_lines) if revenue_lines else Decimal('0')
     
-    # Occupancy stats
     total_rooms = Room.query.filter_by(hotel_id=hotel_id, is_active=True).count()
     occupied_rooms = Booking.query.filter(
         Booking.hotel_id == hotel_id,
@@ -3923,7 +3796,6 @@ def night_audit():
     ).count()
     occupancy_rate = (occupied_rooms / total_rooms * 100) if total_rooms > 0 else 0
     
-    # Payments today
     payments_today = Payment.query.filter_by(
         hotel_id=hotel_id
     ).filter(
@@ -3936,7 +3808,6 @@ def night_audit():
         db.func.date(Payment.created_at) == today
     ).scalar() or Decimal('0')
     
-    # Bookings today
     arrivals_today = Booking.query.filter_by(
         hotel_id=hotel_id,
         check_in_date=today
@@ -3951,7 +3822,6 @@ def night_audit():
                          biz_date=biz_date,
                          today=today,
                          audit_logs=audit_logs,
-                         # Report data
                          today_revenue=today_revenue,
                          total_rooms=total_rooms,
                          occupied_rooms=occupied_rooms,
@@ -3965,7 +3835,7 @@ def night_audit():
 @hms_bp.route('/night-audit/run', methods=['POST'])
 @login_required
 def run_night_audit():
-    """Run night audit process with revenue posting (Phase 2 Complete)"""
+    """Run night audit process with revenue posting."""
     hotel_id = get_current_hotel_id()
     if not hotel_id:
         flash("Please select a hotel first.", "warning")
@@ -3981,7 +3851,6 @@ def run_night_audit():
         revenue_posted = Decimal('0')
         rooms_charged = 0
         
-        # Start audit log
         audit_log = NightAuditLog(
             hotel_id=hotel_id,
             audit_date=today,
@@ -3994,9 +3863,6 @@ def run_night_audit():
         
         current_app.logger.info(f"Starting night audit for hotel {hotel_id}")
         
-        # Get or create business date
-        
-        # Get or create business date
         biz_date = BusinessDate.query.filter_by(hotel_id=hotel_id).first()
         if not biz_date:
             biz_date = BusinessDate(
@@ -4007,7 +3873,6 @@ def run_night_audit():
             db.session.add(biz_date)
             db.session.flush()
         
-        # Phase 2 Fix: Pre-close validation checklist
         unpaid_bookings = Booking.query.filter_by(
             hotel_id=hotel_id,
             check_in_date=today
@@ -4034,7 +3899,6 @@ def run_night_audit():
         if checked_in > 0:
             warnings.append(f"{checked_in} guests still checked in")
         
-        # If day is already closed, show error
         if biz_date.is_closed:
             audit_log.status = 'failed'
             audit_log.errors = "Day already closed"
@@ -4044,14 +3908,11 @@ def run_night_audit():
             flash("Business day is already closed and locked.", "warning")
             return redirect(url_for("hms.night_audit"))
         
-        # Phase 2 Fix: POST ROOM REVENUE before closing
-        # Find all occupied rooms (checked in but not checked out)
         occupied_bookings = Booking.query.filter_by(
             hotel_id=hotel_id,
             status='CheckedIn'
         ).all()
         
-        # Get or create Room Revenue account
         room_revenue_account = ChartOfAccount.query.filter_by(
             hotel_id=hotel_id,
             name='Room Revenue'
@@ -4065,7 +3926,6 @@ def run_night_audit():
             db.session.add(room_revenue_account)
             db.session.flush()
         
-        # Get Cash/AR account
         ar_account = ChartOfAccount.query.filter_by(
             hotel_id=hotel_id,
             name='Accounts Receivable'
@@ -4079,20 +3939,17 @@ def run_night_audit():
             db.session.add(ar_account)
             db.session.flush()
         
-        # Charge each occupied room
         for booking in occupied_bookings:
             try:
                 if booking.room and booking.room.room_type:
                     room_rate = booking.room.room_type.base_price or Decimal('0')
                     
                     if room_rate > 0:
-                        # Add charge to booking invoice
                         if booking.invoice:
                             booking.invoice.total += room_rate
                             booking.invoice.status = 'Unpaid'
                             booking.balance += room_rate
                             
-                            # Create journal entry
                             journal = JournalEntry(
                                 hotel_id=hotel_id,
                                 date=today,
@@ -4101,7 +3958,6 @@ def run_night_audit():
                             db.session.add(journal)
                             db.session.flush()
                             
-                            # Debit: Accounts Receivable
                             debit_line = JournalLine(
                                 journal_entry_id=journal.id,
                                 account_id=ar_account.id,
@@ -4110,7 +3966,6 @@ def run_night_audit():
                             )
                             db.session.add(debit_line)
                             
-                            # Credit: Room Revenue
                             credit_line = JournalLine(
                                 journal_entry_id=journal.id,
                                 account_id=room_revenue_account.id,
@@ -4125,12 +3980,10 @@ def run_night_audit():
                 errors.append(f"Error charging room {booking.room.room_number if booking.room else 'Unknown'}: {str(e)}")
                 continue
         
-        # Close current day AND advance to next day
         biz_date.is_closed = True
         biz_date.current_business_date = today + timedelta(days=1)
         biz_date.updated_at = datetime.now()
         
-        # Complete audit log
         audit_log.status = 'success' if not errors else 'partial'
         audit_log.completed_at = datetime.now()
         audit_log.summary = {
@@ -4147,7 +4000,6 @@ def run_night_audit():
         
         db.session.commit()
         
-        # Show results
         flash(f"✅ Night audit completed successfully!", "success")
         flash(f"🔒 Business day CLOSED for {today.strftime('%B %d, %Y')}", "info")
         flash(f"📅 New business date: {biz_date.current_business_date.strftime('%B %d, %Y')}", "info")
@@ -4186,9 +4038,7 @@ def run_night_audit():
 
 
 def generate_night_audit_summary(hotel_id, audit_date):
-    """Generate comprehensive night audit summary"""
-    
-    # Get room revenue
+    """Generate comprehensive night audit summary."""
     room_revenue_account = ChartOfAccount.query.filter_by(
         hotel_id=hotel_id, 
         name='Room Revenue'
@@ -4204,7 +4054,6 @@ def generate_night_audit_summary(hotel_id, audit_date):
         
         total_revenue = sum(line.credit for line in revenue_lines)
     
-    # Get payments
     payments = Payment.query.filter_by(
         hotel_id=hotel_id,
         created_at=audit_date
@@ -4212,7 +4061,6 @@ def generate_night_audit_summary(hotel_id, audit_date):
     
     total_payments = sum(payment[0] for payment in payments) if payments else 0
     
-    # Get occupancy
     total_rooms = Room.query.filter_by(hotel_id=hotel_id, is_active=True).count()
     occupied_rooms = Booking.query.filter(
         Booking.hotel_id == hotel_id,
@@ -4238,10 +4086,6 @@ def generate_night_audit_summary(hotel_id, audit_date):
     }
 
 
-# =============================================================================
-# SETTINGS
-# =============================================================================
-
 @hms_bp.route('/settings')
 @login_required
 def settings():
@@ -4266,24 +4110,26 @@ def settings_users():
         flash("Please select a hotel first.", "warning")
         return redirect(url_for("hms.settings"))
 
-    # Role hierarchy for permission checks
+    # Only superadmin and manager can manage users.
+    # Owner role has read-only portfolio access — no staff management.
+    if not is_manager_or_above():
+        flash("Access denied. Only managers and administrators can manage users.", "danger")
+        return redirect(url_for("hms.dashboard"))
+
+    # Role hierarchy: manager can create/edit any role below their level.
+    # Superadmin can assign any role including manager.
     ROLE_HIERARCHY = {
         'superadmin': 100,
-        'admin': 95,
-        'owner': 90,
-        'manager': 80,
-        'restaurant_manager': 70,
-        'housekeeping_manager': 70,
+        'owner':      90,
+        'manager':    80,
         'receptionist': 60,
+        'restaurant':   50,
         'housekeeping': 50,
-        'kitchen': 50,
-        'staff': 40
+        'kitchen':      50,
+        'staff':        40,
     }
 
-    current_role = current_user.role.lower() if current_user.role else 'staff'
-    if current_user.is_superadmin:
-        current_role = 'superadmin'
-    
+    current_role = 'superadmin' if current_user.is_superadmin else (current_user.role or 'staff').lower()
     current_level = ROLE_HIERARCHY.get(current_role, 0)
 
     if request.method == 'POST':
@@ -4298,41 +4144,32 @@ def settings_users():
             flash("Name and email are required.", "danger")
             return redirect(url_for('hms.settings_users'))
 
-        # Handle role validation - allow superadmin to keep their role when editing themselves
         if user_id:
-            # Editing existing user
             user_to_edit = User.query.get_or_404(user_id)
             if not role_id and user_to_edit.role_id:
-                # Keep existing role if no new role selected
                 role_id = user_to_edit.role_id
             elif not role_id:
                 flash("Role is required.", "danger")
                 return redirect(url_for('hms.settings_users'))
         elif not role_id:
-            # Creating new user - role is required
             flash("Role is required.", "danger")
             return redirect(url_for('hms.settings_users'))
 
-        # Get role name from role_id
         role = Role.query.get(role_id)
         if not role:
             flash("Invalid role selected.", "danger")
             return redirect(url_for('hms.settings_users'))
 
-        # Check for duplicate email (for new users or when changing email)
         existing_user = User.query.filter_by(email=email).first()
         if existing_user:
             if user_id:
-                # Editing - only error if email changed to someone else's
                 if existing_user.id != int(user_id):
                     flash(f"Email '{email}' is already in use by another user.", "danger")
                     return redirect(url_for('hms.settings_users'))
             else:
-                # Creating new user
                 flash(f"Email '{email}' is already in use.", "danger")
                 return redirect(url_for('hms.settings_users'))
 
-        # Role hierarchy check - can't create/update roles >= own role
         target_role = role.name.lower()
         target_level = ROLE_HIERARCHY.get(target_role, 0)
         
@@ -4341,7 +4178,6 @@ def settings_users():
             return redirect(url_for('hms.settings_users'))
 
         if user_id:
-            # Update existing user
             user = User.query.get_or_404(user_id)
             if user.hotel_id != hotel_id and not current_user.is_superadmin:
                 flash("Access denied.", "danger")
@@ -4350,7 +4186,7 @@ def settings_users():
             user.name = name
             user.email = email
             user.role_id = role_id
-            user.role = role.name  # Set the role string
+            user.role = role.name
             user.active = active
 
             if password:
@@ -4359,24 +4195,30 @@ def settings_users():
 
             flash(f"User '{user.name}' updated successfully.", "success")
         else:
-            # Create new user
             from werkzeug.security import generate_password_hash
             if not password:
                 flash("Password is required for new users.", "danger")
                 return redirect(url_for('hms.settings_users'))
 
-            # Validate hotel_id
             if not hotel_id:
                 flash("Please select a hotel first.", "danger")
                 return redirect(url_for('hms.settings_users'))
 
+            assigned_owner_id = None
+            if role.name.lower() == 'owner':
+                hotel_obj = Hotel.query.get(hotel_id)
+                assigned_owner_id = hotel_obj.owner_id if hotel_obj else None
+            elif current_user.owner_id:
+                assigned_owner_id = current_user.owner_id
+
             user = User(
                 hotel_id=hotel_id,
+                owner_id=assigned_owner_id,
                 name=name,
                 email=email,
                 password_hash=generate_password_hash(password),
                 role_id=role_id,
-                role=role.name,  # Set the role string
+                role=role.name,
                 active=active
             )
             db.session.add(user)
@@ -4398,12 +4240,12 @@ def settings_users():
         
         return redirect(url_for('hms.settings_users'))
 
-    users = User.query.filter_by(hotel_id=hotel_id).all()
-    # Filter roles based on user's hierarchy level
+    users = User.query.filter_by(hotel_id=hotel_id).order_by(User.name).all()
     if current_user.is_superadmin:
         roles = Role.query.all()
     else:
-        roles = [r for r in Role.query.all() if ROLE_HIERARCHY.get(r.name.lower(), 0) < current_level]
+        roles = [r for r in Role.query.all()
+                 if ROLE_HIERARCHY.get(r.name.lower(), 0) < current_level]
 
     return render_template("hms/settings/users.html", users=users, roles=roles)
 
@@ -4465,12 +4307,10 @@ def settings_users_set_password():
 
     user = User.query.get_or_404(user_id)
     
-    # Check permissions
     if user.hotel_id != hotel_id and not current_user.is_superadmin:
         flash("Access denied.", "danger")
         return redirect(url_for('hms.settings_users'))
 
-    # Check role hierarchy
     ROLE_HIERARCHY = {
         'superadmin': 100,
         'admin': 95,
@@ -4496,7 +4336,6 @@ def settings_users_set_password():
         flash(f"You cannot change password for users with '{user.role}' role or higher.", "danger")
         return redirect(url_for('hms.settings_users'))
 
-    # Set new password
     from werkzeug.security import generate_password_hash
     user.password_hash = generate_password_hash(password)
     db.session.commit()
@@ -4531,16 +4370,48 @@ def settings_users_delete(user_id):
     return redirect(url_for('hms.settings_users'))
 
 
-@hms_bp.route('/settings/hotel')
+@hms_bp.route('/settings/hotel', methods=['GET', 'POST'])
 @login_required
 def settings_hotel():
-    """Hotel settings"""
+    """Hotel settings — view and update."""
     hotel_id = get_current_hotel_id()
     if not hotel_id:
         flash("Please select a hotel first.", "warning")
         return redirect(url_for("hms.settings"))
-    
-    hotel = Hotel.query.get(hotel_id)
+
+    hotel = Hotel.query.get_or_404(hotel_id)
+
+    if request.method == 'POST':
+        if not require_hotel_access(hotel_id):
+            flash("Access denied.", "danger")
+            return redirect(url_for("hms.settings_hotel"))
+
+        hotel.name = request.form.get('name', '').strip() or hotel.name
+        hotel.display_name = request.form.get('display_name', '').strip() or None
+        hotel.email = request.form.get('email', '').strip() or None
+        hotel.phone = request.form.get('phone', '').strip() or None
+        hotel.address = request.form.get('address', '').strip() or None
+        hotel.city = request.form.get('city', '').strip() or None
+        hotel.country = request.form.get('country', '').strip() or None
+        hotel.currency = request.form.get('currency', hotel.currency)
+        hotel.timezone = request.form.get('timezone', hotel.timezone)
+        hotel.check_in_time = request.form.get('check_in_time', hotel.check_in_time)
+        hotel.check_out_time = request.form.get('check_out_time', hotel.check_out_time)
+        hotel.website_url = request.form.get('website_url', '').strip() or None
+        hotel.tax_number = request.form.get('tax_number', '').strip() or None
+        hotel.registration_number = request.form.get('registration_number', '').strip() or None
+        hotel.cancellation_policy = request.form.get('cancellation_policy', '').strip() or None
+
+        try:
+            db.session.commit()
+            flash("Hotel settings saved successfully.", "success")
+        except Exception as e:
+            db.session.rollback()
+            current_app.logger.error(f"Hotel settings save error: {str(e)}")
+            flash("Failed to save settings.", "danger")
+
+        return redirect(url_for("hms.settings_hotel"))
+
     return render_template("hms/settings/hotel.html", hotel=hotel)
 
 
@@ -4565,10 +4436,6 @@ def settings_roles():
     return render_template("hms/settings/roles.html", roles=roles)
 
 
-# =============================================================================
-# GALLERY MANAGEMENT (Website Gallery Images)
-# =============================================================================
-
 @hms_bp.route('/settings/gallery')
 @login_required
 def settings_gallery():
@@ -4578,7 +4445,6 @@ def settings_gallery():
         flash("Please select a hotel first.", "warning")
         return redirect(url_for("hms.settings"))
     
-    # Get all gallery images for current hotel
     images = GalleryImage.query.filter_by(
         hotel_id=hotel_id
     ).order_by(GalleryImage.sort_order, GalleryImage.created_at.desc()).all()
@@ -4597,7 +4463,6 @@ def settings_gallery_upload():
         return redirect(url_for("hms.settings"))
     
     if request.method == 'POST':
-        # Check if file is present
         if 'image' not in request.files:
             flash("No image file selected.", "danger")
             return redirect(request.url)
@@ -4608,7 +4473,6 @@ def settings_gallery_upload():
             flash("No image file selected.", "danger")
             return redirect(request.url)
         
-        # Validate file extension
         allowed_extensions = {'png', 'jpg', 'jpeg', 'webp'}
         filename = file.filename.lower()
         ext = filename.rsplit('.', 1)[1] if '.' in filename else ''
@@ -4617,34 +4481,29 @@ def settings_gallery_upload():
             flash(f"Invalid file type. Allowed: {', '.join(allowed_extensions)}", "danger")
             return redirect(request.url)
         
-        # Validate file size (max 5MB)
-        file.seek(0, 2)  # Seek to end
+        file.seek(0, 2)
         file_size = file.tell()
-        file.seek(0)  # Reset to beginning
+        file.seek(0)
         
-        if file_size > 5 * 1024 * 1024:  # 5MB
+        if file_size > 5 * 1024 * 1024:
             flash("File too large. Maximum size: 5MB", "danger")
             return redirect(request.url)
         
-        # Generate unique filename
         import uuid
         unique_filename = f"{uuid.uuid4().hex}.{ext}"
         
-        # Save file
         upload_folder = os.path.join(current_app.root_path, 'static/uploads/gallery')
         os.makedirs(upload_folder, exist_ok=True)
         file_path = os.path.join(upload_folder, unique_filename)
         file.save(file_path)
         
-        # Get form data
         title = request.form.get('title', '').strip()
         description = request.form.get('description', '').strip()
         category = request.form.get('category', 'facilities').strip()
         size_type = request.form.get('size_type', 'small').strip()
         sort_order = request.form.get('sort_order', 0, type=int)
         is_active = request.form.get('is_active') == 'on'
-        
-        # Validate required fields
+
         if not title:
             flash("Title is required.", "danger")
             os.remove(file_path)
@@ -4660,7 +4519,6 @@ def settings_gallery_upload():
             os.remove(file_path)
             return redirect(request.url)
         
-        # Create database record
         try:
             gallery_image = GalleryImage(
                 hotel_id=hotel_id,
@@ -4681,13 +4539,11 @@ def settings_gallery_upload():
             
         except Exception as e:
             db.session.rollback()
-            # Clean up uploaded file
             if os.path.exists(file_path):
                 os.remove(file_path)
             flash(f"Error uploading image: {str(e)}", "danger")
             return redirect(request.url)
     
-    # GET request - show upload form
     return render_template("hms/settings/gallery_upload.html")
 
 
@@ -4704,11 +4560,9 @@ def settings_gallery_toggle(image_id):
     if not image:
         return jsonify({'success': False, 'error': 'Image not found'}), 404
     
-    # Check hotel ownership
     if image.hotel_id != hotel_id and not current_user.is_superadmin:
         return jsonify({'success': False, 'error': 'Access denied'}), 403
-    
-    # Toggle active status
+
     image.is_active = not image.is_active
     db.session.commit()
     
@@ -4733,17 +4587,14 @@ def settings_gallery_delete(image_id):
         flash("Image not found.", "danger")
         return redirect(url_for('hms.settings_gallery'))
     
-    # Check hotel ownership
     if image.hotel_id != hotel_id and not current_user.is_superadmin:
         flash("Access denied.", "danger")
         return redirect(url_for('hms.settings_gallery'))
-    
-    # Delete file from disk
+
     file_path = os.path.join(current_app.root_path, 'static/uploads/gallery', image.image_filename)
     if os.path.exists(file_path):
         os.remove(file_path)
-    
-    # Delete database record
+
     try:
         db.session.delete(image)
         db.session.commit()
@@ -4770,11 +4621,10 @@ def settings_gallery_edit(image_id):
         flash("Image not found.", "danger")
         return redirect(url_for('hms.settings_gallery'))
     
-    # Check hotel ownership
     if image.hotel_id != hotel_id and not current_user.is_superadmin:
         flash("Access denied.", "danger")
         return redirect(url_for('hms.settings_gallery'))
-    
+
     if request.method == 'POST':
         title = request.form.get('title', '').strip()
         description = request.form.get('description', '').strip()
@@ -4782,8 +4632,7 @@ def settings_gallery_edit(image_id):
         size_type = request.form.get('size_type', 'small').strip()
         sort_order = request.form.get('sort_order', 0, type=int)
         is_active = request.form.get('is_active') == 'on'
-        
-        # Validate required fields
+
         if not title:
             flash("Title is required.", "danger")
             return redirect(request.url)
@@ -4814,13 +4663,8 @@ def settings_gallery_edit(image_id):
             flash(f"Error updating image: {str(e)}", "danger")
             return redirect(request.url)
     
-    # GET request - show edit form
     return render_template("hms/settings/gallery_edit.html", image=image)
 
-
-# =============================================================================
-# ROLE-SPECIFIC DASHBOARDS
-# =============================================================================
 
 @hms_bp.route('/housekeeping/dashboard')
 @login_required
@@ -4832,13 +4676,11 @@ def housekeeping_dashboard():
         flash("Please select a hotel first.", "warning")
         return redirect(url_for("hms.dashboard"))
 
-    # Get rooms by status
     vacant_rooms = Room.query.filter_by(hotel_id=hotel_id, status='Vacant').count()
     occupied_rooms = Room.query.filter_by(hotel_id=hotel_id, status='Occupied').count()
     dirty_rooms = Room.query.filter_by(hotel_id=hotel_id, status='Dirty').count()
     maintenance_rooms = Room.query.filter_by(hotel_id=hotel_id, status='Maintenance').count()
 
-    # Get housekeeping tasks
     pending_tasks = HousekeepingTask.query.filter_by(
         hotel_id=hotel_id, status='pending'
     ).count()
@@ -4874,7 +4716,6 @@ def kitchen_dashboard():
         flash("Please select a hotel first.", "warning")
         return redirect(url_for("hms.dashboard"))
 
-    # Get room service orders by status
     pending_orders = RoomServiceOrder.query.filter_by(
         hotel_id=hotel_id, status='pending'
     ).count()
@@ -4890,7 +4731,6 @@ def kitchen_dashboard():
         db.func.date(RoomServiceOrder.created_at) == date.today()
     ).count()
 
-    # Get restaurant orders
     restaurant_pending = RestaurantOrder.query.filter_by(
         hotel_id=hotel_id, status='pending'
     ).count()
@@ -4916,7 +4756,6 @@ def restaurant_dashboard():
         flash("Please select a hotel first.", "warning")
         return redirect(url_for("hms.dashboard"))
 
-    # Get today's orders
     today_start = datetime.combine(date.today(), datetime.min.time())
     today_end = datetime.combine(date.today(), datetime.max.time())
     today_orders = RestaurantOrder.query.filter(
@@ -4925,7 +4764,6 @@ def restaurant_dashboard():
         RestaurantOrder.created_at <= today_end
     ).count()
 
-    # Get tables
     total_tables = RestaurantTable.query.filter_by(hotel_id=hotel_id).count()
     available_tables = RestaurantTable.query.filter_by(
         hotel_id=hotel_id, status='available'
@@ -4948,15 +4786,10 @@ def restaurant_dashboard():
     return render_template("hms/restaurant/dashboard.html", stats=stats)
 
 
-# =============================================================================
-# NOTIFICATIONS
-# =============================================================================
-
 @hms_bp.route('/notifications')
 @login_required
 def notifications_index():
-    """Notifications index page"""
-    # Get all notifications for current user
+    """Notifications index page."""
     notifications = Notification.query.filter_by(
         user_id=current_user.id
     ).order_by(Notification.created_at.desc()).limit(50).all()
@@ -4970,7 +4803,6 @@ def notification_mark_read(notification_id):
     """Mark single notification as read"""
     notification = Notification.query.get_or_404(notification_id)
     
-    # Only allow user to mark their own notifications
     if notification.user_id != current_user.id and not current_user.is_superadmin:
         return jsonify({'success': False, 'error': 'Access denied'}), 403
     
@@ -5034,3 +4866,180 @@ def notifications_clear_all():
     return jsonify({'success': True})
 
 
+
+
+@hms_bp.route('/settings/integrations', methods=['GET', 'POST'])
+@login_required
+def settings_integrations():
+    """API keys and integrations settings."""
+    hotel_id = get_current_hotel_id()
+    if not hotel_id:
+        flash("Please select a hotel first.", "warning")
+        return redirect(url_for("hms.dashboard"))
+
+    from app.models import APIKey
+
+    if request.method == 'POST':
+        action = request.form.get('action')
+        if action == 'create_key':
+            name = request.form.get('name', '').strip()
+            if not name:
+                flash("API key name is required.", "danger")
+            else:
+                raw_key = APIKey.generate_key()
+                key_hash = generate_password_hash(raw_key)
+                prefix = raw_key.split('_')[0] + '_' + raw_key.split('_')[1]
+                api_key = APIKey(
+                    hotel_id=hotel_id,
+                    name=name,
+                    key_hash=key_hash,
+                    key_prefix=prefix,
+                )
+                db.session.add(api_key)
+                db.session.commit()
+                flash(f"API key created. Key: {raw_key} — save this now, it won't be shown again.", "success")
+        return redirect(url_for('hms.settings_integrations'))
+
+    api_keys = APIKey.query.filter_by(hotel_id=hotel_id, active=True).order_by(APIKey.created_at.desc()).all()
+    return render_template("hms/settings/integrations.html", api_keys=api_keys)
+
+
+@hms_bp.route('/rooms/<int:room_id>/view')
+@login_required
+def roomsview_room(room_id):
+    """View individual room details."""
+    hotel_id = get_current_hotel_id()
+    room = Room.query.filter_by(id=room_id, hotel_id=hotel_id).first_or_404()
+    return redirect(url_for('hms.rooms') + f'?highlight={room_id}')
+
+
+@hms_bp.route('/switch-hotel/<int:hotel_id>', methods=['POST'])
+@login_required
+def switch_hotel(hotel_id):
+    """Switch the active hotel for superadmin or owner users."""
+    if not require_hotel_access(hotel_id):
+        flash("Access denied.", "danger")
+        return redirect(url_for('hms.dashboard'))
+
+    session['hotel_id'] = hotel_id
+    hotel = Hotel.query.get(hotel_id)
+    flash(f"Switched to {hotel.name}.", "success")
+    next_url = request.form.get('next') or url_for('hms.dashboard')
+    # Prevent open redirect
+    if next_url.startswith(('http://', 'https://', '//')):
+        next_url = url_for('hms.dashboard')
+    return redirect(next_url)
+
+
+@hms_bp.route('/manage/hotels')
+@login_required
+def manage_hotels():
+    """Hotel list — visible to superadmin and owners."""
+    allowed_ids = get_allowed_hotel_ids()
+    if not allowed_ids:
+        flash("Access denied.", "danger")
+        return redirect(url_for('hms.dashboard'))
+
+    hotels = Hotel.query.filter(Hotel.id.in_(allowed_ids)).order_by(Hotel.name).all()
+    owners = Owner.query.order_by(Owner.name).all() if current_user.is_superadmin else []
+    current_hotel_id = get_current_hotel_id()
+    return render_template("hms/manage/hotels.html",
+                           hotels=hotels, owners=owners,
+                           current_hotel_id=current_hotel_id)
+
+
+@hms_bp.route('/manage/hotels/add', methods=['GET', 'POST'])
+@login_required
+def add_hotel():
+    """Create a new hotel — superadmin only."""
+    if not current_user.is_superadmin:
+        flash("Only the system administrator can create new hotels.", "danger")
+        return redirect(url_for('hms.dashboard'))
+
+    if request.method == 'POST':
+        name = request.form.get('name', '').strip()
+        if not name:
+            flash("Hotel name is required.", "danger")
+            return redirect(url_for('hms.add_hotel'))
+
+        owner_id = request.form.get('owner_id', type=int)
+        if not owner_id:
+            owner_name = request.form.get('owner_name', '').strip()
+            owner_email = request.form.get('owner_email', '').strip()
+            if not owner_name or not owner_email:
+                flash("Select an existing owner or provide a new owner name and email.", "danger")
+                return redirect(url_for('hms.add_hotel'))
+            existing_owner = Owner.query.filter_by(email=owner_email).first()
+            if existing_owner:
+                owner_id = existing_owner.id
+            else:
+                new_owner = Owner(name=owner_name, email=owner_email)
+                db.session.add(new_owner)
+                db.session.flush()
+                owner_id = new_owner.id
+
+        hotel = Hotel(
+            owner_id=owner_id,
+            name=name,
+            display_name=request.form.get('display_name', '').strip() or None,
+            location=request.form.get('location', '').strip() or None,
+            city=request.form.get('city', '').strip() or None,
+            country=request.form.get('country', 'Tanzania'),
+            currency=request.form.get('currency', 'TZS'),
+            timezone=request.form.get('timezone', 'Africa/Dar_es_Salaam'),
+            phone=request.form.get('phone', '').strip() or None,
+            email=request.form.get('email', '').strip() or None,
+        )
+        db.session.add(hotel)
+        db.session.flush()
+
+        ensure_accounts(hotel.id)
+
+        db.session.commit()
+
+        session['hotel_id'] = hotel.id
+        flash(f"Hotel '{hotel.name}' created successfully.", "success")
+        return redirect(url_for('hms.settings_hotel'))
+
+    owners = Owner.query.order_by(Owner.name).all() if current_user.is_superadmin else []
+    return render_template("hms/manage/add_hotel.html", owners=owners)
+
+
+@hms_bp.route('/manage/owners')
+@login_required
+def manage_owners():
+    """Owner list — superadmin only."""
+    if not current_user.is_superadmin:
+        flash("Access denied.", "danger")
+        return redirect(url_for('hms.dashboard'))
+
+    owners = Owner.query.order_by(Owner.name).all()
+    return render_template("hms/manage/owners.html", owners=owners)
+
+
+@hms_bp.route('/manage/owners/add', methods=['GET', 'POST'])
+@login_required
+def add_owner():
+    """Create a new owner — superadmin only."""
+    if not current_user.is_superadmin:
+        flash("Access denied.", "danger")
+        return redirect(url_for('hms.dashboard'))
+
+    if request.method == 'POST':
+        name = request.form.get('name', '').strip()
+        email = request.form.get('email', '').strip()
+        if not name or not email:
+            flash("Name and email are required.", "danger")
+            return redirect(url_for('hms.add_owner'))
+
+        if Owner.query.filter_by(email=email).first():
+            flash(f"An owner with email '{email}' already exists.", "danger")
+            return redirect(url_for('hms.add_owner'))
+
+        owner = Owner(name=name, email=email)
+        db.session.add(owner)
+        db.session.commit()
+        flash(f"Owner '{name}' created.", "success")
+        return redirect(url_for('hms.manage_owners'))
+
+    return render_template("hms/manage/add_owner.html")

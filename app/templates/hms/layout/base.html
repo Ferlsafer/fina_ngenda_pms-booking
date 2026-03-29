@@ -3,10 +3,252 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="csrf-token" content="{{ csrf_token() }}">
   <title>{% block title %}Ngenda Hotel{% endblock %}</title>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/core@latest/dist/css/tabler.min.css">
   <style>
-    /* Custom color variants for restaurant dashboard */
+    /* ── Sidebar Layout ─────────────────────────────────── */
+    :root {
+      --sidebar-width: 240px;
+      --sidebar-collapsed-width: 60px;
+      --topbar-height: 56px;
+      --sidebar-bg: #1e2a3a;
+      --sidebar-text: #a8b5c8;
+      --sidebar-active-bg: rgba(255,255,255,0.12);
+      --sidebar-active-text: #ffffff;
+      --sidebar-hover-bg: rgba(255,255,255,0.07);
+    }
+
+    body { margin: 0; background: #f1f5f9; }
+
+    /* Sidebar */
+    #sidebar {
+      position: fixed;
+      top: 0; left: 0; bottom: 0;
+      width: var(--sidebar-width);
+      background: var(--sidebar-bg);
+      display: flex;
+      flex-direction: column;
+      z-index: 1040;
+      transition: width 0.25s ease;
+      overflow: hidden;
+    }
+    #sidebar.collapsed { width: var(--sidebar-collapsed-width); }
+
+    /* Brand */
+    .sidebar-brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 0 16px;
+      height: var(--topbar-height);
+      border-bottom: 1px solid rgba(255,255,255,0.08);
+      text-decoration: none;
+      white-space: nowrap;
+      overflow: hidden;
+      flex-shrink: 0;
+    }
+    .sidebar-brand-icon {
+      width: 28px; height: 28px;
+      background: #3b7be9;
+      border-radius: 6px;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+      color: #fff; font-weight: 700; font-size: 14px;
+    }
+    .sidebar-brand-text {
+      color: #fff;
+      font-weight: 600;
+      font-size: 15px;
+      opacity: 1;
+      transition: opacity 0.2s ease;
+      white-space: nowrap;
+    }
+    #sidebar.collapsed .sidebar-brand-text { opacity: 0; width: 0; }
+
+    /* Nav links */
+    .sidebar-nav {
+      flex: 1;
+      overflow-y: auto;
+      overflow-x: hidden;
+      padding: 8px 0;
+    }
+    .sidebar-nav::-webkit-scrollbar { width: 4px; }
+    .sidebar-nav::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); border-radius: 2px; }
+
+    .sidebar-section-label {
+      padding: 12px 16px 4px;
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: rgba(168,181,200,0.5);
+      white-space: nowrap;
+      overflow: hidden;
+      transition: opacity 0.2s ease;
+    }
+    #sidebar.collapsed .sidebar-section-label { opacity: 0; }
+
+    .sidebar-link {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 9px 16px;
+      color: var(--sidebar-text);
+      text-decoration: none;
+      border-radius: 6px;
+      margin: 1px 8px;
+      white-space: nowrap;
+      overflow: hidden;
+      transition: background 0.15s ease, color 0.15s ease;
+    }
+    .sidebar-link:hover {
+      background: var(--sidebar-hover-bg);
+      color: var(--sidebar-active-text);
+    }
+    .sidebar-link.active {
+      background: var(--sidebar-active-bg);
+      color: var(--sidebar-active-text);
+    }
+    .sidebar-link svg { flex-shrink: 0; width: 20px; height: 20px; }
+    .sidebar-link-label {
+      font-size: 13.5px;
+      font-weight: 500;
+      opacity: 1;
+      transition: opacity 0.2s ease;
+    }
+    #sidebar.collapsed .sidebar-link-label { opacity: 0; width: 0; }
+    #sidebar.collapsed .sidebar-link { margin: 1px; justify-content: center; padding: 9px 0; }
+
+    /* Sidebar footer */
+    .sidebar-footer {
+      border-top: 1px solid rgba(255,255,255,0.08);
+      padding: 12px 8px;
+      flex-shrink: 0;
+    }
+    .sidebar-user {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 8px;
+      border-radius: 6px;
+      color: var(--sidebar-text);
+      white-space: nowrap;
+      overflow: hidden;
+      cursor: pointer;
+    }
+    .sidebar-user:hover { background: var(--sidebar-hover-bg); }
+    .sidebar-avatar {
+      width: 32px; height: 32px;
+      border-radius: 50%;
+      background: #3b7be9;
+      color: #fff;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 13px; font-weight: 600;
+      flex-shrink: 0;
+    }
+    .sidebar-user-info { overflow: hidden; }
+    .sidebar-user-name { font-size: 13px; font-weight: 600; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .sidebar-user-role { font-size: 11px; color: var(--sidebar-text); }
+    #sidebar.collapsed .sidebar-user-info { opacity: 0; width: 0; }
+    #sidebar.collapsed .sidebar-user { justify-content: center; }
+
+    /* Topbar */
+    #topbar {
+      position: fixed;
+      top: 0;
+      left: var(--sidebar-width);
+      right: 0;
+      height: var(--topbar-height);
+      background: #fff;
+      border-bottom: 1px solid #e9ecef;
+      display: flex;
+      align-items: center;
+      padding: 0 20px;
+      gap: 12px;
+      z-index: 1030;
+      transition: left 0.25s ease;
+    }
+    #topbar.sidebar-collapsed { left: var(--sidebar-collapsed-width); }
+
+    .topbar-toggle {
+      background: none;
+      border: none;
+      padding: 6px;
+      cursor: pointer;
+      border-radius: 6px;
+      color: #495057;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .topbar-toggle:hover { background: #f1f5f9; }
+
+    .topbar-title {
+      font-size: 15px;
+      font-weight: 600;
+      color: #1e2a3a;
+      flex: 1;
+    }
+
+    .topbar-actions {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+    .topbar-btn {
+      background: none;
+      border: none;
+      padding: 7px;
+      border-radius: 6px;
+      cursor: pointer;
+      color: #495057;
+      display: flex; align-items: center; justify-content: center;
+      position: relative;
+      text-decoration: none;
+    }
+    .topbar-btn:hover { background: #f1f5f9; color: #1e2a3a; }
+
+    /* Notification badge on topbar */
+    .notif-badge {
+      position: absolute;
+      top: 2px; right: 2px;
+      min-width: 17px; height: 17px;
+      background: #d63031;
+      color: #fff;
+      border-radius: 9px;
+      font-size: 10px;
+      font-weight: 700;
+      display: flex; align-items: center; justify-content: center;
+      padding: 0 4px;
+      line-height: 1;
+    }
+
+    /* Main content */
+    #main-content {
+      margin-left: var(--sidebar-width);
+      margin-top: var(--topbar-height);
+      padding: 20px;
+      min-height: calc(100vh - var(--topbar-height));
+      transition: margin-left 0.25s ease;
+    }
+    #main-content.sidebar-collapsed { margin-left: var(--sidebar-collapsed-width); }
+
+    /* Overlay for mobile */
+    #sidebar-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.4);
+      z-index: 1039;
+    }
+
+    @media (max-width: 768px) {
+      #sidebar { transform: translateX(-100%); width: var(--sidebar-width) !important; }
+      #sidebar.mobile-open { transform: translateX(0); }
+      #topbar { left: 0 !important; }
+      #main-content { margin-left: 0 !important; }
+      #sidebar-overlay.show { display: block; }
+    }
+
+    /* Custom color variants */
     .bg-primary-lt { background-color: rgba(var(--tblr-primary-rgb), 0.1) !important; color: var(--tblr-primary) !important; }
     .bg-azure-lt { background-color: rgba(var(--tblr-azure-rgb), 0.1) !important; color: var(--tblr-azure) !important; }
     .bg-warning-lt { background-color: rgba(var(--tblr-warning-rgb), 0.1) !important; color: var(--tblr-warning) !important; }
@@ -14,359 +256,391 @@
     .bg-pink-lt { background-color: rgba(var(--tblr-pink-rgb), 0.1) !important; color: var(--tblr-pink) !important; }
     .bg-teal-lt { background-color: rgba(var(--tblr-teal-rgb), 0.1) !important; color: var(--tblr-teal) !important; }
     .bg-indigo-lt { background-color: rgba(var(--tblr-indigo-rgb), 0.1) !important; color: var(--tblr-indigo) !important; }
-
     .btn-outline-pink { color: var(--tblr-pink); border-color: var(--tblr-pink); }
     .btn-outline-pink:hover { background-color: var(--tblr-pink); color: #fff; }
     .btn-outline-teal { color: var(--tblr-teal); border-color: var(--tblr-teal); }
     .btn-outline-teal:hover { background-color: var(--tblr-teal); color: #fff; }
     .btn-outline-indigo { color: var(--tblr-indigo); border-color: var(--tblr-indigo); }
     .btn-outline-indigo:hover { background-color: var(--tblr-indigo); color: #fff; }
-
     .card-link-popup:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.1); transition: all 0.2s ease; }
-
-    /* === IMPROVED LABEL VISIBILITY === */
-    /* Make all form labels more visible with darker color */
-    .form-label {
-      color: #1a1a1a !important;
-      font-weight: 500;
-      font-size: 0.875rem;
-    }
-    
-    /* Required field indicator should be red */
-    .form-label .required,
-    .form-label.required::after {
-      color: #d63031 !important;
-    }
-    
-    /* Labels in tables should also be visible */
-    th .form-label,
-    table .form-label {
-      color: #1a1a1a !important;
-    }
-    
-    /* Modal labels */
-    .modal-body .form-label {
-      color: #1a1a1a !important;
-    }
-    
-    /* Card header labels */
-    .card-header .form-label {
-      color: #1a1a1a !important;
-    }
-
-    /* === IMPROVED BADGE VISIBILITY === */
-    /* Make secondary badges more visible */
-    .badge.bg-secondary {
-      background-color: #6c757d !important;
-      color: #ffffff !important;
-      font-weight: 500;
-    }
-    
-    /* Make all badges have better contrast */
-    .badge {
-      font-weight: 500;
-      letter-spacing: 0.3px;
-    }
+    .form-label { color: #1a1a1a !important; font-weight: 500; font-size: 0.875rem; }
+    .form-label .required, .form-label.required::after { color: #d63031 !important; }
+    .badge.bg-secondary { background-color: #6c757d !important; color: #ffffff !important; font-weight: 500; }
+    .badge { font-weight: 500; letter-spacing: 0.3px; }
   </style>
   {% block head %}{% endblock %}
 </head>
 <body>
-  <div class="page">
-    <header class="navbar navbar-expand-md navbar-light d-print-none">
-      <div class="container-xl">
-        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar-menu">
-          <span class="navbar-toggler-icon"></span>
+
+<!-- Sidebar overlay (mobile) -->
+<div id="sidebar-overlay" onclick="closeMobileSidebar()"></div>
+
+<!-- ── SIDEBAR ─────────────────────────────────────────── -->
+<nav id="sidebar">
+
+  <!-- Brand -->
+  <a class="sidebar-brand" href="{{ url_for('hms.dashboard') }}">
+    <div class="sidebar-brand-icon">N</div>
+    <span class="sidebar-brand-text">Ngenda Hotel</span>
+  </a>
+
+  <!-- Nav links -->
+  <div class="sidebar-nav">
+
+    {% if can_access_module('dashboard') %}
+    <a class="sidebar-link {% if request.endpoint == 'hms.dashboard' %}active{% endif %}" href="{{ url_for('hms.dashboard') }}">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M5 12l-2 0l9 -9l9 9l-2 0" /><path d="M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2 -2v-7" /></svg>
+      <span class="sidebar-link-label">Dashboard</span>
+    </a>
+    {% endif %}
+
+    {% if current_user.role and current_user.role.lower() == 'housekeeping' %}
+    <a class="sidebar-link {% if request.endpoint == 'hms.housekeeping_dashboard' %}active{% endif %}" href="{{ url_for('hms.housekeeping_dashboard') }}">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M5 12l5 5l10 -10" /></svg>
+      <span class="sidebar-link-label">Housekeeping</span>
+    </a>
+    {% endif %}
+
+    {% if current_user.role and current_user.role.lower() == 'kitchen' %}
+    <a class="sidebar-link {% if request.endpoint == 'hms.kitchen_dashboard' %}active{% endif %}" href="{{ url_for('hms.kitchen_dashboard') }}">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M6 3h12l4 6l-8 13l-8 -13z" /><path d="M5 9h14" /><path d="M12 3l-4 6" /><path d="M16 9l-4 13" /></svg>
+      <span class="sidebar-link-label">Kitchen</span>
+    </a>
+    {% endif %}
+
+    {% if current_user.role and current_user.role.lower() == 'restaurant' %}
+    <a class="sidebar-link" href="{{ url_for('hms.restaurant_dashboard') }}">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M4 7h16" /><path d="M5 7l1 12h12l1 -12" /></svg>
+      <span class="sidebar-link-label">Restaurant</span>
+    </a>
+    {% endif %}
+
+    {% if can_access_module('bookings') %}
+    <div class="sidebar-section-label">Front Desk</div>
+    <a class="sidebar-link {% if 'bookings' in request.endpoint %}active{% endif %}" href="{{ url_for('hms.bookings') }}">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M4 7a2 2 0 0 1 2 -2h12a2 2 0 0 1 2 2v12a2 2 0 0 1 -2 2h-12a2 2 0 0 1 -2 -2v-12z" /><path d="M16 3v4" /><path d="M8 3v4" /><path d="M4 11h16" /></svg>
+      <span class="sidebar-link-label">Bookings</span>
+    </a>
+    {% endif %}
+
+    {% if can_access_module('rooms') %}
+    <a class="sidebar-link {% if request.endpoint == 'hms.rooms' %}active{% endif %}" href="{{ url_for('hms.rooms') }}">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M3 21h18" /><path d="M5 21v-14l8 -4v18" /><path d="M19 21v-10l-6 -4" /></svg>
+      <span class="sidebar-link-label">Rooms</span>
+    </a>
+    {% endif %}
+
+    {% if can_access_module('housekeeping') %}
+    <div class="sidebar-section-label">Operations</div>
+    <a class="sidebar-link {% if 'housekeeping' in request.endpoint %}active{% endif %}" href="{{ url_for('hms.housekeeping') }}">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M5 12l5 5l10 -10" /></svg>
+      <span class="sidebar-link-label">Housekeeping</span>
+    </a>
+    {% endif %}
+
+    {% if can_access_module('restaurant') %}
+    <a class="sidebar-link {% if 'restaurant' in request.endpoint %}active{% endif %}" href="{{ url_for('hms.restaurant') }}">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M4 7h16" /><path d="M5 7l1 12h12l1 -12" /><path d="M9 7v-3a1 1 0 0 1 1 -1h4a1 1 0 0 1 1 1v3" /></svg>
+      <span class="sidebar-link-label">Restaurant</span>
+    </a>
+    {% endif %}
+
+    {% if can_access_module('room_service') %}
+    <a class="sidebar-link {% if 'room_service' in request.endpoint %}active{% endif %}" href="{{ url_for('hms.room_service_orders') }}">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><circle cx="12" cy="12" r="9" /><path d="M12 8v4l3 3" /></svg>
+      <span class="sidebar-link-label">Room Service</span>
+    </a>
+    {% endif %}
+
+    {% if can_access_module('inventory') %}
+    <a class="sidebar-link {% if 'inventory' in request.endpoint %}active{% endif %}" href="{{ url_for('hms.inventory') }}">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M12 3l8 4.5v9l-8 4.5l-8 -4.5v-9z" /><path d="M12 12l8 -4.5" /><path d="M12 12v9" /><path d="M12 12l-8 -4.5" /></svg>
+      <span class="sidebar-link-label">Inventory</span>
+    </a>
+    {% endif %}
+
+    {% if can_access_module('accounting') %}
+    <div class="sidebar-section-label">Finance</div>
+    <a class="sidebar-link {% if 'accounting' in request.endpoint %}active{% endif %}" href="{{ url_for('hms.accounting') }}">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M3 6h18" /><path d="M3 12h18" /><path d="M3 18h18" /></svg>
+      <span class="sidebar-link-label">Accounting</span>
+    </a>
+    {% endif %}
+
+    {% if can_access_module('night_audit') %}
+    <a class="sidebar-link {% if request.endpoint == 'hms.night_audit' %}active{% endif %}" href="{{ url_for('hms.night_audit') }}">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M12 3c.132 0 .263 0 .393 0a7.5 7.5 0 0 0 7.92 12.446a9 9 0 1 1 -8.313 -12.454z" /></svg>
+      <span class="sidebar-link-label">Night Audit</span>
+    </a>
+    {% endif %}
+
+    {% if current_user.is_superadmin or current_user.role == 'owner' %}
+    <div class="sidebar-section-label">System</div>
+    <a class="sidebar-link {% if 'manage_hotels' in request.endpoint or 'add_hotel' in request.endpoint %}active{% endif %}" href="{{ url_for('hms.manage_hotels') }}">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M3 21h18" /><path d="M5 21v-14l8 -4v18" /><path d="M19 21v-10l-6 -4" /><path d="M9 21v-4a2 2 0 0 1 4 0v4" /></svg>
+      <span class="sidebar-link-label">Hotels</span>
+    </a>
+    {% if current_user.is_superadmin %}
+    <a class="sidebar-link {% if 'manage_owners' in request.endpoint or 'add_owner' in request.endpoint %}active{% endif %}" href="{{ url_for('hms.manage_owners') }}">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><circle cx="12" cy="7" r="4" /><path d="M6 21v-2a4 4 0 0 1 4 -4h4a4 4 0 0 1 4 4v2" /></svg>
+      <span class="sidebar-link-label">Owners</span>
+    </a>
+    {% endif %}
+    {% endif %}
+    {% if can_access_module('settings') %}
+    <a class="sidebar-link {% if 'settings' in request.endpoint %}active{% endif %}" href="{{ url_for('hms.settings') }}">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M10.325 4.317c.426 -1.756 2.924 -1.756 3.35 0a1.724 1.724 0 0 0 2.573 1.066c1.543 -.94 3.31 .826 2.37 2.37a1.724 1.724 0 0 0 1.065 2.572c1.756 .426 1.756 2.924 0 3.35a1.724 1.724 0 0 0 -1.066 2.573c.94 1.543 -.826 3.31 -2.37 2.37a1.724 1.724 0 0 0 -2.572 1.065c-.426 1.756 -2.924 1.756 -3.35 0a1.724 1.724 0 0 0 -2.573 -1.066c-1.543 .94 -3.31 -.826 -2.37 -2.37a1.724 1.724 0 0 0 -1.065 -2.572c-1.756 -.426 -1.756 -2.924 0 -3.35a1.724 1.724 0 0 0 1.066 -2.573c-.94 -1.543 .826 -3.31 2.37 -2.37c1 .608 2.296 .07 2.572 -1.065z" /><path d="M9 12a3 3 0 1 0 6 0a3 3 0 0 0 -6 0" /></svg>
+      <span class="sidebar-link-label">Settings</span>
+    </a>
+    {% elif current_user.role == 'owner' %}
+    {# Owner sees their portfolio but cannot access hotel settings #}
+    <div class="sidebar-section-label">Portfolio</div>
+    <a class="sidebar-link {% if 'manage_hotels' in request.endpoint %}active{% endif %}" href="{{ url_for('hms.manage_hotels') }}">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M3 21h18" /><path d="M5 21v-14l8 -4v18" /><path d="M19 21v-10l-6 -4" /></svg>
+      <span class="sidebar-link-label">My Hotels</span>
+    </a>
+    {% endif %}
+
+  </div>
+
+  <!-- User footer -->
+  <div class="sidebar-footer">
+    <div class="dropdown">
+      <div class="sidebar-user" data-bs-toggle="dropdown">
+        <div class="sidebar-avatar">{{ current_user.email[0]|upper }}</div>
+        <div class="sidebar-user-info">
+          <div class="sidebar-user-name">{{ current_user.name or current_user.email }}</div>
+          <div class="sidebar-user-role">{{ current_user.role|title if current_user.role else 'Staff' }}</div>
+        </div>
+      </div>
+      <ul class="dropdown-menu dropdown-menu-end">
+        <li><a class="dropdown-item text-danger" href="{{ url_for('hms.logout') }}">
+          <svg xmlns="http://www.w3.org/2000/svg" class="icon me-2" width="16" height="16" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M14 8v-2a2 2 0 0 0 -2 -2h-7a2 2 0 0 0 -2 2v12a2 2 0 0 0 2 2h7a2 2 0 0 0 2 -2v-2" /><path d="M7 12h14l-3 -3m0 6l3 -3" /></svg>
+          Logout
+        </a></li>
+      </ul>
+    </div>
+  </div>
+
+</nav>
+
+<!-- ── TOPBAR ──────────────────────────────────────────── -->
+<header id="topbar">
+  <button class="topbar-toggle" id="sidebar-toggle" onclick="toggleSidebar()" title="Toggle sidebar">
+    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><line x1="4" y1="6" x2="20" y2="6" /><line x1="4" y1="12" x2="20" y2="12" /><line x1="4" y1="18" x2="20" y2="18" /></svg>
+  </button>
+
+  <div class="topbar-title">{% block page_title %}{% endblock %}</div>
+
+  <!-- Hotel Switcher — visible to superadmin and owners with multiple hotels -->
+  {% set _allowed = get_allowed_hotel_ids() if get_allowed_hotel_ids is defined else [] %}
+  {% if current_user.is_superadmin or (current_user.role == 'owner' and _allowed|length > 1) %}
+  {% set _current_hotel = get_current_hotel() %}
+  <div class="dropdown me-2">
+    <a href="#" class="d-flex align-items-center gap-2 text-decoration-none px-2 py-1 rounded" style="background:#f1f5f9; color:#1e2a3a; font-size:13px; font-weight:500;" data-bs-toggle="dropdown">
+      <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none"><path d="M3 21h18" /><path d="M5 21v-14l8 -4v18" /><path d="M19 21v-10l-6 -4" /></svg>
+      {{ _current_hotel.name if _current_hotel else 'Select Hotel' }}
+      <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none"><path d="M6 9l6 6l6 -6" /></svg>
+    </a>
+    <div class="dropdown-menu">
+      <div class="dropdown-header text-muted" style="font-size:11px;">Switch hotel</div>
+      {% for hid in _allowed %}
+      {% set _h = get_hotel_by_id(hid) %}
+      {% if _h %}
+      <form method="post" action="{{ url_for('hms.switch_hotel', hotel_id=_h.id) }}" style="margin:0;">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <input type="hidden" name="next" value="{{ request.path }}">
+        <button type="submit" class="dropdown-item d-flex align-items-center gap-2 {% if _h.id == get_current_hotel_id() %}fw-bold{% endif %}">
+          {% if _h.id == get_current_hotel_id() %}
+          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none"><path d="M5 12l5 5l10 -10" /></svg>
+          {% else %}
+          <span style="width:14px;"></span>
+          {% endif %}
+          {{ _h.name }}
         </button>
-        <h1 class="navbar-brand navbar-brand-autodark d-none-navbar-horizontal pe-0 pe-md-3">
-          <a href="{{ url_for('hms.dashboard') }}">Ngenda Hotel</a>
-        </h1>
-        <div class="navbar-nav flex-row order-md-last">
-          <!-- Notification Dropdown -->
-          <div class="nav-item dropdown">
-            <a href="#" class="nav-link d-flex lh-1 text-reset p-0" data-bs-toggle="dropdown" aria-label="Notifications">
-              <span class="position-relative">
-                <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
-                  <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
-                  <path d="M10 5a2 2 0 0 1 4 0a7 7 0 0 1 4 6v3a4 4 0 0 0 2 3h-16a4 4 0 0 0 2 -3v-3a7 7 0 0 1 4 -6" />
-                  <path d="M9 17v1a3 3 0 0 0 6 0v-1" />
-                </svg>
-                {% set unread_count = get_unread_notifications() %}
-                {% if unread_count > 0 %}
-                <span class="badge bg-red badge-pill position-absolute top-0 start-100 translate-middle">
-                  {{ unread_count }}
-                </span>
-                {% endif %}
-              </span>
-            </a>
-            <div class="dropdown-menu dropdown-menu-end dropdown-menu-card" style="width: 350px;">
-              <div class="card">
-                <div class="card-header">
-                  <h3 class="card-title">Notifications</h3>
-                  <div class="card-actions">
-                    <a href="/hms/notifications" class="btn btn-sm btn-link">
-                      View All
-                    </a>
-                    <a href="#" onclick="markAllAsRead(); return false;" class="btn btn-sm btn-link">
-                      Mark all read
-                    </a>
-                  </div>
-                </div>
-                <div class="list-group list-group-flush" style="max-height: 400px; overflow-y: auto;">
-                  {% for notification in get_recent_notifications() %}
-                  <a href="{{ notification.link or '#' }}" class="list-group-item list-group-item-action {% if not notification.is_read %}list-group-item-secondary{% endif %}">
-                    <div class="row g-2 align-items-center">
-                      <div class="col-auto">
-                        <span class="avatar avatar-{{ notification.color or 'secondary' }}">
-                          {% if notification.type == 'booking' %}
-                          <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
-                            <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
-                            <path d="M4 7a2 2 0 0 1 2 -2h12a2 2 0 0 1 2 2v10a2 2 0 0 1 -2 2h-12a2 2 0 0 1 -2 -2v-10z" />
-                            <path d="M16 3v4" />
-                            <path d="M8 3v4" />
-                            <path d="M4 11h16" />
-                          </svg>
-                          {% elif notification.type == 'payment' %}
-                          <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
-                            <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
-                            <circle cx="12" cy="12" r="9" />
-                            <line x1="12" y1="8" x2="12" y2="12" />
-                            <line x1="12" y1="16" x2="12.01" y2="16" />
-                          </svg>
-                          {% elif notification.type == 'task' %}
-                          <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
-                            <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
-                            <path d="M14 3v4a1 1 0 0 0 1 1h4" />
-                            <path d="M17 21h-10a2 2 0 0 1 -2 -2v-14a2 2 0 0 1 2 -2h7l5 5v11a2 2 0 0 1 -2 2z" />
-                          </svg>
-                          {% elif notification.type == 'alert' %}
-                          <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
-                            <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
-                            <path d="M12 9v2m0 4v.01" />
-                            <path d="M5 19h14a2 2 0 0 0 1.84 -2.75l-7.1 -12.25a2 2 0 0 0 -3.5 0l-7.1 12.25a2 2 0 0 0 1.75 2.75" />
-                          </svg>
-                          {% else %}
-                          <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
-                            <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
-                            <circle cx="12" cy="12" r="9" />
-                            <line x1="12" y1="8" x2="12" y2="12" />
-                            <line x1="12" y1="16" x2="12.01" y2="16" />
-                          </svg>
-                          {% endif %}
-                        </span>
-                      </div>
-                      <div class="col">
-                        <div class="font-weight-medium">{{ notification.title }}</div>
-                        <div class="text-muted small">{{ notification.message|truncate(50) }}</div>
-                        <div class="text-muted small">{{ notification.created_at.strftime('%b %d, %H:%M') }}</div>
-                      </div>
-                    </div>
-                  </a>
-                  {% else %}
-                  <div class="text-center p-4">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="icon mb-2 text-muted" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
-                      <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
-                      <circle cx="12" cy="12" r="9" />
-                      <line x1="9" y1="10" x2="9.01" y2="10" />
-                      <line x1="15" y1="10" x2="15.01" y2="10" />
-                      <path d="M9.5 15a3.5 3.5 0 0 1 5 0" />
-                    </svg>
-                    <p class="text-muted mb-0">No notifications</p>
-                  </div>
-                  {% endfor %}
-                </div>
-                <div class="card-footer text-center py-2">
-                  <a href="/hms/notifications" class="small">View all notifications</a>
-                </div>
-              </div>
-            </div>
-            
-            <script>
-            function markAllAsRead() {
-              fetch('/notifications/mark-all-read', {
-                method: 'POST',
-                headers: {
-                  'X-CSRFToken': getCSRFToken()
-                }
-              })
-              .then(response => response.json())
-              .then(data => {
-                if (data.success) {
-                  // Remove all unread badges and reload
-                  document.querySelectorAll('.list-group-item-secondary').forEach(item => {
-                    item.classList.remove('list-group-item-secondary');
-                  });
-                  const badge = document.querySelector('#notificationDropdown .badge');
-                  if (badge) badge.remove();
-                  location.reload();
-                }
-              });
-            }
-            
-            function getCSRFToken() {
-              const cookies = document.cookie.split(';');
-              for (let cookie of cookies) {
-                const [name, value] = cookie.trim().split('=');
-                if (name === 'csrf_token') {
-                  return value;
-                }
-              }
-              return '';
-            }
-            </script>
-          </div>
-          
-          <!-- User Menu -->
-          <div class="nav-item dropdown">
-            <a href="#" class="nav-link d-flex lh-1 text-reset p-0" data-bs-toggle="dropdown">
-              <span class="avatar avatar-sm">{{ current_user.email[0]|upper }}</span>
-              <div class="d-none d-xl-block ps-2">
-                <div>{{ current_user.email }}</div>
-                <div class="mt-0 small text-muted">{{ current_user.role }}</div>
-              </div>
-            </a>
-            <div class="dropdown-menu dropdown-menu-end">
-              <a class="dropdown-item" href="{{ url_for('hms.logout') }}">
-                <svg xmlns="http://www.w3.org/2000/svg" class="icon me-2" width="16" height="16" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M14 8v-2a2 2 0 0 0 -2 -2h-7a2 2 0 0 0 -2 2v12a2 2 0 0 0 2 2h7a2 2 0 0 0 2 -2v-2" /><path d="M7 12h14l-3 -3m0 6l3 -3" /></svg>
-                Logout
-              </a>
-            </div>
+      </form>
+      {% endif %}
+      {% endfor %}
+      {% if current_user.is_superadmin %}
+      <div class="dropdown-divider"></div>
+      <a class="dropdown-item" href="{{ url_for('hms.add_hotel') }}">+ Add hotel</a>
+      {% endif %}
+    </div>
+  </div>
+  {% endif %}
+
+  <div class="topbar-actions">
+
+    <!-- Notifications -->
+    <div class="dropdown">
+      <a href="#" class="topbar-btn" data-bs-toggle="dropdown" id="notificationDropdown" title="Notifications">
+        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M10 5a2 2 0 0 1 4 0a7 7 0 0 1 4 6v3a4 4 0 0 0 2 3h-16a4 4 0 0 0 2 -3v-3a7 7 0 0 1 4 -6" /><path d="M9 17v1a3 3 0 0 0 6 0v-1" /></svg>
+        {% set unread_count = get_unread_notifications() %}
+        {% if unread_count > 0 %}
+        <span class="notif-badge" id="notif-count">{{ unread_count }}</span>
+        {% endif %}
+      </a>
+      <div class="dropdown-menu dropdown-menu-end p-0" style="width: 360px; border-radius: 10px; overflow: hidden;">
+        <div class="d-flex align-items-center justify-content-between px-3 py-2 border-bottom">
+          <strong style="font-size:14px;">Notifications</strong>
+          <div>
+            <a href="/hms/notifications" class="btn btn-sm btn-link py-0">View all</a>
+            <a href="#" onclick="markAllAsRead(); return false;" class="btn btn-sm btn-link py-0">Mark all read</a>
           </div>
         </div>
-      </div>
-    </header>
-    <header class="navbar-expand-md">
-      <div class="collapse navbar-collapse" id="navbar-menu">
-        <div class="navbar">
-          <div class="container-xl">
-            <ul class="navbar-nav">
-              {% if can_access_module('dashboard') %}
-              <li class="nav-item">
-                <a class="nav-link" href="{{ url_for('hms.dashboard') }}">
-                  <span class="nav-icon"><svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M5 12l-2 0l9 -9l9 9l-2 0" /><path d="M5 12l6 0l6 -6" /><path d="M5 12l6 0l6 6" /></svg></span>
-                  <span class="nav-link-title">Dashboard</span>
-                </a>
-              </li>
+        <div style="max-height: 380px; overflow-y: auto;">
+          {% for notification in get_recent_notifications() %}
+          <a href="{{ notification.link or '#' }}"
+             class="d-flex align-items-start gap-3 px-3 py-2 text-decoration-none border-bottom {% if not notification.is_read %}bg-light{% endif %}"
+             style="color: inherit;"
+             {% if not notification.is_read %}onclick="markOneRead(event, {{ notification.id }}, this)"{% endif %}>
+            <span class="avatar avatar-sm avatar-{{ notification.color or 'secondary' }} mt-1" style="flex-shrink:0;">
+              {% if notification.type == 'booking' %}
+              <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="16" height="16" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none"><path d="M4 7a2 2 0 0 1 2 -2h12a2 2 0 0 1 2 2v12a2 2 0 0 1 -2 2h-12a2 2 0 0 1 -2 -2v-12z" /><path d="M16 3v4" /><path d="M8 3v4" /><path d="M4 11h16" /></svg>
+              {% elif notification.type == 'payment' %}
+              <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="16" height="16" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none"><circle cx="12" cy="12" r="9" /><path d="M9 12h6" /><path d="M12 9v6" /></svg>
+              {% else %}
+              <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="16" height="16" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none"><circle cx="12" cy="12" r="9" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" /></svg>
               {% endif %}
-              {% if current_user.role and current_user.role.lower() == 'housekeeping' %}
-              <li class="nav-item">
-                <a class="nav-link" href="{{ url_for('hms.housekeeping_dashboard') }}">
-                  <span class="nav-icon"><svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M5 12l5 5l10 -10" /></svg></span>
-                  <span class="nav-link-title">Housekeeping</span>
-                </a>
-              </li>
-              {% endif %}
-              {% if current_user.role and current_user.role.lower() == 'kitchen' %}
-              <li class="nav-item">
-                <a class="nav-link" href="{{ url_for('hms.kitchen_dashboard') }}">
-                  <span class="nav-icon"><svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M12 9v2m0 4v.01" /><path d="M5 19h14a2 2 0 0 0 1.84 -2.75l-7.1 -12.25a2 2 0 0 0 -3.5 0l-7.1 12.25a2 2 0 0 0 1.75 2.75" /></svg></span>
-                  <span class="nav-link-title">Kitchen</span>
-                </a>
-              </li>
-              {% endif %}
-              {% if current_user.role and current_user.role.lower() == 'restaurant' %}
-              <li class="nav-item">
-                <a class="nav-link" href="{{ url_for('hms.restaurant_dashboard') }}">
-                  <span class="nav-icon"><svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M4 7h16" /><path d="M5 7l1 12h12l1 -12" /><path d="M9 7v-3a1 1 0 0 1 1 -1h4a1 1 0 0 1 1 1v3" /></svg></span>
-                  <span class="nav-link-title">Restaurant</span>
-                </a>
-              </li>
-              {% endif %}
-              {% if can_access_module('bookings') %}
-              <li class="nav-item">
-                <a class="nav-link" href="{{ url_for('hms.bookings') }}">
-                  <span class="nav-icon"><svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M4 7a2 2 0 0 1 2 -2h12a2 2 0 0 1 2 2v12a2 2 0 0 1 -2 2h-12a2 2 0 0 1 -2 -2v-12z" /></svg></span>
-                  <span class="nav-link-title">Bookings</span>
-                </a>
-              </li>
-              {% endif %}
-              {% if can_access_module('rooms') %}
-              <li class="nav-item">
-                <a class="nav-link" href="{{ url_for('hms.rooms') }}">
-                  <span class="nav-icon"><svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M3 21h18" /><path d="M5 21v-14l8 -4v18" /><path d="M19 21v-10l-6 -4" /></svg></span>
-                  <span class="nav-link-title">Rooms</span>
-                </a>
-              </li>
-              {% endif %}
-              {% if can_access_module('housekeeping') %}
-              <li class="nav-item">
-                <a class="nav-link" href="{{ url_for('hms.housekeeping') }}">
-                  <span class="nav-icon"><svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M5 12l5 5l10 -10" /></svg></span>
-                  <span class="nav-link-title">Housekeeping</span>
-                </a>
-              </li>
-              {% endif %}
-              {% if can_access_module('restaurant') %}
-              <li class="nav-item">
-                <a class="nav-link" href="{{ url_for('hms.restaurant') }}">
-                  <span class="nav-icon"><svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M4 7h16" /><path d="M5 7l1 12h12l1 -12" /><path d="M9 7v-3a1 1 0 0 1 1 -1h4a1 1 0 0 1 1 1v3" /></svg></span>
-                  <span class="nav-link-title">Restaurant</span>
-                </a>
-              </li>
-              {% endif %}
-              {% if can_access_module('inventory') %}
-              <li class="nav-item">
-                <a class="nav-link" href="{{ url_for('hms.inventory') }}">
-                  <span class="nav-icon"><svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M6 3v18" /><path d="M18 3v18" /><path d="M3 6h18" /><path d="M3 18h18" /></svg></span>
-                  <span class="nav-link-title">Inventory</span>
-                </a>
-              </li>
-              {% endif %}
-              {% if can_access_module('accounting') %}
-              <li class="nav-item">
-                <a class="nav-link" href="{{ url_for('hms.accounting') }}">
-                  <span class="nav-icon"><svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M9 14l6 -6" /><path d="M15 10h.01" /><path d="M12 21a9 9 0 0 0 .968 -.13" /></svg></span>
-                  <span class="nav-link-title">Accounting</span>
-                </a>
-              </li>
-              {% endif %}
-              {% if can_access_module('night_audit') %}
-              <li class="nav-item">
-                <a class="nav-link" href="{{ url_for('hms.night_audit') }}">
-                  <span class="nav-icon"><svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M6 4v16a2 2 0 0 0 2 2h8a2 2 0 0 0 2 -2v-12" /><path d="M6 4h12" /></svg></span>
-                  <span class="nav-link-title">Night Audit</span>
-                </a>
-              </li>
-              {% endif %}
-              {% if can_access_module('room_service') %}
-              <li class="nav-item">
-                <a class="nav-link" href="{{ url_for('hms.room_service_orders') }}">
-                  <span class="nav-icon"><svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M4 19a2 2 0 0 0 2 2h12a2 2 0 0 0 2 -2v-12a2 2 0 0 0 -2 -2h-4l-4 -4h-4a2 2 0 0 0 -2 2v12z" /><path d="M12 9h.01" /></svg></span>
-                  <span class="nav-link-title">Room Service</span>
-                </a>
-              </li>
-              {% endif %}
-              {% if can_access_module('settings') %}
-              <li class="nav-item">
-                <a class="nav-link" href="{{ url_for('hms.settings') }}">
-                  <span class="nav-icon"><svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M10.325 4.317c.426 -1.756 2.924 -1.756 3.35 0a1.724 1.724 0 0 0 2.573 1.066c1.543 -.94 3.31 .826 2.37 2.37a1.724 1.724 0 0 0 1.065 2.572c1.756 .426 1.756 2.924 0 3.35a1.724 1.724 0 0 0 -1.066 2.573c.94 1.543 -.826 3.31 -2.37 2.37a1.724 1.724 0 0 0 -2.572 1.065c-.426 1.756 -2.924 1.756 -3.35 0a1.724 1.724 0 0 0 -2.573 -1.066c-1.543 .94 -3.31 -.826 -2.37 -2.37a1.724 1.724 0 0 0 -1.065 -2.572c-1.756 -.426 -1.756 -2.924 0 -3.35a1.724 1.724 0 0 0 1.066 -2.573c-.94 -1.543 .826 -3.31 2.37 -2.37c1 .608 2.296 .07 2.572 -1.065z" /><path d="M9 12a3 3 0 1 0 6 0a3 3 0 0 0 -6 0" /></svg></span>
-                  <span class="nav-link-title">Settings</span>
-                </a>
-              </li>
-              {% endif %}
-            </ul>
-          </div>
-        </div>
-      </div>
-    </header>
-    <div class="page-wrapper">
-      <div class="page-body">
-        <div class="container-xl">
-          {% with messages = get_flashed_messages(with_categories=true) %}
-            {% if messages %}
-              {% for category, msg in messages %}
-                <div class="alert alert-{{ 'danger' if category == 'error' else category }} alert-dismissible" role="alert">
-                  <div class="d-flex"><div>{{ msg }}</div></div>
-                  <a class="btn-close" data-bs-dismiss="alert" aria-label="close"></a>
-                </div>
-              {% endfor %}
-            {% endif %}
-          {% endwith %}
-          {% block content %}{% endblock %}
+            </span>
+            <div style="min-width:0;">
+              <div style="font-size:13px; font-weight:600; {% if not notification.is_read %}color:#1e2a3a;{% else %}color:#495057;{% endif %}">{{ notification.title }}</div>
+              <div style="font-size:12px; color:#6c757d; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">{{ notification.message|truncate(60) }}</div>
+              <div style="font-size:11px; color:#adb5bd;">{{ notification.created_at.strftime('%b %d, %H:%M') }}</div>
+            </div>
+          </a>
+          {% else %}
+          <div class="text-center py-4 text-muted" style="font-size:13px;">No notifications</div>
+          {% endfor %}
         </div>
       </div>
     </div>
+
+    <!-- User avatar (topbar, links to logout) -->
+    <div class="dropdown">
+      <a href="#" class="topbar-btn" data-bs-toggle="dropdown" style="gap:8px; padding: 4px 8px;">
+        <span class="avatar avatar-sm" style="background:#3b7be9; color:#fff; font-size:13px; font-weight:600;">{{ current_user.email[0]|upper }}</span>
+        <span class="d-none d-md-block" style="font-size:13px; color:#495057; font-weight:500;">{{ (current_user.name or current_user.email)|truncate(20, true, '') }}</span>
+      </a>
+      <ul class="dropdown-menu dropdown-menu-end">
+        <li><span class="dropdown-item-text text-muted" style="font-size:12px;">{{ current_user.email }}</span></li>
+        <li><hr class="dropdown-divider"></li>
+        <li><a class="dropdown-item text-danger" href="{{ url_for('hms.logout') }}">
+          <svg xmlns="http://www.w3.org/2000/svg" class="icon me-2" width="16" height="16" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none"><path d="M14 8v-2a2 2 0 0 0 -2 -2h-7a2 2 0 0 0 -2 2v12a2 2 0 0 0 2 2h7a2 2 0 0 0 2 -2v-2" /><path d="M7 12h14l-3 -3m0 6l3 -3" /></svg>
+          Logout
+        </a></li>
+      </ul>
+    </div>
+
   </div>
-  <script src="https://cdn.jsdelivr.net/npm/@tabler/core@latest/dist/js/tabler.min.js"></script>
-  {% block scripts %}{% endblock %}
+</header>
+
+<!-- Notification JS -->
+<script>
+function getCSRFToken() {
+  const meta = document.querySelector('meta[name="csrf-token"]');
+  return meta ? meta.getAttribute('content') : '';
+}
+function updateBadge(delta) {
+  const badge = document.getElementById('notif-count');
+  if (!badge) return;
+  const next = (parseInt(badge.textContent, 10) || 0) + delta;
+  if (next <= 0) badge.remove();
+  else badge.textContent = next;
+}
+function markOneRead(event, notifId, linkEl) {
+  fetch('/hms/notifications/' + notifId + '/read', {
+    method: 'POST', headers: { 'X-CSRFToken': getCSRFToken() }
+  }).then(r => r.json()).then(data => {
+    if (data.success) {
+      linkEl.classList.remove('bg-light');
+      linkEl.removeAttribute('onclick');
+      updateBadge(-1);
+    }
+  }).catch(() => {});
+}
+function markAllAsRead() {
+  fetch('/hms/notifications/mark-all-read', {
+    method: 'POST', headers: { 'X-CSRFToken': getCSRFToken() }
+  }).then(r => r.json()).then(data => {
+    if (data.success) {
+      document.querySelectorAll('.bg-light[onclick]').forEach(el => {
+        el.classList.remove('bg-light');
+        el.removeAttribute('onclick');
+      });
+      const badge = document.getElementById('notif-count');
+      if (badge) badge.remove();
+    }
+  });
+}
+</script>
+
+<!-- ── MAIN CONTENT ───────────────────────────────────── -->
+<div id="main-content">
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+      {% for category, msg in messages %}
+        <div class="alert alert-{{ 'danger' if category == 'error' else category }} alert-dismissible" role="alert">
+          <div class="d-flex"><div>{{ msg }}</div></div>
+          <a class="btn-close" data-bs-dismiss="alert" aria-label="close"></a>
+        </div>
+      {% endfor %}
+    {% endif %}
+  {% endwith %}
+  {% block content %}{% endblock %}
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@tabler/core@latest/dist/js/tabler.min.js"></script>
+
+<!-- Sidebar toggle script -->
+<script>
+(function() {
+  const sidebar = document.getElementById('sidebar');
+  const topbar  = document.getElementById('topbar');
+  const content = document.getElementById('main-content');
+  const STORAGE_KEY = 'hms_sidebar_collapsed';
+
+  function applyState(collapsed) {
+    if (collapsed) {
+      sidebar.classList.add('collapsed');
+      topbar.classList.add('sidebar-collapsed');
+      content.classList.add('sidebar-collapsed');
+    } else {
+      sidebar.classList.remove('collapsed');
+      topbar.classList.remove('sidebar-collapsed');
+      content.classList.remove('sidebar-collapsed');
+    }
+  }
+
+  // Restore saved state
+  applyState(localStorage.getItem(STORAGE_KEY) === 'true');
+
+  window.toggleSidebar = function() {
+    const isMobile = window.innerWidth <= 768;
+    if (isMobile) {
+      sidebar.classList.toggle('mobile-open');
+      document.getElementById('sidebar-overlay').classList.toggle('show', sidebar.classList.contains('mobile-open'));
+    } else {
+      const nowCollapsed = !sidebar.classList.contains('collapsed');
+      applyState(nowCollapsed);
+      localStorage.setItem(STORAGE_KEY, nowCollapsed);
+    }
+  };
+
+  window.closeMobileSidebar = function() {
+    sidebar.classList.remove('mobile-open');
+    document.getElementById('sidebar-overlay').classList.remove('show');
+  };
+
+  // Close mobile sidebar on nav link click
+  document.querySelectorAll('.sidebar-link').forEach(link => {
+    link.addEventListener('click', () => {
+      if (window.innerWidth <= 768) closeMobileSidebar();
+    });
+  });
+})();
+</script>
+
+{% block scripts %}{% endblock %}
 </body>
 </html>

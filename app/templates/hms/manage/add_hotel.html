@@ -1,0 +1,121 @@
+{% extends "hms/layout/base.html" %}
+{% block title %}Add Hotel{% endblock %}
+
+{% block content %}
+<div class="page-header d-print-none">
+  <div class="row align-items-center">
+    <div class="col">
+      <nav class="mb-2">
+        <a href="{{ url_for('hms.manage_hotels') }}" class="text-muted">Hotels</a>
+        <span class="text-muted mx-1">/</span>
+        <span>Add Hotel</span>
+      </nav>
+      <h2 class="page-title">Add New Hotel</h2>
+    </div>
+  </div>
+</div>
+
+<div class="row">
+  <div class="col-lg-7">
+    <form method="POST" action="{{ url_for('hms.add_hotel') }}">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+      <div class="card mb-3">
+        <div class="card-header"><h3 class="card-title">Hotel Information</h3></div>
+        <div class="card-body">
+          <div class="row g-3">
+            <div class="col-md-6">
+              <label class="form-label required">Hotel Name</label>
+              <input type="text" name="name" class="form-control" required placeholder="e.g. Ngenda Beach Resort">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Display Name</label>
+              <input type="text" name="display_name" class="form-control" placeholder="Short name for receipts">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">City</label>
+              <input type="text" name="city" class="form-control" placeholder="Dar es Salaam">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Country</label>
+              <input type="text" name="country" class="form-control" value="Tanzania">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Phone</label>
+              <input type="text" name="phone" class="form-control" placeholder="+255 ...">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Email</label>
+              <input type="email" name="email" class="form-control" placeholder="hotel@example.com">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Currency</label>
+              <select name="currency" class="form-select">
+                <option value="TZS" selected>TZS — Tanzanian Shilling</option>
+                <option value="USD">USD — US Dollar</option>
+                <option value="KES">KES — Kenyan Shilling</option>
+                <option value="EUR">EUR — Euro</option>
+                <option value="GBP">GBP — British Pound</option>
+              </select>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Timezone</label>
+              <select name="timezone" class="form-select">
+                <option value="Africa/Dar_es_Salaam" selected>Africa/Dar_es_Salaam (EAT)</option>
+                <option value="Africa/Nairobi">Africa/Nairobi (EAT)</option>
+                <option value="Africa/Kampala">Africa/Kampala (EAT)</option>
+                <option value="UTC">UTC</option>
+              </select>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {% if owners %}
+      <div class="card mb-3">
+        <div class="card-header"><h3 class="card-title">Owner Assignment</h3></div>
+        <div class="card-body">
+          <p class="text-muted small mb-3">Select an existing owner or create a new one.</p>
+
+          <div class="mb-3">
+            <label class="form-label">Existing Owner</label>
+            <select name="owner_id" class="form-select" id="owner-select">
+              <option value="">— Create new owner below —</option>
+              {% for owner in owners %}
+              <option value="{{ owner.id }}">{{ owner.name }} ({{ owner.email }})</option>
+              {% endfor %}
+            </select>
+          </div>
+
+          <div id="new-owner-fields">
+            <div class="row g-3">
+              <div class="col-md-6">
+                <label class="form-label">New Owner Name</label>
+                <input type="text" name="owner_name" class="form-control" placeholder="Full name">
+              </div>
+              <div class="col-md-6">
+                <label class="form-label">New Owner Email</label>
+                <input type="email" name="owner_email" class="form-control" placeholder="owner@example.com">
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      {% endif %}
+
+      <div class="d-flex gap-2">
+        <button type="submit" class="btn btn-primary">Create Hotel</button>
+        <a href="{{ url_for('hms.manage_hotels') }}" class="btn btn-link">Cancel</a>
+      </div>
+    </form>
+  </div>
+</div>
+
+{% if owners %}
+<script>
+document.getElementById('owner-select').addEventListener('change', function() {
+  document.getElementById('new-owner-fields').style.display = this.value ? 'none' : 'block';
+});
+</script>
+{% endif %}
+{% endblock %}

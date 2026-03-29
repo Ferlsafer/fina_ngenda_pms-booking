@@ -1,0 +1,80 @@
+{% extends "hms/layout/base.html" %}
+{% block title %}Manage Hotels{% endblock %}
+
+{% block content %}
+<div class="page-header d-print-none">
+  <div class="row align-items-center">
+    <div class="col">
+      <h2 class="page-title">Hotels</h2>
+      <div class="text-muted mt-1">All hotels under your account</div>
+    </div>
+    {% if current_user.is_superadmin %}
+    <div class="col-auto">
+      <a href="{{ url_for('hms.add_hotel') }}" class="btn btn-primary">
+        <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M12 5v14" /><path d="M5 12h14" /></svg>
+        Add Hotel
+      </a>
+    </div>
+    {% endif %}
+  </div>
+</div>
+
+<div class="row row-cards">
+  {% for hotel in hotels %}
+  <div class="col-md-6 col-lg-4">
+    <div class="card {% if hotel.id == current_hotel_id %}border-primary{% endif %}">
+      <div class="card-body">
+        <div class="d-flex align-items-center mb-3">
+          <div class="avatar me-3" style="background:#3b7be9; color:#fff; font-size:18px; font-weight:700; width:48px; height:48px; border-radius:10px; display:flex; align-items:center; justify-content:center;">
+            {{ hotel.name[0]|upper }}
+          </div>
+          <div>
+            <div class="fw-bold">{{ hotel.name }}</div>
+            <div class="text-muted small">{{ hotel.city or hotel.location or 'No location set' }}</div>
+          </div>
+          {% if hotel.id == current_hotel_id %}
+          <span class="badge bg-primary ms-auto">Active</span>
+          {% endif %}
+        </div>
+
+        <div class="datagrid datagrid-sm mb-3">
+          <div class="datagrid-item">
+            <div class="datagrid-title">Currency</div>
+            <div class="datagrid-content">{{ hotel.currency }}</div>
+          </div>
+          <div class="datagrid-item">
+            <div class="datagrid-title">Owner</div>
+            <div class="datagrid-content">{{ hotel.owner.name if hotel.owner else '—' }}</div>
+          </div>
+          <div class="datagrid-item">
+            <div class="datagrid-title">Created</div>
+            <div class="datagrid-content">{{ hotel.created_at.strftime('%d %b %Y') if hotel.created_at else '—' }}</div>
+          </div>
+        </div>
+
+        <div class="d-flex gap-2">
+          {% if hotel.id != current_hotel_id %}
+          <form method="post" action="{{ url_for('hms.switch_hotel', hotel_id=hotel.id) }}" style="flex:1;">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button type="submit" class="btn btn-outline-primary w-100">Switch to this hotel</button>
+          </form>
+          {% else %}
+          <a href="{{ url_for('hms.settings_hotel') }}" class="btn btn-primary flex-fill">Settings</a>
+          {% endif %}
+          <a href="{{ url_for('hms.dashboard') }}" class="btn btn-outline-secondary">Dashboard</a>
+        </div>
+      </div>
+    </div>
+  </div>
+  {% else %}
+  <div class="col-12">
+    <div class="card">
+      <div class="card-body text-center py-5">
+        <p class="text-muted mb-3">No hotels found. Add your first hotel to get started.</p>
+        <a href="{{ url_for('hms.add_hotel') }}" class="btn btn-primary">Add Hotel</a>
+      </div>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% endblock %}

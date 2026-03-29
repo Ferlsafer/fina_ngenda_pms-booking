@@ -16,14 +16,12 @@
           <div class="col">
             <h2 class="page-title">Welcome back, {{ current_user.name or current_user.email.split('@')[0]|title }}</h2>
             <div class="text-muted">
-              Role: <span class="badge bg-{{ 'red' if user_role == 'superadmin' else 'blue' if user_role == 'manager' else 'green' if user_role == 'receptionist' else 'orange' if user_role in ['housekeeping', 'kitchen'] else 'purple' }}">{{ user_role|title }}</span>
-              {% if active_hotel_id %}
-                {% set hotel = hotels_for_selector[0] if hotels_for_selector else None %}
-                {% if hotel %}
-                  • Hotel: {{ hotel.name }}
-                {% else %}
-                  • Hotel: Assigned Hotel
-                {% endif %}
+              {% set _role = current_user.role.lower() if current_user.role else 'staff' %}
+              {% if current_user.is_superadmin %}{% set _role = 'superadmin' %}{% endif %}
+              Role: <span class="badge bg-{{ 'red' if _role == 'superadmin' else 'blue' if _role == 'manager' else 'green' if _role == 'receptionist' else 'orange' if _role in ['housekeeping', 'kitchen'] else 'purple' }}">{{ _role|title }}</span>
+              {% set _hotel = get_current_hotel() %}
+              {% if _hotel %}
+                • Hotel: {{ _hotel.name }}
               {% endif %}
             </div>
           </div>

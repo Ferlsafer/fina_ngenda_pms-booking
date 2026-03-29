@@ -10,7 +10,7 @@ from werkzeug.security import generate_password_hash
 
 
 def create_roles():
-    """Create standard hotel roles with permissions"""
+    """Create (or update) the standard hotel operational roles."""
     roles_data = [
         {
             'name': 'receptionist',
@@ -90,7 +90,7 @@ def create_roles():
 
 
 def create_staff_users(hotel_id, roles):
-    """Create sample staff users for a hotel"""
+    """Create (or update) sample staff users for a hotel."""
     users_data = [
         {
             'name': 'Sarah Johnson',
@@ -146,7 +146,6 @@ def create_staff_users(hotel_id, roles):
             created_users.append(user)
             print(f"✓ Created user: {user.name} ({user.email}) - {user_data['description']}")
         else:
-            # Update existing user
             user.name = user_data['name']
             user.role = user_data['role'].name
             user.role_id = user_data['role'].id
@@ -163,7 +162,6 @@ def main():
     with app.app_context():
         print("=== Seeding Staff Roles and Users ===\n")
         
-        # Get the demo hotel
         hotel = Hotel.query.filter_by(name='Demo Hotel').first()
         if not hotel:
             hotel = Hotel.query.first()
@@ -174,11 +172,9 @@ def main():
         
         print(f"Using hotel: {hotel.name} (ID: {hotel.id})\n")
         
-        # Create roles
         roles = create_roles()
         print()
-        
-        # Create staff users
+
         users = create_staff_users(hotel.id, roles)
         print()
         

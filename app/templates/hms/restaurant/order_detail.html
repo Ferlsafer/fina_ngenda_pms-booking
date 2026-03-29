@@ -13,7 +13,7 @@
       <h2 class="page-title">Order #{{ order.id if order is defined else '—' }}</h2>
       <div class="text-muted mt-1">
         {% if order is defined %}
-        Table {{ order.table_number }} — {{ order.customer_name or 'Guest' }} — {{ order.created_at.strftime('%Y-%m-%d %H:%M') if order.created_at else '—' }}
+        Table {{ order.table.table_number if order.table else order.table_id or '—' }} — {{ order.guest_name or 'Guest' }} — {{ order.created_at.strftime('%Y-%m-%d %H:%M') if order.created_at else '—' }}
         {% else %}
         Placeholder: load order from backend by ID
         {% endif %}
@@ -106,11 +106,11 @@
       <div class="list-group list-group-flush">
         <div class="list-group-item d-flex justify-content-between">
           <span class="text-muted">Customer</span>
-          <span>{{ order.customer_name if order is defined else 'Guest' }}</span>
+          <span>{{ order.guest_name if order is defined else 'Guest' }}</span>
         </div>
         <div class="list-group-item d-flex justify-content-between">
           <span class="text-muted">Table</span>
-          <span>{{ order.table_number if order is defined else '3' }}</span>
+          <span>{{ (order.table.table_number if order.table else order.table_id) if order is defined else '—' }}</span>
         </div>
         <div class="list-group-item d-flex justify-content-between">
           <span class="text-muted">Time ordered</span>
