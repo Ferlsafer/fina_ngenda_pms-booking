@@ -19,7 +19,6 @@ def main():
             print("No hotel found. Run seed_superadmin and seed_demo first.")
             sys.exit(1)
 
-        # Create categories
         categories_data = [
             {"name": "Cleaning Supplies", "description": "Housekeeping cleaning products"},
             {"name": "Toiletries", "description": "Soap, shampoo, etc."},
@@ -41,7 +40,6 @@ def main():
         db.session.commit()
         print("Categories created")
 
-        # Create suppliers
         suppliers_data = [
             {
                 "name": "Hotel Supply Co",

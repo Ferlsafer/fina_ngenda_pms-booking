@@ -42,7 +42,7 @@
                         {% if selected_room_type %}
                         <div class="alert alert-info d-flex align-items-center" style="background: #e7f3ff; border-left: 4px solid #007bff;">
                             <i class="fa fa-info-circle me-2" style="color: #007bff; font-size: 1.2rem;"></i>
-                            <span style="color: #004085;">You're booking: <strong>Room Type ID {{ selected_room_type }}</strong></span>
+                            <span style="color: #004085;">You're booking: <strong>{{ selected_room.name if selected_room else 'Room #' ~ selected_room_type }}</strong></span>
                         </div>
                         {% endif %}
                         

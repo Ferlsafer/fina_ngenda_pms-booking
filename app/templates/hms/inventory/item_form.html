@@ -11,81 +11,113 @@
     </div>
   </div>
 
-  <div class="card">
-    <div class="card-body">
-      <form method="POST" action="{% if item %}{{ url_for('hms.update_item', item_id=item.id) }}{% else %}{{ url_for('hms.inventory_item_add') }}{% endif %}">
-        <div class="row">
-          <div class="col-md-12">
-            <div class="mb-3">
-              <label class="form-label required">Item Name</label>
-              <input type="text" name="name" class="form-control" value="{{ item.name if item else '' }}" required>
+  <div class="row row-cards">
+    <div class="col-md-8">
+      <form class="card" method="POST" action="{% if item %}{{ url_for('hms.update_item', item_id=item.id) }}{% else %}{{ url_for('hms.inventory_item_add') }}{% endif %}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <div class="card-body">
+          <div class="mb-3">
+            <label class="form-label required">Item Name</label>
+            <input type="text" name="name" class="form-control" value="{{ item.name if item else '' }}" placeholder="e.g., Rice, Sugar, Coffee" required autofocus>
+          </div>
+
+          <div class="row">
+            <div class="col-md-6">
+              <div class="mb-3">
+                <label class="form-label required">Category</label>
+                <select name="category_id" class="form-select" required>
+                  <option value="">Select Category</option>
+                  {% for category in categories %}
+                  <option value="{{ category.id }}" {% if item and item.category_id == category.id %}selected{% endif %}>
+                    {{ category.name }}
+                  </option>
+                  {% endfor %}
+                </select>
+                <small class="text-muted">No categories? <a href="{{ url_for('hms.inventory_categories') }}" target="_blank">Add one</a></small>
+              </div>
+            </div>
+            <div class="col-md-6">
+              <div class="mb-3">
+                <label class="form-label required">Unit of Measure</label>
+                <input type="text" name="unit" class="form-control" value="{{ item.unit if item else '' }}" required placeholder="kg, pcs, liters, etc.">
+              </div>
             </div>
           </div>
-        </div>
-        
-        <div class="row">
-          <div class="col-md-6">
-            <div class="mb-3">
-              <label class="form-label required">Category</label>
-              <select name="category_id" class="form-select" required>
-                <option value="">Select Category</option>
-                {% for category in categories %}
-                <option value="{{ category.id }}" {% if item and item.category_id == category.id %}selected{% endif %}>
-                  {{ category.name }}
-                </option>
-                {% endfor %}
-              </select>
+
+          <div class="row">
+            <div class="col-md-4">
+              <div class="mb-3">
+                <label class="form-label">Initial Stock</label>
+                <input type="number" name="initial_stock" class="form-control" value="{{ item.current_stock if item else '0' }}" step="0.01" min="0">
+              </div>
+            </div>
+            <div class="col-md-4">
+              <div class="mb-3">
+                <label class="form-label">Low Stock Threshold</label>
+                <input type="number" name="reorder_level" class="form-control" value="{{ item.reorder_level if item else '0' }}" step="0.01" min="0">
+              </div>
+            </div>
+            <div class="col-md-4">
+              <div class="mb-3">
+                <label class="form-label">Cost Per Unit (TSh)</label>
+                <input type="number" name="cost_per_unit" class="form-control" value="{{ item.average_cost if item else '0' }}" step="0.01" min="0">
+              </div>
             </div>
           </div>
-          <div class="col-md-6">
-            <div class="mb-3">
-              <label class="form-label required">Unit of Measure</label>
-              <input type="text" name="unit" class="form-control" value="{{ item.unit if item else '' }}" required placeholder="e.g., kg, pcs, liters">
-            </div>
+
+          <div class="form-footer d-flex">
+            <button type="submit" class="btn btn-primary me-2">
+              {% if item %}Update{% else %}Create{% endif %} Item
+            </button>
+            <a href="{{ url_for('hms.inventory_items') }}" class="btn btn-link">Cancel</a>
           </div>
-        </div>
-        
-        <div class="row">
-          <div class="col-md-4">
-            <div class="mb-3">
-              <label class="form-label">Reorder Level</label>
-              <input type="number" name="reorder_level" class="form-control" value="{{ item.reorder_level if item else '0' }}" step="0.01" min="0">
-            </div>
-          </div>
-          <div class="col-md-4">
-            <div class="mb-3">
-              <label class="form-label">Initial Stock</label>
-              <input type="number" name="initial_stock" class="form-control" value="{{ item.current_stock if item else '0' }}" step="0.01" min="0" placeholder="Leave 0 if no initial stock">
-            </div>
-          </div>
-          <div class="col-md-4">
-            <div class="mb-3">
-              <label class="form-label">Cost Per Unit ($)</label>
-              <input type="number" name="cost_per_unit" class="form-control" value="{{ item.average_cost if item else '0' }}" step="0.01" min="0">
-            </div>
-          </div>
-        </div>
-        
-        <div class="mb-3">
-          <label class="form-label">Description</label>
-          <textarea name="description" class="form-control" rows="3">{{ item.description if item else '' }}</textarea>
-        </div>
-        
-        <div class="form-footer">
-          <button type="submit" class="btn btn-primary">
-            {% if item %}Update{% else %}Create{% endif %} Item
-          </button>
-          <a href="{{ url_for('hms.inventory_items') }}" class="btn btn-link">Cancel</a>
-          <a href="{{ url_for('hms.supplier_add') }}" class="btn btn-outline-secondary ms-2">
-            <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
-              <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
-              <line x1="12" y1="5" x2="12" y2="19" />
-              <line x1="5" y1="12" x2="19" y2="12" />
-            </svg>
-            Add Supplier
-          </a>
         </div>
       </form>
+    </div>
+
+    <div class="col-md-4">
+      <div class="card">
+        <div class="card-header">
+          <h3 class="card-title">Quick Tips</h3>
+        </div>
+        <div class="card-body">
+          <ul class="list-unstyled space-y-3">
+            <li class="d-flex align-items-start">
+              <svg xmlns="http://www.w3.org/2000/svg" class="icon text-success me-2" width="20" height="20" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+                <circle cx="12" cy="12" r="10" />
+                <path d="M9 12l2 2l4 -4" />
+              </svg>
+              <div>
+                <strong>Item Name</strong>
+                <div class="text-muted small">Use clear, descriptive names</div>
+              </div>
+            </li>
+            <li class="d-flex align-items-start">
+              <svg xmlns="http://www.w3.org/2000/svg" class="icon text-success me-2" width="20" height="20" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+                <circle cx="12" cy="12" r="10" />
+                <path d="M9 12l2 2l4 -4" />
+              </svg>
+              <div>
+                <strong>Unit of Measure</strong>
+                <div class="text-muted small">kg, liters, pieces, boxes, etc.</div>
+              </div>
+            </li>
+            <li class="d-flex align-items-start">
+              <svg xmlns="http://www.w3.org/2000/svg" class="icon text-success me-2" width="20" height="20" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
+                <circle cx="12" cy="12" r="10" />
+                <path d="M9 12l2 2l4 -4" />
+              </svg>
+              <div>
+                <strong>Low Stock Threshold</strong>
+                <div class="text-muted small">Get alerts when stock falls below this</div>
+              </div>
+            </li>
+          </ul>
+        </div>
+      </div>
     </div>
   </div>
 </div>

@@ -1,58 +1,42 @@
-"""
-Booking (Website) Routes - Ngenda Hotel Public Website
-Features:
-- Dual currency support (TZS/USD)
-- Direct SQLAlchemy queries (no API calls)
-- Room availability checking
-- Booking creation with source='website'
-"""
 import re
 import uuid
 from datetime import datetime, date
-from decimal import Decimal
+from decimal import Decimal, InvalidOperation
 from flask import (
     Blueprint, render_template, redirect, url_for, flash, request,
     jsonify, session, current_app, send_from_directory
 )
-from flask_login import login_required
+from flask_login import login_required, current_user
 from app.extensions import db
 from sqlalchemy import text
 from app.models import (
     Hotel, Room, RoomType, RoomImage, Booking, Guest, Invoice, Payment,
     ChartOfAccount, JournalEntry, JournalLine, TaxRate, GalleryImage,
+    Notification, User,
     ROOM_STATUSES
 )
 
 booking_bp = Blueprint('booking', __name__)
 
-# =============================================================================
-# HELPERS
-# =============================================================================
-
 USD_EXCHANGE_RATE = 380  # 1 USD = 380 TZS (approximate)
 
 def get_currency():
-    """Get current currency from session, default to TZS"""
     return session.get('currency', 'TZS')
 
 def set_currency(currency):
-    """Set currency in session"""
     if currency in ['TZS', 'USD']:
         session['currency'] = currency
 
 def convert_price(price_tzs, currency=None):
-    """Convert TZS price to specified currency"""
     currency = currency or get_currency()
     if currency == 'USD':
         return round(float(price_tzs) / USD_EXCHANGE_RATE, 2)
     return float(price_tzs)
 
 def get_currency_symbol():
-    """Get currency symbol"""
     return '$' if get_currency() == 'USD' else 'TSh'
 
 def format_price(price_tzs):
-    """Format price with currency"""
     converted = convert_price(price_tzs)
     symbol = get_currency_symbol()
     if get_currency() == 'USD':
@@ -60,18 +44,20 @@ def format_price(price_tzs):
     return f"{symbol} {converted:,.0f}"
 
 def get_hotel():
-    """Get current hotel (default to ID 1 for now)"""
-    return Hotel.query.filter_by(id=1, is_active=True).first() if hasattr(Hotel, 'is_active') else Hotel.query.first()
+    """Get the configured public-facing hotel via NGENDA_HOTEL_ID, falling back to first hotel."""
+    from flask import current_app
+    hotel_id = current_app.config.get('NGENDA_HOTEL_ID')
+    if hotel_id:
+        return Hotel.query.get(hotel_id)
+    return Hotel.query.first()
 
 def get_or_create_revenue_accounts(hotel_id):
-    """Get or create standard revenue accounts for a hotel"""
     accounts = {
         'Room Revenue': ChartOfAccount.query.filter_by(hotel_id=hotel_id, name='Room Revenue').first(),
         'Food & Beverage': ChartOfAccount.query.filter_by(hotel_id=hotel_id, name='Food & Beverage').first(),
         'Other Revenue': ChartOfAccount.query.filter_by(hotel_id=hotel_id, name='Other Revenue').first()
     }
     
-    # Create missing accounts if they don't exist
     for account_name, account in accounts.items():
         if not account:
             account = ChartOfAccount(
@@ -88,14 +74,12 @@ def get_or_create_revenue_accounts(hotel_id):
     return accounts
 
 def get_or_create_asset_accounts(hotel_id):
-    """Get or create standard asset accounts for a hotel"""
     accounts = {
         'Cash': ChartOfAccount.query.filter_by(hotel_id=hotel_id, name='Cash').first(),
         'Bank': ChartOfAccount.query.filter_by(hotel_id=hotel_id, name='Bank').first(),
         'Accounts Receivable': ChartOfAccount.query.filter_by(hotel_id=hotel_id, name='Accounts Receivable').first()
     }
     
-    # Create missing accounts if they don't exist
     for account_name, account in accounts.items():
         if not account:
             account = ChartOfAccount(
@@ -112,20 +96,16 @@ def get_or_create_asset_accounts(hotel_id):
     return accounts
 
 def create_journal_entry(hotel_id, date, reference, description, debit_lines, credit_lines):
-    """Helper function to create a journal entry with multiple lines using database transaction"""
+    """Create a journal entry using a nested transaction for atomicity."""
     try:
-        # Use database transaction for atomicity
         with db.session.begin_nested():
-            # Create journal entry
             entry = JournalEntry(
                 hotel_id=hotel_id,
                 date=date,
                 reference=reference
             )
             db.session.add(entry)
-            db.session.flush()  # Get the entry ID
-
-            # Add debit lines
+            db.session.flush()
             for account_id, amount, description in debit_lines:
                 debit_line = JournalLine(
                     journal_entry_id=entry.id,
@@ -135,7 +115,6 @@ def create_journal_entry(hotel_id, date, reference, description, debit_lines, cr
                 )
                 db.session.add(debit_line)
 
-            # Add credit lines
             for account_id, amount, description in credit_lines:
                 credit_line = JournalLine(
                     journal_entry_id=entry.id,
@@ -145,7 +124,6 @@ def create_journal_entry(hotel_id, date, reference, description, debit_lines, cr
                 )
                 db.session.add(credit_line)
 
-            # Commit the transaction
             db.session.commit()
             return entry
 
@@ -154,22 +132,41 @@ def create_journal_entry(hotel_id, date, reference, description, debit_lines, cr
         current_app.logger.error(f"Error creating journal entry: {str(e)}")
         raise e
 
+def notify_hotel_staff(hotel_id, title, message, link=None, icon='bell', color='blue'):
+    """Create a Notification for every active manager/owner/receptionist at the hotel."""
+    try:
+        staff = User.query.filter(
+            User.hotel_id == hotel_id,
+            User.active == True,
+            User.role.in_(['manager', 'owner', 'superadmin', 'receptionist'])
+        ).all()
+        for user in staff:
+            notif = Notification(
+                user_id=user.id,
+                hotel_id=hotel_id,
+                type='website',
+                title=title,
+                message=message,
+                link=link,
+                icon=icon,
+                color=color,
+            )
+            db.session.add(notif)
+    except Exception as e:
+        current_app.logger.warning(f"Could not create staff notifications: {e}")
+
+
 def get_room_types_with_images():
-    """Get all active room types with their images and prices"""
+    """Get all active room types with their primary image and available room count."""
     room_types = RoomType.query.filter_by(is_active=True).all()
     result = []
     
     for rt in room_types:
-        # Get primary image
         primary_image = RoomImage.query.filter_by(
-            room_type_id=rt.id, 
+            room_type_id=rt.id,
             is_primary=True
         ).first()
-        
-        # Get all images
         images = RoomImage.query.filter_by(room_type_id=rt.id).order_by(RoomImage.sort_order).all()
-        
-        # Get available rooms count
         available_rooms = Room.query.filter_by(
             room_type_id=rt.id,
             is_active=True,
@@ -196,8 +193,7 @@ def get_room_types_with_images():
     return result
 
 def check_availability(room_type_id, check_in, check_out):
-    """Check if rooms are available for given dates"""
-    # Find rooms that are NOT booked for the period
+    """Check if rooms are available for the given dates."""
     booked_rooms = db.session.query(Room.id).filter(
         Room.room_type_id == room_type_id,
         Room.is_active == True,
@@ -210,8 +206,6 @@ def check_availability(room_type_id, check_in, check_out):
         )
     ).all()
     booked_room_ids = [r[0] for r in booked_rooms]
-    
-    # Get available rooms
     available = Room.query.filter(
         Room.room_type_id == room_type_id,
         Room.is_active == True,
@@ -222,13 +216,8 @@ def check_availability(room_type_id, check_in, check_out):
     return available > 0
 
 def generate_booking_reference():
-    """Generate unique booking reference"""
     return f"NGD-{date.today().strftime('%Y%m%d')}-{uuid.uuid4().hex[:6].upper()}"
 
-
-# =============================================================================
-# ROUTES
-# =============================================================================
 
 @booking_bp.route('/')
 def index():
@@ -236,15 +225,13 @@ def index():
     currency = get_currency()
     room_types = get_room_types_with_images()
     
-    # Format prices for display
     for rt in room_types:
         rt['display_price'] = convert_price(rt['base_price'], currency)
         rt['currency_symbol'] = get_currency_symbol()
     
-    # Get categories for filter
     categories = set(rt['category'] for rt in room_types if rt['category'])
-    
-    return render_template('booking/index.html', 
+
+    return render_template('booking/index.html',
                          room_types=room_types,
                          categories=list(categories),
                          currency=currency,
@@ -262,9 +249,8 @@ def rooms():
         rt['display_price'] = convert_price(rt['base_price'], currency)
         rt['currency_symbol'] = get_currency_symbol()
     
-    # Get categories for filter
     categories = set(rt['category'] for rt in room_types if rt['category'])
-    
+
     return render_template('booking/rooms.html',
                          room_types=room_types,
                          categories=list(categories),
@@ -331,7 +317,6 @@ def book():
     """Booking form and creation"""
     if request.method == 'POST':
         try:
-            # Get form data
             guest_name = request.form.get('guest_name', '').strip()
             guest_email = request.form.get('guest_email', '').strip()
             guest_phone = request.form.get('guest_phone', '').strip()
@@ -342,18 +327,15 @@ def book():
             children = request.form.get('children', 0, type=int)
             special_requests = request.form.get('special_requests', '').strip()
             
-            # Validate required fields
             if not all([guest_name, guest_email, guest_phone, room_type_id, check_in_str, check_out_str]):
                 flash('Please fill in all required fields.', 'error')
                 return redirect(url_for('booking.book'))
             
-            # Validate email format
             email_pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
             if not re.match(email_pattern, guest_email):
                 flash('Please enter a valid email address.', 'error')
                 return redirect(url_for('booking.book'))
             
-            # Parse dates
             current_app.logger.info(f"Received dates - check_in: {check_in_str}, check_out: {check_out_str}")
             
             try:
@@ -370,15 +352,12 @@ def book():
                 current_app.logger.warning(f"Invalid date range: check_out ({check_out}) <= check_in ({check_in})")
                 return redirect(url_for('booking.book', room_type=room_type_id, check_in=check_in_str, check_out=check_out_str))
             
-            # Get room type
             room_type = RoomType.query.get_or_404(room_type_id)
-            
-            # Check availability
+
             if not check_availability(room_type_id, check_in, check_out):
                 flash(f'Sorry, no {room_type.name} rooms available for selected dates. Please try different dates or select another room type.', 'warning')
                 return redirect(url_for('booking.book', room_type=room_type_id, check_in=check_in_str, check_out=check_out_str))
             
-            # Get first available room
             booked_room_ids = db.session.query(Booking.room_id).filter(
                 Booking.status.in_(['Reserved', 'CheckedIn']),
                 Booking.check_in_date < check_out,
@@ -397,11 +376,9 @@ def book():
                 flash('No available room found.', 'error')
                 return redirect(url_for('booking.book'))
             
-            # Calculate total
             nights = (check_out - check_in).days
             total_amount = room_type.base_price * nights
             
-            # Create guest
             guest = Guest(
                 hotel_id=room_type.hotel_id,
                 name=guest_name,
@@ -411,7 +388,6 @@ def book():
             db.session.add(guest)
             db.session.flush()
             
-            # Create booking
             booking = Booking(
                 hotel_id=room_type.hotel_id,
                 guest_id=guest.id,
@@ -437,7 +413,6 @@ def book():
             db.session.add(booking)
             db.session.flush()
             
-            # Create invoice
             invoice = Invoice(
                 hotel_id=room_type.hotel_id,
                 booking_id=booking.id,
@@ -447,10 +422,8 @@ def book():
             )
             db.session.add(invoice)
             
-            # Update room status
             room.status = 'Reserved'
 
-            # Create journal entry for booking revenue (optional - skip if accounts don't exist)
             try:
                 revenue_accounts = get_or_create_revenue_accounts(room_type.hotel_id)
                 if revenue_accounts.get('Room Revenue') and revenue_accounts.get('Accounts Receivable'):
@@ -467,11 +440,28 @@ def book():
                         ]
                     )
             except Exception as je_error:
-                current_app.logger.warning(f"Journal entry creation skipped: {str(je_error)}")
                 # Continue without journal entry - it's not critical for booking
+                current_app.logger.warning(f"Journal entry creation skipped: {str(je_error)}")
 
             db.session.commit()
-            
+
+            notify_hotel_staff(
+                hotel_id=room_type.hotel_id,
+                title=f'New booking: {booking.booking_reference}',
+                message=(
+                    f'{guest_name} ({guest_phone} | {guest_email}) booked '
+                    f'{room_type.name} — {check_in.strftime("%d %b")} to '
+                    f'{check_out.strftime("%d %b %Y")} ({nights} night{"s" if nights != 1 else ""}).'
+                ),
+                link=f'/hms/bookings/{booking.id}',
+                icon='calendar',
+                color='green',
+            )
+            db.session.commit()
+
+            from app.utils.email_service import send_booking_notification_to_hotel
+            send_booking_notification_to_hotel(booking, room_type, nights)
+
             flash(f'Booking created successfully! Your booking reference is: {booking.booking_reference}', 'success')
             return redirect(url_for('booking.booking_success', booking_id=booking.id))
             
@@ -483,16 +473,18 @@ def book():
             flash('Sorry, there was an error creating your booking. Please try again.', 'error')
             return redirect(url_for('booking.book', room_type=room_type_id, check_in=check_in_str, check_out=check_out_str))
     
-    # GET - show booking form
     room_type_id = request.args.get('room_type_id', type=int) or request.args.get('room_type', type=int)
     check_in = request.args.get('check_in')
     check_out = request.args.get('check_out')
-    
+
     room_types = RoomType.query.filter_by(is_active=True).all()
-    
+
+    selected_room = RoomType.query.get(room_type_id) if room_type_id else None
+
     return render_template('booking/booking_form.html',
                          room_types=room_types,
                          selected_room_type=room_type_id,
+                         selected_room=selected_room,
                          check_in=check_in,
                          check_out=check_out,
                          currency=get_currency(),
@@ -504,7 +496,6 @@ def booking_success(booking_id):
     """Booking success page"""
     booking = Booking.query.get_or_404(booking_id)
     
-    # Calculate nights
     nights = (booking.check_out_date - booking.check_in_date).days
     
     return render_template('booking/booking-success.html',
@@ -521,15 +512,22 @@ def process_payment(booking_id):
     
     if request.method == 'POST':
         try:
-            amount = float(request.form.get('amount', '0'))
+            raw_amount = request.form.get('amount', '0')
+            try:
+                amount = Decimal(str(raw_amount))
+            except InvalidOperation:
+                flash('Invalid payment amount.', 'error')
+                return redirect(url_for('booking.booking_success', booking_id=booking_id))
             payment_method = request.form.get('payment_method', 'Cash')
             notes = request.form.get('notes', '').strip()
-            
+
             if amount <= 0:
                 flash('Payment amount must be greater than 0.', 'error')
                 return redirect(url_for('booking.booking_success', booking_id=booking_id))
+            if amount > Decimal('9999999.99'):
+                flash('Payment amount exceeds the maximum allowed.', 'error')
+                return redirect(url_for('booking.booking_success', booking_id=booking_id))
             
-            # Create payment record
             payment = Payment(
                 hotel_id=booking.hotel_id,
                 booking_id=booking.id,
@@ -541,7 +539,6 @@ def process_payment(booking_id):
             )
             db.session.add(payment)
             
-            # Update invoice
             invoice = Invoice.query.filter_by(booking_id=booking_id).first()
             if invoice:
                 invoice.amount_paid += amount
@@ -551,7 +548,6 @@ def process_payment(booking_id):
                 else:
                     invoice.status = 'PartiallyPaid'
             
-            # Create journal entry for payment
             asset_accounts = get_or_create_asset_accounts(booking.hotel_id)
             if asset_accounts.get('Cash') and payment_method == 'Cash':
                 create_journal_entry(
@@ -638,36 +634,31 @@ def about():
 
 @booking_bp.route('/gallery')
 def gallery():
-    """Gallery page - Images managed from HMS Settings"""
+    """Gallery page."""
     hotel = get_hotel()
     if not hotel:
         flash("Hotel not found.", "danger")
         return redirect(url_for('booking.index'))
     
-    # Get gallery images by size type (to match template layout)
-    # Large images (2 max) - featured at top
     large_images = GalleryImage.query.filter_by(
         hotel_id=hotel.id,
         is_active=True,
         size_type='large'
     ).order_by(GalleryImage.sort_order, GalleryImage.created_at.desc()).limit(2).all()
     
-    # Medium images (3 max) - secondary row
     medium_images = GalleryImage.query.filter_by(
         hotel_id=hotel.id,
         is_active=True,
         size_type='medium'
     ).order_by(GalleryImage.sort_order, GalleryImage.created_at.desc()).limit(3).all()
     
-    # Small images (grid layout) - remaining images
     small_images = GalleryImage.query.filter_by(
         hotel_id=hotel.id,
         is_active=True,
         size_type='small'
     ).order_by(GalleryImage.sort_order, GalleryImage.created_at.desc()).limit(12).all()
     
-    # If no images in database, fall back to static template
-    # This ensures the page still works before any images are uploaded
+    # If no images uploaded yet, fall back to the static template so the page still renders
     use_static = len(large_images) == 0 and len(medium_images) == 0 and len(small_images) == 0
     
     return render_template(
@@ -681,36 +672,63 @@ def gallery():
 
 @booking_bp.route('/contact', methods=['GET', 'POST'])
 def contact():
-    """Contact page - Demo mode (no actual email sending)"""
+    """Contact page — saves message to HMS and notifies hotel staff."""
     if request.method == 'POST':
         try:
-            # Get form data
-            email = request.form.get('news-letter', '').strip()
-            
-            # Validate email
-            if not email:
-                flash('Please enter a valid email address.', 'error')
-                return redirect('/contact')
-            
-            # Simple email validation
-            import re
+            # Footer newsletter form only sends the 'news-letter' field; full form sends name/email/message
+            newsletter_email = request.form.get('news-letter', '').strip()
+            if newsletter_email:
+                email_pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
+                if not re.match(email_pattern, newsletter_email):
+                    flash('Please enter a valid email address.', 'error')
+                    return redirect(url_for('booking.contact'))
+                current_app.logger.info(f'Newsletter subscription: {newsletter_email}')
+                flash('Thank you for subscribing! We will keep you updated.', 'success')
+                return redirect(url_for('booking.contact'))
+
+            sender_name = request.form.get('username', '').strip()
+            sender_email = request.form.get('email', '').strip()
+            message_body = request.form.get('message', '').strip()
+
+            if not sender_name or not sender_email or not message_body:
+                flash('Please fill in all fields.', 'error')
+                return redirect(url_for('booking.contact'))
+
             email_pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
-            if not re.match(email_pattern, email):
+            if not re.match(email_pattern, sender_email):
                 flash('Please enter a valid email address.', 'error')
-                return redirect('/contact')
-            
-            # Demo mode: Log subscription but don't send actual email
-            current_app.logger.info(f'DEMO - Newsletter subscription: {email}')
-            
-            # Show success message (simulating email sent)
-            flash(f'Thank you for subscribing with email {email}! You have been added to our newsletter.', 'success')
-            return redirect('/contact')
-            
+                return redirect(url_for('booking.contact'))
+
+            current_app.logger.info(
+                f'Contact form: name={sender_name}, email={sender_email}, '
+                f'message={message_body[:100]}'
+            )
+            hotel = get_hotel()
+            if hotel:
+                notify_hotel_staff(
+                    hotel_id=hotel.id,
+                    title=f'Website message from {sender_name}',
+                    message=f'{sender_name} ({sender_email}): {message_body[:200]}',
+                    link='/hms/bookings',
+                    icon='mail',
+                    color='blue',
+                )
+                try:
+                    db.session.commit()
+                except Exception:
+                    db.session.rollback()
+
+            from app.utils.email_service import send_contact_message_to_hotel
+            send_contact_message_to_hotel(sender_name, sender_email, message_body)
+
+            flash('Thank you! Your message has been received. We will get back to you shortly.', 'success')
+            return redirect(url_for('booking.contact'))
+
         except Exception as e:
             current_app.logger.error(f'Contact form error: {str(e)}')
             flash('An error occurred. Please try again.', 'error')
-            return redirect('/contact')
-    
+            return redirect(url_for('booking.contact'))
+
     return render_template('booking/contact-1.html')
 
 

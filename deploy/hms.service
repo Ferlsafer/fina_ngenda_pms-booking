@@ -1,0 +1,22 @@
+[Unit]
+Description=Hotel PMS (Gunicorn)
+After=network.target postgresql.service
+
+[Service]
+User=hms
+Group=hms
+WorkingDirectory=/var/www/hms
+EnvironmentFile=/var/www/hms/.env
+ExecStart=/var/www/hms/venv/bin/gunicorn \
+    --workers 4 \
+    --bind 127.0.0.1:8000 \
+    --timeout 120 \
+    --access-logfile /var/log/hms/access.log \
+    --error-logfile /var/log/hms/error.log \
+    wsgi:app
+ExecReload=/bin/kill -s HUP $MAINPID
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

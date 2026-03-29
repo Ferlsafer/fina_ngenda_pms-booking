@@ -1,0 +1,45 @@
+{% extends "hms/layout/base.html" %}
+{% block title %}Manage Owners{% endblock %}
+
+{% block content %}
+<div class="page-header d-print-none">
+  <div class="row align-items-center">
+    <div class="col">
+      <h2 class="page-title">Owners</h2>
+    </div>
+    <div class="col-auto">
+      <a href="{{ url_for('hms.add_owner') }}" class="btn btn-primary">
+        <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none"><path d="M12 5v14" /><path d="M5 12h14" /></svg>
+        Add Owner
+      </a>
+    </div>
+  </div>
+</div>
+
+<div class="card">
+  <div class="table-responsive">
+    <table class="table table-vcenter card-table">
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Email</th>
+          <th>Hotels</th>
+          <th>Created</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for owner in owners %}
+        <tr>
+          <td class="fw-bold">{{ owner.name }}</td>
+          <td>{{ owner.email }}</td>
+          <td>{{ owner.hotels.count() }}</td>
+          <td>{{ owner.created_at.strftime('%d %b %Y') if owner.created_at else '—' }}</td>
+        </tr>
+        {% else %}
+        <tr><td colspan="4" class="text-center text-muted py-4">No owners found</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

@@ -50,6 +50,7 @@
                 data-name="{{ u.name }}"
                 data-email="{{ u.email }}"
                 data-role="{{ u.role_id or '' }}"
+                data-role-name="{{ u.role or '' }}"
                 data-active="{{ 'true' if u.active else 'false' }}">Edit</button>
               
               {% if u.email != current_user.email %}
@@ -151,6 +152,7 @@ function editUser(btn) {
   var name = btn.getAttribute('data-name');
   var email = btn.getAttribute('data-email');
   var role = btn.getAttribute('data-role');
+  var roleName = btn.getAttribute('data-role-name');
   var active = btn.getAttribute('data-active') === 'true';
 
   document.getElementById('user-modal-title').textContent = 'Edit user';
@@ -162,8 +164,19 @@ function editUser(btn) {
   document.getElementById('password-row').classList.remove('d-none');
   document.getElementById('email-hint').classList.remove('d-none');
 
+  // Try to select the role in dropdown
+  var roleSelect = document.getElementById('user-role');
   if (role) {
-    document.getElementById('user-role').value = role;
+    roleSelect.value = role;
+  }
+  
+  // If role wasn't found in dropdown (e.g., superadmin), add it as an option
+  if (roleSelect.value === '' && roleName) {
+    var option = document.createElement('option');
+    option.value = role;
+    option.text = roleName;
+    option.selected = true;
+    roleSelect.add(option);
   }
 
   document.getElementById('user-active').checked = active;

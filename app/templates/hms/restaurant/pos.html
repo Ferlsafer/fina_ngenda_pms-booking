@@ -348,11 +348,12 @@
       const formData = new FormData();
       formData.append('table_id', tableId);
       formData.append('order_type', 'dine_in');
+      formData.append('csrf_token', document.querySelector('meta[name="csrf-token"]').content);
       items.forEach(item => {
         formData.append('item_id[]', item.item_id);
         formData.append('quantity[]', item.quantity);
       });
-      
+
       const response = await fetch('/hms/restaurant/pos/order/create', {
         method: 'POST',
         body: formData
@@ -415,12 +416,13 @@
     formData.append('order_type', 'dine_in');
     formData.append('payment_method', method);
     formData.append('paid_amount', paid);
-    
+    formData.append('csrf_token', document.querySelector('meta[name="csrf-token"]').content);
+
     // Add booking_id for room charge (Phase 1.3 Fix)
     if (bookingId) {
       formData.append('booking_id', bookingId);
     }
-    
+
     orderLines.forEach(line => {
       formData.append('item_id[]', line.id);
       formData.append('quantity[]', line.qty);
@@ -526,7 +528,10 @@
     try {
       const response = await fetch(`/hms/restaurant/pos/order/${currentSplitOrderId}/split`, {
         method: 'POST',
-        headers: {'Content-Type': 'application/json'},
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').content
+        },
         body: JSON.stringify({split_ways: splitWays, split_type: 'equal'})
       });
 

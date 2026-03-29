@@ -1,0 +1,96 @@
+{% extends "hms/layout/base.html" %}
+{% block title %}Adjust Stock — {{ item.name }}{% endblock %}
+
+{% block content %}
+<div class="container-xl">
+  <div class="page-header d-print-none">
+    <div class="row align-items-center">
+      <div class="col">
+        <nav class="mb-2">
+          <a href="{{ url_for('hms.inventory_items') }}" class="text-muted">Inventory</a>
+          <span class="text-muted mx-1">/</span>
+          <a href="{{ url_for('hms.view_item', item_id=item.id) }}" class="text-muted">{{ item.name }}</a>
+          <span class="text-muted mx-1">/</span>
+          <span>Adjust Stock</span>
+        </nav>
+        <h2 class="page-title">Adjust Stock — {{ item.name }}</h2>
+        <div class="text-muted mt-1">SKU: <code>{{ item.sku }}</code> &bull; Current stock: <strong>{{ "%.2f"|format(item.current_stock) }} {{ item.unit }}</strong></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="row">
+    <div class="col-md-6">
+      <div class="card">
+        <div class="card-body">
+          <form method="POST" action="{{ url_for('hms.adjust_stock') }}?item_id={{ item.id }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+            <div class="mb-3">
+              <label class="form-label required">Adjustment Type</label>
+              <div>
+                <label class="form-check form-check-inline">
+                  <input class="form-check-input" type="radio" name="adjustment_type" value="add" checked>
+                  <span class="form-check-label text-success">Add stock</span>
+                </label>
+                <label class="form-check form-check-inline">
+                  <input class="form-check-input" type="radio" name="adjustment_type" value="subtract">
+                  <span class="form-check-label text-danger">Remove stock</span>
+                </label>
+                <label class="form-check form-check-inline">
+                  <input class="form-check-input" type="radio" name="adjustment_type" value="set">
+                  <span class="form-check-label text-warning">Set absolute value</span>
+                </label>
+              </div>
+            </div>
+
+            <div class="mb-3">
+              <label class="form-label required">Quantity</label>
+              <div class="input-group">
+                <input type="number" class="form-control" name="quantity" step="0.001" min="0.001" required placeholder="0.00">
+                <span class="input-group-text">{{ item.unit }}</span>
+              </div>
+            </div>
+
+            <div class="mb-3">
+              <label class="form-label">Reason / Notes</label>
+              <textarea class="form-control" name="notes" rows="3" placeholder="Cycle count, damaged goods, write-off..."></textarea>
+            </div>
+
+            <div class="d-flex gap-2">
+              <button type="submit" class="btn btn-warning">Process Adjustment</button>
+              <a href="{{ url_for('hms.view_item', item_id=item.id) }}" class="btn btn-link">Cancel</a>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-md-6">
+      <div class="card">
+        <div class="card-header"><h3 class="card-title">Current Stock Info</h3></div>
+        <div class="card-body">
+          <div class="datagrid">
+            <div class="datagrid-item">
+              <div class="datagrid-title">Current Stock</div>
+              <div class="datagrid-content fw-bold">{{ "%.2f"|format(item.current_stock) }} {{ item.unit }}</div>
+            </div>
+            <div class="datagrid-item">
+              <div class="datagrid-title">Reorder Level</div>
+              <div class="datagrid-content">{{ item.reorder_level }} {{ item.unit }}</div>
+            </div>
+            <div class="datagrid-item">
+              <div class="datagrid-title">Average Cost</div>
+              <div class="datagrid-content">${{ "%.2f"|format(item.average_cost) }}</div>
+            </div>
+            <div class="datagrid-item">
+              <div class="datagrid-title">Category</div>
+              <div class="datagrid-content">{{ item.category.name }}</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

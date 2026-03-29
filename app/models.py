@@ -1,17 +1,8 @@
-"""
-Unified models for Ngenda Hotel PMS.
-Serves both HMS admin and Website booking blueprints.
-All models include hotel_id for multi-tenancy.
-"""
 from datetime import datetime
 from decimal import Decimal
 from flask_login import UserMixin
 from app.extensions import db
 
-
-# =============================================================================
-# CORE ENTITIES (Multi-tenancy foundation)
-# =============================================================================
 
 class Owner(db.Model):
     __tablename__ = "owners"
@@ -40,31 +31,25 @@ class Hotel(db.Model):
     timezone = db.Column(db.String(50), default="Africa/Dar_es_Salaam")
     default_tax_rate = db.Column(db.Numeric(5, 2), default=18)
 
-    # Branding
     logo_url = db.Column(db.String(500))
     favicon_url = db.Column(db.String(500))
     cover_image_url = db.Column(db.String(500))
 
-    # Social
     website_url = db.Column(db.String(200))
     facebook_url = db.Column(db.String(200))
     instagram_url = db.Column(db.String(200))
     twitter_url = db.Column(db.String(200))
 
-    # Business details
     tax_number = db.Column(db.String(50))
     registration_number = db.Column(db.String(50))
 
-    # Email settings
     email_header_color = db.Column(db.String(20), default='#2c3e50')
     email_footer_text = db.Column(db.Text)
     email_logo_url = db.Column(db.String(500))
 
-    # Check-in/out times
     check_in_time = db.Column(db.String(10), default='14:00')
     check_out_time = db.Column(db.String(10), default='11:00')
 
-    # Policies
     cancellation_policy = db.Column(db.Text)
     children_policy = db.Column(db.Text)
     pet_policy = db.Column(db.Text)
@@ -73,7 +58,6 @@ class Hotel(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, onupdate=datetime.utcnow)
 
-    # Relationships
     owner = db.relationship("Owner", back_populates="hotels")
     room_types = db.relationship("RoomType", back_populates="hotel", lazy="dynamic")
     notifications = db.relationship("Notification", back_populates="hotel", lazy="dynamic")
@@ -105,16 +89,13 @@ class User(UserMixin, db.Model):
     last_login_at = db.Column(db.DateTime, nullable=True)
     created_at = db.Column(db.DateTime, server_default=db.func.now())
 
-    # Password reset
     reset_token = db.Column(db.String(255), nullable=True)
     reset_token_expires = db.Column(db.DateTime, nullable=True)
 
-    # Relationships
     notifications = db.relationship('Notification', back_populates='user', lazy='dynamic')
 
     @property
     def role_name(self):
-        """Get role name from relationship or fallback to role string"""
         if hasattr(self, 'role_obj') and self.role_obj:
             return self.role_obj.name
         return self.role
@@ -130,10 +111,6 @@ class User(UserMixin, db.Model):
         return False
 
 
-# =============================================================================
-# ROOMS & ACCOMMODATION (Website + HMS)
-# =============================================================================
-
 ROOM_STATUSES = ("Vacant", "Occupied", "Dirty", "Reserved")
 
 
@@ -144,19 +121,18 @@ class RoomType(db.Model):
     hotel_id = db.Column(db.Integer, db.ForeignKey("hotels.id"), nullable=False)
     name = db.Column(db.String(100), nullable=False)
     base_price = db.Column(db.Numeric(12, 2), nullable=False, default=0)
-    price_usd = db.Column(db.Numeric(12, 2), nullable=True)  # USD equivalent for website
-    description = db.Column(db.Text)  # Full description for website detail page
-    short_description = db.Column(db.String(500))  # Brief description for cards
+    price_usd = db.Column(db.Numeric(12, 2), nullable=True)
+    description = db.Column(db.Text)
+    short_description = db.Column(db.String(500))
     capacity = db.Column(db.Integer, default=2)
     size_sqm = db.Column(db.String(20))  # e.g. "30m²"
     bed_type = db.Column(db.String(100))  # e.g. "Double Bed", "King Bed"
-    amenities = db.Column(db.JSON)  # ["AC", "WiFi", "Mini Bar", etc.]
-    category = db.Column(db.String(50))  # classic, superior, deluxe, executive (for website filtering)
+    amenities = db.Column(db.JSON)
+    category = db.Column(db.String(50))  # classic, superior, deluxe, executive
     is_active = db.Column(db.Boolean, default=True)
     tax_rate = db.Column(db.Numeric(5, 2), default=18)
     created_at = db.Column(db.DateTime, server_default=db.func.now())
 
-    # Relationships
     hotel = db.relationship("Hotel", back_populates="room_types")
     rooms = db.relationship("Room", back_populates="room_type", lazy="dynamic")
     images = db.relationship("RoomImage", back_populates="room_type", lazy="dynamic", cascade="all, delete-orphan")
@@ -175,7 +151,6 @@ class Room(db.Model):
     is_active = db.Column(db.Boolean, default=True)
     created_at = db.Column(db.DateTime, server_default=db.func.now())
 
-    # Relationships
     room_type = db.relationship("RoomType", back_populates="rooms")
     status_history = db.relationship("RoomStatusHistory", back_populates="room", lazy="dynamic", order_by="RoomStatusHistory.changed_at.desc()")
     housekeeping_tasks = db.relationship("HousekeepingTask", back_populates="room", lazy="dynamic")
@@ -188,7 +163,7 @@ class RoomImage(db.Model):
     __tablename__ = "room_images"
     id = db.Column(db.Integer, primary_key=True)
     room_type_id = db.Column(db.Integer, db.ForeignKey("room_types.id", ondelete="CASCADE"), nullable=False)
-    image_filename = db.Column(db.String(255), nullable=False)  # Just filename, path is fixed
+    image_filename = db.Column(db.String(255), nullable=False)
     is_primary = db.Column(db.Boolean, default=False)
     sort_order = db.Column(db.Integer, default=0)
     created_at = db.Column(db.DateTime, server_default=db.func.now())
@@ -197,7 +172,6 @@ class RoomImage(db.Model):
 
     @property
     def url(self):
-        """Get full URL for the image."""
         return f"/static/uploads/rooms/{self.image_filename}"
 
 
@@ -213,10 +187,6 @@ class RoomStatusHistory(db.Model):
     room = db.relationship("Room", back_populates="status_history")
 
 
-# =============================================================================
-# BOOKINGS & GUESTS (Unified for Website + HMS)
-# =============================================================================
-
 BOOKING_STATUSES = ("Reserved", "CheckedIn", "CheckedOut", "Cancelled")
 INVOICE_STATUSES = ("Unpaid", "PartiallyPaid", "Paid")
 BOOKING_SOURCES = ("website", "front_desk", "phone", "email", "walk_in", "ota", "corporate")
@@ -227,71 +197,57 @@ class Guest(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     hotel_id = db.Column(db.Integer, db.ForeignKey("hotels.id"), nullable=False)
     name = db.Column(db.String(255), nullable=False)
-    phone = db.Column(db.String(50), nullable=False)  # Required for website bookings
+    phone = db.Column(db.String(50), nullable=False)
     email = db.Column(db.String(255))
-    id_number = db.Column(db.String(100))  # National ID or Passport
+    id_number = db.Column(db.String(100))
     created_at = db.Column(db.DateTime, server_default=db.func.now())
 
     bookings = db.relationship("Booking", back_populates="guest", lazy="dynamic")
 
 
 class Booking(db.Model):
-    """
-    Unified booking model handling both:
-    - Website bookings (guest self-service with email confirmation)
-    - HMS admin bookings (front desk manual entry)
-    """
     __tablename__ = "bookings"
     id = db.Column(db.Integer, primary_key=True)
     hotel_id = db.Column(db.Integer, db.ForeignKey("hotels.id"), nullable=False)
 
-    # Guest info (denormalized for quick access, also linked via guest_id)
-    guest_id = db.Column(db.Integer, db.ForeignKey("guests.id"), nullable=True)  # Nullable for quick website bookings
+    # guest_id is nullable: website bookings may be created before a Guest record is assigned
+    guest_id = db.Column(db.Integer, db.ForeignKey("guests.id"), nullable=True)
     guest_name = db.Column(db.String(255), nullable=False)
     guest_email = db.Column(db.String(255), nullable=False)
     guest_phone = db.Column(db.String(50), nullable=False)
 
-    # Room assignment
-    room_id = db.Column(db.Integer, db.ForeignKey("rooms.id"), nullable=True)  # Nullable until assigned
-    room_type_requested = db.Column(db.String(100))  # Room type requested (for website before assignment)
+    room_id = db.Column(db.Integer, db.ForeignKey("rooms.id"), nullable=True)
+    room_type_requested = db.Column(db.String(100))
 
-    # Dates
     check_in_date = db.Column(db.Date, nullable=False)
     check_out_date = db.Column(db.Date, nullable=False)
-    check_in_time_actual = db.Column(db.DateTime)  # Actual check-in time
-    check_out_time_actual = db.Column(db.DateTime)  # Actual check-out time
+    check_in_time_actual = db.Column(db.DateTime)
+    check_out_time_actual = db.Column(db.DateTime)
 
-    # Status & Source
     status = db.Column(db.String(20), nullable=False, default="Reserved")
-    source = db.Column(db.String(50), default="website")  # website, front_desk, phone, etc.
+    source = db.Column(db.String(50), default="website")
     booking_reference = db.Column(db.String(50), unique=True, nullable=False)
 
-    # Guest counts
     adults = db.Column(db.Integer, default=1)
     children = db.Column(db.Integer, default=0)
 
-    # Pricing
     total_amount = db.Column(db.Numeric(12, 2), nullable=False, default=0)
     amount_paid = db.Column(db.Numeric(12, 2), nullable=False, default=0)
     balance = db.Column(db.Numeric(12, 2), nullable=False, default=0)
 
-    # Requests & Notes
     special_requests = db.Column(db.Text)
-    internal_notes = db.Column(db.Text)  # HMS staff notes only
+    internal_notes = db.Column(db.Text)
 
-    # Website-specific fields
     ip_address = db.Column(db.String(45))  # IPv6 compatible
     user_agent = db.Column(db.String(500))
-    referral_source = db.Column(db.String(255))  # Google, Facebook, direct, etc.
+    referral_source = db.Column(db.String(255))
 
-    # Timestamps
     created_at = db.Column(db.DateTime, server_default=db.func.now())
     updated_at = db.Column(db.DateTime, onupdate=db.func.now())
-    confirmed_at = db.Column(db.DateTime)  # When booking was confirmed
+    confirmed_at = db.Column(db.DateTime)
     cancelled_at = db.Column(db.DateTime)
     cancellation_reason = db.Column(db.Text)
 
-    # Relationships
     guest = db.relationship("Guest", back_populates="bookings")
     room = db.relationship("Room", backref="bookings")
     invoice = db.relationship("Invoice", back_populates="booking", uselist=False, cascade="all, delete-orphan")
@@ -317,7 +273,7 @@ class Invoice(db.Model):
     status = db.Column(db.String(20), nullable=False, default="Unpaid")
     due_date = db.Column(db.Date)
     created_at = db.Column(db.DateTime, server_default=db.func.now())
-    deleted_at = db.Column(db.DateTime, nullable=True)  # Soft delete
+    deleted_at = db.Column(db.DateTime, nullable=True)
 
     booking = db.relationship("Booking", back_populates="invoice")
     payments = db.relationship("Payment", back_populates="invoice", lazy="dynamic")
@@ -330,10 +286,10 @@ class Payment(db.Model):
     booking_id = db.Column(db.Integer, db.ForeignKey("bookings.id"), nullable=False)
     invoice_id = db.Column(db.Integer, db.ForeignKey("invoices.id"), nullable=True)
     amount = db.Column(db.Numeric(12, 2), nullable=False)
-    payment_method = db.Column(db.String(50))  # Cash, Card, Mobile Money, Bank Transfer
-    payment_type = db.Column(db.String(20), default="full")  # deposit, full, partial
-    transaction_id = db.Column(db.String(100))  # External payment reference
-    status = db.Column(db.String(20), default="completed")  # pending, completed, failed, refunded
+    payment_method = db.Column(db.String(50))
+    payment_type = db.Column(db.String(20), default="full")
+    transaction_id = db.Column(db.String(100))
+    status = db.Column(db.String(20), default="completed")
     notes = db.Column(db.Text)
     created_at = db.Column(db.DateTime, server_default=db.func.now())
     deleted_at = db.Column(db.DateTime, nullable=True)
@@ -350,7 +306,7 @@ class SelcomPayment(db.Model):
     booking_id = db.Column(db.Integer, db.ForeignKey('bookings.id'), nullable=False)
     amount = db.Column(db.Numeric(10, 2), nullable=False)
     currency = db.Column(db.String(3), default='TZS')
-    payment_method = db.Column(db.String(50))  # mobile_money, card, cash, bank
+    payment_method = db.Column(db.String(50))
     transaction_id = db.Column(db.String(100), unique=True)
     order_id = db.Column(db.String(100))
     status = db.Column(db.String(20), default='pending')
@@ -361,16 +317,12 @@ class SelcomPayment(db.Model):
     booking = db.relationship('Booking', back_populates='selcom_payments')
 
 
-# =============================================================================
-# HOUSEKEEPING & MAINTENANCE
-# =============================================================================
-
 class HousekeepingTask(db.Model):
     __tablename__ = "housekeeping_tasks"
     id = db.Column(db.Integer, primary_key=True)
     hotel_id = db.Column(db.Integer, db.ForeignKey("hotels.id"), nullable=False)
     room_id = db.Column(db.Integer, db.ForeignKey("rooms.id"), nullable=False)
-    task_type = db.Column(db.String(20), nullable=False)  # cleaning, inspection, maintenance, deep_clean
+    task_type = db.Column(db.String(20), nullable=False)
     priority = db.Column(db.String(10), nullable=False, default="medium")
     status = db.Column(db.String(20), nullable=False, default="pending")
     notes = db.Column(db.Text)
@@ -432,10 +384,6 @@ class MaintenancePart(db.Model):
     item = db.relationship("InventoryItem")
 
 
-# =============================================================================
-# INVENTORY & PURCHASING
-# =============================================================================
-
 class InventoryCategory(db.Model):
     __tablename__ = "inventory_categories"
     id = db.Column(db.Integer, primary_key=True)
@@ -458,9 +406,14 @@ class InventoryItem(db.Model):
     description = db.Column(db.Text)
     unit = db.Column(db.String(20), nullable=False)
     reorder_level = db.Column(db.Numeric(12, 3), nullable=False, default=0)
+    target_stock = db.Column(db.Numeric(12, 3), nullable=True)
     current_stock = db.Column(db.Numeric(12, 3), nullable=False, default=0)
     average_cost = db.Column(db.Numeric(12, 2), nullable=False, default=0)
+    selling_price = db.Column(db.Numeric(12, 2), nullable=True)
+    barcode = db.Column(db.String(100), nullable=True)
+    tax_rate = db.Column(db.Numeric(5, 2), nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     deleted_at = db.Column(db.DateTime, nullable=True)
 
     category = db.relationship("InventoryCategory", back_populates="items")
@@ -484,6 +437,7 @@ class StockMovement(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
     item = db.relationship("InventoryItem", back_populates="movements")
+    created_by_user = db.relationship("User", foreign_keys=[created_by])
 
 
 class Supplier(db.Model):
@@ -538,10 +492,6 @@ class PurchaseOrderItem(db.Model):
     item = db.relationship("InventoryItem")
 
 
-# =============================================================================
-# ACCOUNTING
-# =============================================================================
-
 class TaxRate(db.Model):
     __tablename__ = "tax_rates"
     id = db.Column(db.Integer, primary_key=True)
@@ -560,7 +510,7 @@ class ChartOfAccount(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     hotel_id = db.Column(db.Integer, db.ForeignKey("hotels.id"), nullable=False)
     name = db.Column(db.String(255), nullable=False)
-    type = db.Column(db.String(20), nullable=False)  # Asset, Liability, Revenue, Expense
+    type = db.Column(db.String(20), nullable=False)
     created_at = db.Column(db.DateTime, server_default=db.func.now())
 
     journal_lines = db.relationship("JournalLine", back_populates="account", lazy="dynamic")
@@ -591,10 +541,6 @@ class JournalLine(db.Model):
     account = db.relationship("ChartOfAccount", back_populates="journal_lines")
 
 
-# =============================================================================
-# BUSINESS OPERATIONS
-# =============================================================================
-
 class BusinessDate(db.Model):
     __tablename__ = "business_dates"
     id = db.Column(db.Integer, primary_key=True)
@@ -605,7 +551,6 @@ class BusinessDate(db.Model):
 
 
 class NightAuditLog(db.Model):
-    """Audit log for night audit runs"""
     __tablename__ = "night_audit_logs"
     id = db.Column(db.Integer, primary_key=True)
     hotel_id = db.Column(db.Integer, db.ForeignKey("hotels.id"), nullable=False)
@@ -613,8 +558,8 @@ class NightAuditLog(db.Model):
     run_by = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
     started_at = db.Column(db.DateTime, nullable=False)
     completed_at = db.Column(db.DateTime)
-    status = db.Column(db.String(20), default="running")  # running, success, failed, partial
-    summary = db.Column(db.JSON)  # Revenue, occupancy, etc.
+    status = db.Column(db.String(20), default="running")
+    summary = db.Column(db.JSON)
     errors = db.Column(db.Text)
     notes = db.Column(db.Text)
     
@@ -769,8 +714,8 @@ class RestaurantOrder(db.Model):
     table_id = db.Column(db.Integer, db.ForeignKey('restaurant_tables.id'))
     booking_id = db.Column(db.Integer, db.ForeignKey('bookings.id'))
     guest_name = db.Column(db.String(100))
-    order_type = db.Column(db.String(20), default='dine_in')  # dine_in, takeaway, room_service, delivery
-    status = db.Column(db.String(20), default='pending')  # pending, preparing, ready, completed, cancelled, split
+    order_type = db.Column(db.String(20), default='dine_in')
+    status = db.Column(db.String(20), default='pending')
     subtotal = db.Column(db.Numeric(10, 2), default=0)
     tax = db.Column(db.Numeric(10, 2), default=0)
     total = db.Column(db.Numeric(10, 2), default=0)
@@ -778,13 +723,11 @@ class RestaurantOrder(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     completed_at = db.Column(db.DateTime)
     
-    # Split order support (Phase 1.4)
     parent_order_id = db.Column(db.Integer, db.ForeignKey('restaurant_orders.id'), nullable=True)
-    
-    # Payment tracking (Week 1 Critical)
+
     server_id = db.Column(db.Integer, db.ForeignKey('users.id'))
-    payment_status = db.Column(db.String(20), default='unpaid')  # unpaid, partial, paid, refunded
-    payment_method = db.Column(db.String(50))  # cash, card, mobile, room_charge, null
+    payment_status = db.Column(db.String(20), default='unpaid')
+    payment_method = db.Column(db.String(50))
     paid_amount = db.Column(db.Numeric(10, 2), default=0)
     discount_amount = db.Column(db.Numeric(10, 2), default=0)
     tip_amount = db.Column(db.Numeric(10, 2), default=0)
@@ -793,7 +736,6 @@ class RestaurantOrder(db.Model):
     table = db.relationship('RestaurantTable', back_populates='orders')
     items = db.relationship('RestaurantOrderItem', back_populates='order', lazy='dynamic', cascade='all, delete-orphan')
     server = db.relationship('User', foreign_keys=[server_id])
-    # Parent/child order relationship for splits
     parent_order = db.relationship('RestaurantOrder', remote_side=[id], backref='child_orders')
 
 
@@ -805,10 +747,9 @@ class RestaurantOrderItem(db.Model):
     quantity = db.Column(db.Integer, nullable=False)
     unit_price = db.Column(db.Numeric(10, 2), nullable=False)
     notes = db.Column(db.Text)
-    status = db.Column(db.String(20), default='pending')  # pending, preparing, completed, cancelled
+    status = db.Column(db.String(20), default='pending')
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     
-    # Order modifiers (Week 2 Important)
     modifiers = db.relationship('OrderModifier', back_populates='order_item', cascade='all, delete-orphan', lazy='dynamic')
     
     order = db.relationship('RestaurantOrder', back_populates='items')
@@ -816,12 +757,12 @@ class RestaurantOrderItem(db.Model):
 
 
 class OrderModifier(db.Model):
-    """Order item modifiers (no onions, extra cheese, cooking temp, etc.) - Week 2"""
+    """Order item modifiers (e.g. no onions, cooking temp, side choice)."""
     __tablename__ = 'order_modifiers'
     id = db.Column(db.Integer, primary_key=True)
     order_item_id = db.Column(db.Integer, db.ForeignKey('restaurant_order_items.id', ondelete='CASCADE'), nullable=False)
-    modifier_type = db.Column(db.String(50), nullable=False)  # no_onions, extra_cheese, cooking_temp, side_choice
-    modifier_value = db.Column(db.String(100), nullable=False)  # rare, medium, well; or 'Extra', 'None'
+    modifier_type = db.Column(db.String(50), nullable=False)
+    modifier_value = db.Column(db.String(100), nullable=False)
     additional_price = db.Column(db.Numeric(5, 2), default=0)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     
@@ -829,19 +770,18 @@ class OrderModifier(db.Model):
 
 
 class TableReservation(db.Model):
-    """Table reservations for restaurant - Week 2"""
     __tablename__ = 'table_reservations'
     id = db.Column(db.Integer, primary_key=True)
     hotel_id = db.Column(db.Integer, db.ForeignKey('hotels.id'), nullable=False)
     table_id = db.Column(db.Integer, db.ForeignKey('restaurant_tables.id'))
-    booking_id = db.Column(db.Integer, db.ForeignKey('bookings.id'))  # Link to hotel booking
+    booking_id = db.Column(db.Integer, db.ForeignKey('bookings.id'))
     guest_name = db.Column(db.String(100), nullable=False)
     guest_phone = db.Column(db.String(50))
     guest_email = db.Column(db.String(100))
     party_size = db.Column(db.Integer, nullable=False)
     reservation_time = db.Column(db.DateTime, nullable=False)
     duration_minutes = db.Column(db.Integer, default=90)
-    status = db.Column(db.String(20), default='confirmed')  # confirmed, seated, completed, cancelled, no_show
+    status = db.Column(db.String(20), default='confirmed')
     special_requests = db.Column(db.Text)
     created_by = db.Column(db.Integer, db.ForeignKey('users.id'))
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
@@ -851,53 +791,30 @@ class TableReservation(db.Model):
     creator = db.relationship('User', foreign_keys=[created_by])
 
 
-# =============================================================================
-# WEBSITE GALLERY (HMS Managed)
-# =============================================================================
-
 class GalleryImage(db.Model):
-    """
-    Gallery images managed from HMS Settings.
-    These images appear on the public website gallery page.
-    Staff can upload, categorize, and control visibility without developer help.
-    """
+    """Gallery images managed from HMS Settings; appear on the public website gallery page."""
     __tablename__ = 'gallery_images'
-    
+
     id = db.Column(db.Integer, primary_key=True)
     hotel_id = db.Column(db.Integer, db.ForeignKey('hotels.id'), nullable=False)
-    
-    # Image file
     image_filename = db.Column(db.String(255), nullable=False)
-    
-    # Content
     title = db.Column(db.String(100), nullable=False)
     description = db.Column(db.Text)
-    
-    # Categorization (matches website filter tabs)
     category = db.Column(db.String(50), nullable=False)  # rooms, facilities, dining, events
-    
-    # Layout control (matches existing template structure)
     size_type = db.Column(db.String(20), nullable=False, default='small')  # large, medium, small
     sort_order = db.Column(db.Integer, default=0)
-    
-    # Visibility
     is_active = db.Column(db.Boolean, default=True)
-    
-    # Metadata
     uploaded_by = db.Column(db.Integer, db.ForeignKey('users.id'))
     created_at = db.Column(db.DateTime, server_default=db.func.now())
     updated_at = db.Column(db.DateTime, onupdate=db.func.now())
-    
-    # Relationships
+
     hotel = db.relationship('Hotel', backref=db.backref('gallery_images', lazy='dynamic'))
     uploader = db.relationship('User', foreign_keys=[uploaded_by])
-    
+
     @property
     def url(self):
-        """Get full URL for the gallery image."""
         return f"/static/uploads/gallery/{self.image_filename}"
-    
+
     @property
     def category_display(self):
-        """Get formatted category name."""
         return self.category.title() if self.category else 'Gallery'
