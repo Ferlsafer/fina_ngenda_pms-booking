@@ -230,6 +230,33 @@ def is_manager_or_above():
     role = (current_user.role or '').lower()
     return role == 'manager'
 
+
+def can_access_module(module_name):
+    """Check if current user can access a module."""
+    if not current_user.is_authenticated:
+        return False
+    if current_user.is_superadmin:
+        return True
+    user_role = (current_user.role or '').lower()
+    module_access = {
+        'dashboard':    ['manager', 'owner'],
+        'bookings':     ['manager', 'owner', 'receptionist'],
+        'rooms':        ['manager', 'owner', 'receptionist'],
+        'housekeeping': ['manager', 'owner', 'receptionist', 'housekeeping'],
+        'restaurant':   ['manager', 'owner', 'receptionist', 'restaurant'],
+        'kitchen':      ['manager', 'owner', 'kitchen', 'restaurant'],
+        'room_service': ['manager', 'owner', 'receptionist', 'restaurant'],
+        'inventory':    ['manager', 'owner'],
+        'accounting':   ['manager', 'owner'],
+        'reports':      ['manager', 'owner'],
+        'night_audit':  ['manager'],
+        'settings':     ['manager'],
+        'users':        ['manager'],
+    }
+    allowed = module_access.get(module_name, ['manager'])
+    return user_role in allowed
+
+
 hms_bp = Blueprint('hms', __name__, url_prefix='/hms')
 
 
