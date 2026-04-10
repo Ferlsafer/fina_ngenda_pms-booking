@@ -1,55 +1,38 @@
+{% set symbol = get_currency_symbol() %}
 {% if items %}
 <div class="row g-3">
   {% for item in items %}
   <div class="col-sm-6 col-lg-4 col-xl-3" data-item-id="{{ item.id }}">
     <div class="card card-sm h-100">
       {% if item.image_url %}
-      <img src="{{ item.image_url }}" class="card-img-top" alt="{{ item.name }}" style="height: 160px; object-fit: cover;">
+      <img src="{{ item.image_url }}" class="card-img-top" alt="{{ item.name }}" style="height:160px;object-fit:cover;">
       {% else %}
-      <div class="card-img-top" style="height: 160px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); display: flex; align-items: center; justify-content: center;">
-        <span class="text-white h1 mb-0">{{ item.name[0]|upper }}</span>
+      <div class="card-img-top d-flex align-items-center justify-content-center" style="height:160px;background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);">
+        <span class="text-white" style="font-size:2.5rem;font-weight:700;">{{ item.name[0]|upper }}</span>
       </div>
       {% endif %}
-      
+
       <div class="card-body">
-        <div class="d-flex justify-content-between align-items-start mb-2">
-          <h4 class="card-title mb-0">{{ item.name }}</h4>
+        <div class="d-flex justify-content-between align-items-start mb-1">
+          <h4 class="card-title mb-0" style="font-size:.9rem;">{{ item.name }}</h4>
           <div class="dropdown">
             <button class="btn btn-icon btn-sm btn-ghost-secondary" type="button" data-bs-toggle="dropdown">
-              <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="18" height="18" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
-                <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
-                <circle cx="12" cy="12" r="1" />
-                <circle cx="12" cy="19" r="1" />
-                <circle cx="12" cy="5" r="1" />
-              </svg>
+              <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="5" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="12" cy="19" r="1"/></svg>
             </button>
-            <ul class="dropdown-menu">
+            <ul class="dropdown-menu dropdown-menu-end">
               <li>
-                <button class="dropdown-item" onclick="editItem({{ item.id }})">
-                  <svg xmlns="http://www.w3.org/2000/svg" class="icon me-2" width="16" height="16" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
-                    <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
-                    <path d="M9 7h-3a2 2 0 0 0 -2 2v9a2 2 0 0 0 2 2h9a2 2 0 0 0 2 -2v-3" />
-                    <path d="M9 15h3l8.5 -8.5a1.5 1.5 0 0 0 -3 -3l-8.5 8.5v3" />
-                  </svg>
+                <a class="dropdown-item" href="/hms/restaurant/menu/item/{{ item.id }}/edit">
+                  <svg xmlns="http://www.w3.org/2000/svg" class="icon me-2" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 7h-3a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h9a2 2 0 0 0 2-2v-3"/><path d="M9 15h3l8.5-8.5a1.5 1.5 0 0 0-3-3l-8.5 8.5v3"/></svg>
                   Edit
-                </button>
+                </a>
               </li>
               <li>
                 <button class="dropdown-item" onclick="toggleAvailability({{ item.id }})">
                   {% if item.is_available %}
-                  <svg xmlns="http://www.w3.org/2000/svg" class="icon me-2 text-warning" width="16" height="16" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
-                    <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
-                    <circle cx="12" cy="12" r="9" />
-                    <line x1="12" y1="8" x2="12" y2="12" />
-                    <line x1="12" y1="16" x2="12.01" y2="16" />
-                  </svg>
+                  <svg xmlns="http://www.w3.org/2000/svg" class="icon me-2 text-warning" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
                   Mark Unavailable
                   {% else %}
-                  <svg xmlns="http://www.w3.org/2000/svg" class="icon me-2 text-success" width="16" height="16" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
-                    <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
-                    <circle cx="12" cy="12" r="9" />
-                    <path d="M9 12l2 2l4 -4" />
-                  </svg>
+                  <svg xmlns="http://www.w3.org/2000/svg" class="icon me-2 text-success" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M9 12l2 2 4-4"/></svg>
                   Mark Available
                   {% endif %}
                 </button>
@@ -57,46 +40,38 @@
               <li><hr class="dropdown-divider"></li>
               <li>
                 <button class="dropdown-item text-danger" onclick="deleteItem({{ item.id }})">
-                  <svg xmlns="http://www.w3.org/2000/svg" class="icon me-2" width="16" height="16" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
-                    <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
-                    <line x1="4" y1="7" x2="20" y2="7" />
-                    <line x1="10" y1="11" x2="10" y2="17" />
-                    <line x1="14" y1="11" x2="14" y2="17" />
-                    <path d="M5 7l1 14a2 2 0 0 0 2 2h8a2 2 0 0 0 2 -2l1 -14" />
-                    <path d="M9 7v-3a1 1 0 0 1 1 -1h4a1 1 0 0 1 1 1v3" />
-                  </svg>
+                  <svg xmlns="http://www.w3.org/2000/svg" class="icon me-2" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="4" y1="7" x2="20" y2="7"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/><path d="M5 7l1 14a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2l1-14"/><path d="M9 7v-3a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v3"/></svg>
                   Delete
                 </button>
               </li>
             </ul>
           </div>
         </div>
-        
-        <div class="text-muted small mb-2">{{ item.category.name if item.category else 'Uncategorized' }}</div>
-        
+
+        <div class="text-muted mb-1" style="font-size:.75rem;">{{ item.category.name if item.category else 'Uncategorized' }}</div>
+
         {% if item.description %}
-        <p class="small text-muted mb-2">{{ item.description|truncate(60) }}</p>
+        <p class="text-muted mb-2" style="font-size:.78rem;">{{ item.description|truncate(60) }}</p>
         {% endif %}
-        
-        <!-- Inventory Status -->
+
         {% if item.inventory_items %}
         <div class="mb-2">
           {% for link in item.inventory_items %}
-          <span class="badge bg-{% if link.inventory_item.current_stock >= link.quantity_needed %}success{% else %}danger{% endif %} me-1" title="{{ link.inventory_item.name }}: {{ link.inventory_item.current_stock }} available">
-            {{ link.inventory_item.name|truncate(15) }}
+          <span class="badge {% if link.inventory_item.current_stock >= link.quantity_needed %}bg-green-lt text-green{% else %}bg-red-lt text-red{% endif %} me-1" style="font-size:.68rem;" title="{{ link.inventory_item.name }}: {{ link.inventory_item.current_stock }} available">
+            {{ link.inventory_item.name|truncate(14) }}
           </span>
           {% endfor %}
         </div>
         {% endif %}
-        
-        <div class="d-flex justify-content-between align-items-center mt-2">
+
+        <div class="d-flex justify-content-between align-items-center mt-auto pt-2">
           <div>
-            <span class="h4 mb-0">${{ "%.2f"|format(item.price) }}</span>
+            <span class="fw-700" style="font-size:1rem;">{{ symbol }}{{ "%.2f"|format(item.price) }}</span>
             {% if item.cost %}
-            <small class="text-muted d-block">Margin: {{ "%.0f"|format((item.price - item.cost) / item.price * 100) }}%</small>
+            <span class="text-muted d-block" style="font-size:.72rem;">Margin: {{ "%.0f"|format((item.price - item.cost) / item.price * 100) }}%</span>
             {% endif %}
           </div>
-          <span class="badge bg-{% if item.is_available %}success{% else %}secondary{% endif %}">
+          <span class="badge {% if item.is_available %}bg-green-lt text-green{% else %}bg-secondary-lt text-secondary{% endif %}" style="font-size:.72rem;">
             {{ 'Available' if item.is_available else 'Unavailable' }}
           </span>
         </div>
@@ -107,101 +82,54 @@
 </div>
 {% else %}
 <div class="text-center py-5">
-  <svg xmlns="http://www.w3.org/2000/svg" class="icon mb-3" width="48" height="48" viewBox="0 0 24 24" stroke-width="1" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
-    <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
-    <path d="M3 3h18v18h-18z" />
-    <line x1="9" y1="9" x2="15" y2="15" />
-    <line x1="15" y1="9" x2="9" y2="15" />
-  </svg>
-  <h3>No items in this category</h3>
-  <p class="text-muted">Click "Add Menu Item" to create your first item</p>
-  <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#item-modal">
-    <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="20" height="20" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
-      <line x1="12" y1="5" x2="12" y2="19" />
-      <line x1="5" y1="12" x2="19" y2="12" />
-    </svg>
+  <svg xmlns="http://www.w3.org/2000/svg" class="mb-3 text-muted" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" opacity=".4"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="2"/></svg>
+  <h3 class="mb-1">No items in this category</h3>
+  <p class="text-muted">Click "Add Item" to create your first menu item.</p>
+  <a href="{{ url_for('hms.menu_item_add') }}" class="btn btn-primary">
+    <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
     Add Menu Item
-  </button>
+  </a>
 </div>
 {% endif %}
 
 <script>
-function editItem(itemId) {
-  // Use the existing function from item_form.html
-  if (typeof loadItemData === 'function') {
-    loadItemData(itemId);
-  } else {
-    // Fallback: redirect to edit page
-    window.location.href = `/restaurant/item/${itemId}/edit`;
-  }
-}
-
 function toggleAvailability(itemId) {
-  fetch(`/restaurant/item/${itemId}/toggle`, {
+  fetch('/hms/restaurant/menu/item/' + itemId + '/toggle', {
     method: 'POST',
-    headers: {
-      'X-CSRFToken': '{{ csrf_token() }}',
-      'Content-Type': 'application/json'
-    },
+    headers: { 'X-CSRFToken': '{{ csrf_token() }}', 'Content-Type': 'application/json' },
     body: JSON.stringify({})
   })
-  .then(response => response.json())
+  .then(r => r.json())
   .then(data => {
     if (data.success) {
-      // Update the UI
-      const badge = document.querySelector(`[data-item-id="${itemId}"] .badge`);
+      const card = document.querySelector('[data-item-id="' + itemId + '"]');
+      const badge = card ? card.querySelector('.badge') : null;
       if (badge) {
-        const isAvailable = badge.textContent.trim() === 'Available';
-        badge.textContent = isAvailable ? 'Unavailable' : 'Available';
-        badge.classList.toggle('bg-success', !isAvailable);
-        badge.classList.toggle('bg-secondary', isAvailable);
+        const isNowAvailable = data.is_available;
+        badge.textContent = isNowAvailable ? 'Available' : 'Unavailable';
+        badge.className = 'badge ' + (isNowAvailable ? 'bg-green-lt text-green' : 'bg-secondary-lt text-secondary');
+        badge.style.fontSize = '.72rem';
       }
     }
-  });
+  })
+  .catch(err => console.error('Toggle error:', err));
 }
 
 function deleteItem(itemId) {
-  if (confirm('Are you sure you want to delete this menu item? This action cannot be undone.')) {
-    fetch(`/restaurant/item/${itemId}/delete`, {
-      method: 'POST',
-      headers: {
-        'X-CSRFToken': '{{ csrf_token() }}',
-        'Content-Type': 'application/json'
-      }
-    })
-    .then(response => response.json())
-    .then(data => {
-      if (data.success) {
-        // Remove item from UI
-        const itemElement = document.querySelector(`[data-item-id="${itemId}"]`);
-        if (itemElement) {
-          itemElement.remove();
-        }
-        // Update category counts
-        updateCategoryCounts();
-      }
-    });
-  }
-}
-
-function updateCategoryCounts() {
-  fetch('/restaurant/api/categories')
-    .then(response => response.json())
-    .then(data => {
-      // Update the category tabs with new counts
-      data.categories.forEach(category => {
-        const tab = document.querySelector(`#cat-${category.id}-tab .badge`);
-        if (tab) {
-          tab.textContent = category.item_count;
-        }
-      });
-      
-      // Update the "All" tab count
-      const totalItems = data.categories.reduce((sum, cat) => sum + cat.item_count, 0);
-      const allTab = document.querySelector('#all-tab .badge');
-      if (allTab) {
-        allTab.textContent = totalItems;
-      }
-    });
+  if (!confirm('Delete this menu item? This action cannot be undone.')) return;
+  fetch('/hms/restaurant/menu/item/' + itemId + '/delete', {
+    method: 'POST',
+    headers: { 'X-CSRFToken': '{{ csrf_token() }}', 'Content-Type': 'application/json' }
+  })
+  .then(r => r.json())
+  .then(data => {
+    if (data.success) {
+      const el = document.querySelector('[data-item-id="' + itemId + '"]');
+      if (el) el.remove();
+    } else {
+      console.error('Delete failed:', data.error);
+    }
+  })
+  .catch(err => console.error('Delete error:', err));
 }
 </script>

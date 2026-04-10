@@ -1,94 +1,111 @@
 {% extends "hms/layout/base.html" %}
-{% block title %}Create Housekeeping Task{% endblock %}
+{% block title %}Create Housekeeping Task — Hotel PMS{% endblock %}
 
 {% block content %}
-<div class="container-xl">
-  <div class="page-header d-print-none">
+<div class="container-xl" style="max-width:680px;">
+
+  <!-- ── Header ── -->
+  <div class="page-header d-print-none mb-4">
     <div class="row align-items-center">
       <div class="col">
-        <h2 class="page-title">Create Housekeeping Task</h2>
-        <div class="text-muted mt-1">Schedule a cleaning or maintenance task</div>
+        <div class="d-flex align-items-center gap-2 mb-1">
+          <a href="{{ url_for('hms.housekeeping') }}" class="text-muted" style="font-size:.82rem;text-decoration:none;">
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
+            Housekeeping
+          </a>
+          <span class="text-muted" style="font-size:.82rem;">/</span>
+          <span style="font-size:.82rem;">Create Task</span>
+        </div>
+        <h2 class="page-title mb-0">Create Task</h2>
+        <div class="text-muted" style="font-size:.82rem;">Schedule a cleaning or maintenance task</div>
+      </div>
+      <div class="col-auto ms-auto">
+        <a href="{{ url_for('hms.housekeeping') }}" class="btn btn-outline-secondary">
+          <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
+          Back to Board
+        </a>
       </div>
     </div>
   </div>
 
   <div class="card">
     <div class="card-body">
-      <form method="POST" action="{{ '#' }}">
+      <form method="POST" action="#">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
-        
-        <div class="row">
+
+        <div class="row g-3">
+
+          <!-- Room -->
           <div class="col-md-6">
-            <div class="mb-3">
-              <label class="form-label required">Room</label>
-              <select name="room_id" class="form-select" required>
-                <option value="">Select a room</option>
-                {% for room in rooms %}
-                <option value="{{ room.id }}">{{ room.room_number }} - {{ room.room_type.name }} ({{ room.status }})</option>
-                {% endfor %}
-              </select>
-              <div class="form-text">Select the room that needs attention</div>
-            </div>
+            <label class="form-label required">Room</label>
+            <select name="room_id" class="form-select" required>
+              <option value="">Select a room…</option>
+              {% for room in rooms %}
+              <option value="{{ room.id }}">
+                {{ room.room_number }}{% if room.room_type %} — {{ room.room_type.name }}{% endif %}
+                ({{ room.status }})
+              </option>
+              {% endfor %}
+            </select>
           </div>
+
+          <!-- Task Type -->
           <div class="col-md-6">
-            <div class="mb-3">
-              <label class="form-label required">Task Type</label>
-              <select name="task_type" class="form-select" required>
-                <option value="regular_clean">Regular Clean</option>
-                <option value="deep_clean">Deep Clean</option>
-                <option value="checkout_clean">Checkout Clean</option>
-                <option value="maintenance">Maintenance</option>
-                <option value="inspection">Inspection</option>
-                <option value="other">Other</option>
-              </select>
-              <div class="form-text">Type of task to be performed</div>
-            </div>
+            <label class="form-label required">Task Type</label>
+            <select name="task_type" class="form-select" required>
+              {% for t in [
+                ('regular_clean','Regular Clean'),
+                ('deep_clean','Deep Clean'),
+                ('checkout_clean','Checkout Clean'),
+                ('maintenance','Maintenance'),
+                ('inspection','Inspection'),
+                ('other','Other')
+              ] %}
+              <option value="{{ t[0] }}">{{ t[1] }}</option>
+              {% endfor %}
+            </select>
           </div>
-        </div>
-        
-        <div class="row">
+
+          <!-- Priority -->
           <div class="col-md-6">
-            <div class="mb-3">
-              <label class="form-label required">Priority</label>
-              <select name="priority" class="form-select" required>
-                <option value="low">Low</option>
-                <option value="normal">Normal</option>
-                <option value="high">High</option>
-                <option value="urgent">Urgent</option>
-              </select>
-              <div class="form-text">How quickly this task needs to be completed</div>
-            </div>
+            <label class="form-label required">Priority</label>
+            <select name="priority" class="form-select" required>
+              <option value="low">Low</option>
+              <option value="normal" selected>Normal</option>
+              <option value="high">High</option>
+              <option value="urgent">Urgent</option>
+            </select>
           </div>
+
+          <!-- Estimated Duration -->
           <div class="col-md-6">
-            <div class="mb-3">
-              <label class="form-label">Estimated Duration (minutes)</label>
+            <label class="form-label">Est. Duration</label>
+            <div class="input-group">
               <input type="number" name="estimated_duration" class="form-control" min="1" placeholder="30">
-              <div class="form-text">Estimated time to complete the task</div>
+              <span class="input-group-text">min</span>
             </div>
           </div>
+
+          <!-- Notes -->
+          <div class="col-12">
+            <label class="form-label">Notes</label>
+            <textarea name="notes" class="form-control" rows="3"
+                      placeholder="Special instructions for housekeeping staff…"></textarea>
+          </div>
+
         </div>
-        
-        <div class="mb-3">
-          <label class="form-label">Notes</label>
-          <textarea name="notes" class="form-control" rows="3" placeholder="Special instructions or notes for the housekeeping staff..."></textarea>
-          <div class="form-text">Additional details about the task</div>
-        </div>
-        
-        <div class="form-footer">
+
+        <div class="form-footer mt-4">
           <button type="submit" class="btn btn-primary">
-            <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
-              <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
-              <line x1="12" y1="5" x2="12" y2="19" />
-              <line x1="5" y1="12" x2="19" y2="12" />
-            </svg>
+            <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
             Create Task
           </button>
-          <a href="{{ '#' }}" class="btn btn-link">
-            Cancel
-          </a>
+          <a href="{{ url_for('hms.housekeeping') }}" class="btn btn-link">Cancel</a>
         </div>
+
       </form>
     </div>
   </div>
+
 </div>
 {% endblock %}

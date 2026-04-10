@@ -421,25 +421,79 @@ def dashboard():
     total_occupied = q_rooms.filter(Room.status.in_(['Occupied', 'Dirty'])).count()
     occupancy_rate = round((total_occupied / total_rooms * 100) if total_rooms > 0 else 0, 1)
 
+    # Room status breakdown
+    h_filter = [active_hotel_id] if active_hotel_id else hotel_ids
+    room_statuses = db.session.query(Room.status, db.func.count(Room.id)).filter(
+        Room.hotel_id.in_(h_filter)
+    ).group_by(Room.status).all()
+    room_status_map = {s: c for s, c in room_statuses}
+    available_rooms = room_status_map.get('Available', 0)
+    dirty_rooms = room_status_map.get('Dirty', 0)
+    maintenance_rooms = room_status_map.get('Maintenance', 0)
+
+    # Revenue comparisons
+    yesterday = today - timedelta(days=1)
+    revenue_yesterday = db.session.query(db.func.coalesce(db.func.sum(Payment.amount), 0)).filter(
+        Payment.hotel_id.in_(h_filter), Payment.deleted_at.is_(None),
+        db.func.date(Payment.created_at) == yesterday
+    ).scalar() or 0
+
+    first_of_month = today.replace(day=1)
+    revenue_mtd = db.session.query(db.func.coalesce(db.func.sum(Payment.amount), 0)).filter(
+        Payment.hotel_id.in_(h_filter), Payment.deleted_at.is_(None),
+        Payment.created_at >= datetime.combine(first_of_month, datetime.min.time())
+    ).scalar() or 0
+
+    # Today's arrivals and departures
+    todays_arrivals = q_bookings.filter(
+        db.func.date(Booking.check_in_date) == today,
+        Booking.status.in_(['confirmed', 'pending'])
+    ).order_by(Booking.check_in_date).limit(8).all()
+
+    todays_departures = q_bookings.filter(
+        db.func.date(Booking.check_out_date) == today,
+        Booking.status == 'checked_in'
+    ).order_by(Booking.check_out_date).limit(8).all()
+
+    # Pending housekeeping tasks
+    pending_hk = HousekeepingTask.query.filter(
+        HousekeepingTask.hotel_id.in_(h_filter),
+        HousekeepingTask.status.in_(['pending', 'in_progress'])
+    ).count()
+
+    # Low stock items
+    low_stock_count = InventoryItem.query.filter(
+        InventoryItem.hotel_id.in_(h_filter),
+        InventoryItem.deleted_at.is_(None),
+        InventoryItem.current_stock <= InventoryItem.reorder_level
+    ).count()
+
     stats = {
         "total_rooms": total_rooms,
         "occupied_rooms": occupied_rooms,
+        "available_rooms": available_rooms,
+        "dirty_rooms": dirty_rooms,
+        "maintenance_rooms": maintenance_rooms,
         "revenue_today": float(revenue_today),
+        "revenue_yesterday": float(revenue_yesterday),
+        "revenue_mtd": float(revenue_mtd),
         "total_bookings": total_bookings,
         "check_ins_today": check_ins_today,
         "check_outs_today": check_outs_today,
-        "occupancy_rate": occupancy_rate
+        "occupancy_rate": occupancy_rate,
+        "pending_housekeeping": pending_hk,
+        "low_stock_count": low_stock_count,
     }
 
-    recent_bookings = q_bookings.order_by(Booking.created_at.desc()).limit(3).all()
+    recent_bookings = q_bookings.order_by(Booking.created_at.desc()).limit(5).all()
 
     revenue_labels = []
     revenue_data = []
-    for i in range(6, -1, -1):
+    for i in range(13, -1, -1):
         d = today - timedelta(days=i)
-        revenue_labels.append(d.strftime("%a %d"))
+        revenue_labels.append(d.strftime("%b %d"))
         rev = db.session.query(db.func.coalesce(db.func.sum(Payment.amount), 0)).filter(
-            Payment.hotel_id.in_(hotel_ids) if not active_hotel_id else (Payment.hotel_id == active_hotel_id),
+            Payment.hotel_id.in_(h_filter),
             Payment.deleted_at.is_(None),
             db.func.date(Payment.created_at) == d
         ).scalar()
@@ -448,29 +502,21 @@ def dashboard():
     notifications = Notification.query.filter_by(
         user_id=current_user.id,
         is_archived=False
-    ).order_by(Notification.created_at.desc()).limit(5).all()
-    
-    alerts = []
-    for n in notifications:
-        alerts.append({
-            'title': n.title,
-            'message': n.message,
-            'level': n.color or 'info',
-            'severity': 'high' if n.color == 'danger' else 'medium',
-            'type': n.type,
-            'link': n.link,
-            'icon': n.icon
-        })
-    
-    if not alerts:
-        alerts = [
-            {'title': 'Welcome!', 'message': 'Your HMS dashboard is ready', 'level': 'info', 'severity': 'low', 'type': 'system'},
-        ]
+    ).order_by(Notification.created_at.desc()).limit(6).all()
 
-    return render_template("hms/dashboard/index.html", stats=stats, recent_bookings=recent_bookings,
-                          active_hotel_id=active_hotel_id, user=current_user,
-                          revenue_labels=revenue_labels, revenue_data=revenue_data,
-                          alerts=alerts)
+    alerts = [{'title': n.title, 'message': n.message, 'level': n.color or 'info',
+               'type': n.type, 'link': n.link} for n in notifications]
+
+    return render_template("hms/dashboard/index.html",
+                           stats=stats,
+                           recent_bookings=recent_bookings,
+                           todays_arrivals=todays_arrivals,
+                           todays_departures=todays_departures,
+                           active_hotel_id=active_hotel_id,
+                           revenue_labels=revenue_labels,
+                           revenue_data=revenue_data,
+                           alerts=alerts,
+                           today=today)
 
 
 @hms_bp.route('/rooms')
@@ -503,6 +549,56 @@ def rooms_types():
 
     types = RoomType.query.filter_by(hotel_id=hid).all()
     return render_template("hms/rooms/types.html", room_types=types)
+
+
+@hms_bp.route('/rooms/types/<int:type_id>/update', methods=['POST'])
+@login_required
+def rooms_type_update(type_id):
+    rt = RoomType.query.get_or_404(type_id)
+    if not require_hotel_access(rt.hotel_id):
+        flash("Access denied.", "danger")
+        return redirect(url_for("hms.rooms_types"))
+
+    rt.name = request.form.get("name", rt.name).strip()
+    base_price = request.form.get("base_price", type=float)
+    if base_price is not None:
+        rt.base_price = base_price
+    capacity = request.form.get("capacity", type=int)
+    if capacity:
+        rt.capacity = capacity
+    rt.size_sqm = request.form.get("size_sqm", rt.size_sqm or "").strip() or rt.size_sqm
+    rt.bed_type = request.form.get("bed_type", rt.bed_type or "").strip() or rt.bed_type
+    tax_rate = request.form.get("tax_rate", type=float)
+    if tax_rate is not None:
+        rt.tax_rate = tax_rate
+    rt.short_description = request.form.get("short_description", rt.short_description or "").strip()
+    rt.description = request.form.get("description", rt.description or "").strip()
+    amenities_input = request.form.get("amenities", "").strip()
+    rt.amenities = [a.strip() for a in amenities_input.split(',') if a.strip()] if amenities_input else []
+    rt.is_active = "is_active" in request.form
+    db.session.commit()
+    flash(f"Room type '{rt.name}' updated.", "success")
+    return redirect(url_for("hms.rooms_types"))
+
+
+@hms_bp.route('/rooms/types/<int:type_id>/delete', methods=['POST'])
+@login_required
+def rooms_type_delete(type_id):
+    rt = RoomType.query.get_or_404(type_id)
+    if not require_hotel_access(rt.hotel_id):
+        flash("Access denied.", "danger")
+        return redirect(url_for("hms.rooms_types"))
+
+    room_count = Room.query.filter_by(room_type_id=rt.id).count()
+    if room_count:
+        flash(f"Cannot delete '{rt.name}' — {room_count} room(s) still use this type.", "warning")
+        return redirect(url_for("hms.rooms_types"))
+
+    name = rt.name
+    db.session.delete(rt)
+    db.session.commit()
+    flash(f"Room type '{name}' deleted.", "success")
+    return redirect(url_for("hms.rooms_types"))
 
 
 @hms_bp.route('/rooms/types/add', methods=['GET', 'POST'])
@@ -1456,17 +1552,30 @@ def accounting():
     today = date.today()
     first_day = today.replace(day=1)
 
-    revenue_accounts = ChartOfAccount.query.filter_by(
-        hotel_id=hotel_id, type="Revenue"
+    revenue_accounts = ChartOfAccount.query.filter(
+        ChartOfAccount.hotel_id == hotel_id,
+        db.func.lower(ChartOfAccount.type) == 'revenue'
     ).all()
     revenue_account_ids = [a.id for a in revenue_accounts]
-    
-    expense_accounts = ChartOfAccount.query.filter_by(
-        hotel_id=hotel_id, type="Expense"
+
+    expense_accounts = ChartOfAccount.query.filter(
+        ChartOfAccount.hotel_id == hotel_id,
+        db.func.lower(ChartOfAccount.type) == 'expense'
     ).all()
     expense_account_ids = [a.id for a in expense_accounts]
 
-    revenue = 0
+    # Revenue from room booking payments (authoritative source for room income)
+    # Use datetime boundaries since Payment.created_at is a timestamp column
+    first_day_dt = datetime.combine(first_day, datetime.min.time())
+    revenue_from_payments = db.session.query(db.func.coalesce(db.func.sum(Payment.amount), 0)).filter(
+        Payment.hotel_id == hotel_id,
+        Payment.created_at >= first_day_dt,
+        Payment.status == 'completed',
+        Payment.deleted_at.is_(None)
+    ).scalar()
+
+    # Revenue from manual journal entries (F&B, events, other non-room income)
+    revenue_from_journal = 0
     if revenue_account_ids:
         revenue_from_journal = db.session.query(db.func.coalesce(db.func.sum(JournalLine.credit), 0)).join(
             JournalEntry
@@ -1477,15 +1586,8 @@ def accounting():
             JournalLine.account_id.in_(revenue_account_ids),
             JournalLine.deleted_at.is_(None)
         ).scalar()
-        revenue += revenue_from_journal
-    
-    revenue_from_payments = db.session.query(db.func.coalesce(db.func.sum(Payment.amount), 0)).filter(
-        Payment.hotel_id == hotel_id,
-        Payment.created_at >= first_day,
-        Payment.status == 'completed',
-        Payment.deleted_at.is_(None)
-    ).scalar()
-    revenue += revenue_from_payments
+
+    revenue = revenue_from_payments + revenue_from_journal
 
     expenses = 0
     if expense_account_ids:
@@ -1529,14 +1631,38 @@ def accounting_chart():
         flash("Access denied.", "danger")
         return redirect(url_for("hms.dashboard"))
     
-    accounts = ChartOfAccount.query.filter_by(hotel_id=hotel_id).order_by(
-        ChartOfAccount.type, ChartOfAccount.name
-    ).all()
-    
-    for account in accounts:
-        lines = JournalLine.query.filter_by(account_id=account.id).all()
-        account.balance = sum((line.debit or 0) - (line.credit or 0) for line in lines)
-    
+    # Single aggregated query — avoids N+1 per account
+    balance_rows = db.session.query(
+        ChartOfAccount.id,
+        ChartOfAccount.name,
+        ChartOfAccount.type,
+        db.func.coalesce(db.func.sum(JournalLine.debit), 0).label('total_debit'),
+        db.func.coalesce(db.func.sum(JournalLine.credit), 0).label('total_credit'),
+    ).outerjoin(
+        JournalLine, db.and_(
+            JournalLine.account_id == ChartOfAccount.id,
+            JournalLine.deleted_at.is_(None)
+        )
+    ).filter(
+        ChartOfAccount.hotel_id == hotel_id
+    ).group_by(
+        ChartOfAccount.id, ChartOfAccount.name, ChartOfAccount.type
+    ).order_by(ChartOfAccount.type, ChartOfAccount.name).all()
+
+    accounts = []
+    for row in balance_rows:
+        raw = float(row.total_debit) - float(row.total_credit)
+        # Revenue/Liability: normal balance is credit (flip sign to show positive)
+        balance = -raw if row.type.lower() in ('revenue', 'liability') else raw
+        accounts.append({
+            'id': row.id,
+            'name': row.name,
+            'type': row.type,
+            'total_debit': float(row.total_debit),
+            'total_credit': float(row.total_credit),
+            'balance': balance,
+        })
+
     return render_template("hms/accounting/chart.html", accounts=accounts)
 
 
@@ -1569,15 +1695,18 @@ def accounting_entry_create():
     if request.method == 'POST':
         entry_date = request.form.get("date", date.today().isoformat())
         reference = request.form.get("reference", "")
+        description = request.form.get("description", "")
         account_ids = request.form.getlist("account_id[]")
         debits = request.form.getlist("debit[]")
         credits = request.form.getlist("credit[]")
-        
+
         try:
             entry = JournalEntry(
                 hotel_id=hotel_id,
                 date=datetime.strptime(entry_date, '%Y-%m-%d').date(),
-                reference=reference
+                reference=reference,
+                description=description or None,
+                created_by=current_user.id
             )
             db.session.add(entry)
             db.session.flush()
@@ -1589,11 +1718,20 @@ def accounting_entry_create():
                 if acc_id and (debit_val or credit_val):
                     debit = float(debit_val) if debit_val else 0
                     credit = float(credit_val) if credit_val else 0
-                    
+
                     if debit > 0 or credit > 0:
+                        # Validate account belongs to this hotel
+                        account = ChartOfAccount.query.filter_by(
+                            id=int(acc_id), hotel_id=hotel_id
+                        ).first()
+                        if not account:
+                            db.session.rollback()
+                            flash("Invalid account selected.", "danger")
+                            return redirect(url_for("hms.accounting_entry_create"))
+
                         line = JournalLine(
                             journal_entry_id=entry.id,
-                            account_id=int(acc_id),
+                            account_id=account.id,
                             debit=debit,
                             credit=credit
                         )
@@ -1601,6 +1739,11 @@ def accounting_entry_create():
                         total_debit += debit
                         total_credit += credit
             
+            if total_debit == 0 and total_credit == 0:
+                db.session.rollback()
+                flash("Journal entry must have at least one line with a non-zero amount.", "danger")
+                return redirect(url_for("hms.accounting_entry_create"))
+
             if abs(total_debit - total_credit) > 0.01:
                 db.session.rollback()
                 flash("Debits and credits must balance!", "danger")
@@ -1645,8 +1788,9 @@ def accounting_reports():
             start_date = today - timedelta(days=today.weekday())
             end_date = today
         elif period == 'last_week':
-            start_date = today - timedelta(days=today.weekday() + 7)
-            end_date = today - timedelta(days=today.weekday() + 1)
+            this_monday = today - timedelta(days=today.weekday())
+            start_date = this_monday - timedelta(days=7)
+            end_date = this_monday - timedelta(days=1)
         elif period == 'this_month':
             start_date = today.replace(day=1)
             end_date = today.replace(day=monthrange(today.year, today.month)[1])
@@ -1686,16 +1830,6 @@ def accounting_reports():
             Payment.created_at <= datetime.combine(end_date, datetime.max.time())
         ).scalar() or 0
         
-        if total_payment_revenue == 0:
-            total_payment_revenue = db.session.query(db.func.coalesce(db.func.sum(Payment.amount), 0)).join(
-                Booking
-            ).filter(
-                Payment.hotel_id == hotel_id,
-                Payment.deleted_at.is_(None),
-                Payment.status.in_(['completed', 'confirmed'])
-            ).scalar() or 0
-            flash("No payment data for selected period. Showing all-time data.", "info")
-
         payment_methods = db.session.query(
             Payment.payment_method,
             db.func.coalesce(db.func.sum(Payment.amount), 0)
@@ -1706,24 +1840,18 @@ def accounting_reports():
             Payment.created_at >= datetime.combine(start_date, datetime.min.time()),
             Payment.created_at <= datetime.combine(end_date, datetime.max.time())
         ).group_by(Payment.payment_method).all()
-        
-        if not payment_methods:
-            payment_methods = db.session.query(
-                Payment.payment_method,
-                db.func.coalesce(db.func.sum(Payment.amount), 0)
-            ).filter(
-                Payment.hotel_id == hotel_id,
-                Payment.deleted_at.is_(None),
-                Payment.status.in_(['completed', 'confirmed'])
-            ).group_by(Payment.payment_method).all()
 
         total_expenses = db.session.query(db.func.coalesce(db.func.sum(JournalLine.debit), 0)).join(
-            JournalEntry
+            JournalEntry, JournalEntry.id == JournalLine.journal_entry_id
+        ).join(
+            ChartOfAccount, ChartOfAccount.id == JournalLine.account_id
         ).filter(
             JournalEntry.hotel_id == hotel_id,
             JournalEntry.date >= start_date,
             JournalEntry.date <= end_date,
-            JournalEntry.deleted_at.is_(None)
+            JournalEntry.deleted_at.is_(None),
+            JournalLine.deleted_at.is_(None),
+            db.func.lower(ChartOfAccount.type) == 'expense'
         ).scalar() or 0
 
         expenses_by_category = db.session.query(
@@ -1735,7 +1863,7 @@ def accounting_reports():
             JournalEntry, JournalEntry.id == JournalLine.journal_entry_id
         ).filter(
             ChartOfAccount.hotel_id == hotel_id,
-            ChartOfAccount.type.in_(['expense', 'Expense', 'EXPENSE']),
+            db.func.lower(ChartOfAccount.type) == 'expense',
             JournalEntry.hotel_id == hotel_id,
             JournalEntry.date >= start_date,
             JournalEntry.date <= end_date,
@@ -1749,11 +1877,17 @@ def accounting_reports():
             Invoice.status.in_(['Unpaid', 'Partial'])
         ).scalar() or 0
 
+        # Accounts payable: liability credits within the selected period
         accounts_payable = db.session.query(db.func.coalesce(db.func.sum(JournalLine.credit), 0)).join(
-            ChartOfAccount
+            ChartOfAccount, ChartOfAccount.id == JournalLine.account_id
+        ).join(
+            JournalEntry, JournalEntry.id == JournalLine.journal_entry_id
         ).filter(
             ChartOfAccount.hotel_id == hotel_id,
-            ChartOfAccount.type.in_(['liability', 'Liability', 'LIABILITY']),
+            db.func.lower(ChartOfAccount.type) == 'liability',
+            JournalEntry.date >= start_date,
+            JournalEntry.date <= end_date,
+            JournalEntry.deleted_at.is_(None),
             JournalLine.deleted_at.is_(None)
         ).scalar() or 0
 
@@ -1771,17 +1905,6 @@ def accounting_reports():
             db.func.date_trunc('day', Payment.created_at)
         ).all()
         
-        if not daily_revenue:
-            daily_revenue = db.session.query(
-                db.func.date_trunc('day', Payment.created_at).label('payment_date'),
-                db.func.coalesce(db.func.sum(Payment.amount), 0)
-            ).filter(
-                Payment.hotel_id == hotel_id,
-                Payment.deleted_at.is_(None),
-                Payment.status.in_(['completed', 'confirmed'])
-            ).group_by(db.func.date_trunc('day', Payment.created_at)).order_by(
-                db.func.date_trunc('day', Payment.created_at)
-            ).limit(7).all()
 
         gross_profit = float(total_payment_revenue) - float(total_expenses)
         gross_profit_margin = (gross_profit / float(total_payment_revenue) * 100) if total_payment_revenue > 0 else 0
@@ -1826,6 +1949,369 @@ def accounting_reports():
         print(f"ERROR in accounting_reports: {error_detail}")
         flash(f"Error generating report: {str(e)}", "danger")
         return redirect(url_for("hms.dashboard"))
+
+
+@hms_bp.route('/accounting/profit-loss')
+@login_required
+def accounting_profit_loss():
+    """Profit & Loss Statement"""
+    hotel_id = get_current_hotel_id()
+    if not hotel_id or not can_access_module('accounting'):
+        flash("Access denied.", "danger")
+        return redirect(url_for("hms.dashboard"))
+
+    period = request.args.get('period', 'this_month')
+    today = date.today()
+
+    if period == 'this_month':
+        start_date = today.replace(day=1)
+        end_date = today.replace(day=monthrange(today.year, today.month)[1])
+    elif period == 'last_month':
+        first_day = today.replace(day=1) - timedelta(days=1)
+        start_date = first_day.replace(day=1)
+        end_date = first_day.replace(day=monthrange(first_day.year, first_day.month)[1])
+    elif period == 'this_quarter':
+        quarter = (today.month - 1) // 3 + 1
+        start_date = date(today.year, (quarter - 1) * 3 + 1, 1)
+        end_date = date(today.year, quarter * 3, monthrange(today.year, quarter * 3)[1])
+    elif period == 'this_year':
+        start_date = today.replace(month=1, day=1)
+        end_date = today.replace(month=12, day=31)
+    else:
+        start_date = today.replace(day=1)
+        end_date = today
+
+    # Revenue: credits on Revenue accounts + completed payments
+    revenue_rows = db.session.query(
+        ChartOfAccount.name,
+        db.func.coalesce(db.func.sum(JournalLine.credit), 0).label('balance')
+    ).join(JournalLine, JournalLine.account_id == ChartOfAccount.id
+    ).join(JournalEntry, JournalEntry.id == JournalLine.journal_entry_id
+    ).filter(
+        ChartOfAccount.hotel_id == hotel_id,
+        db.func.lower(ChartOfAccount.type) == 'revenue',
+        JournalEntry.date >= start_date,
+        JournalEntry.date <= end_date,
+        JournalEntry.deleted_at.is_(None),
+        JournalLine.deleted_at.is_(None)
+    ).group_by(ChartOfAccount.name).all()
+
+    payment_revenue = db.session.query(
+        db.func.coalesce(db.func.sum(Payment.amount), 0)
+    ).filter(
+        Payment.hotel_id == hotel_id,
+        Payment.status == 'completed',
+        Payment.deleted_at.is_(None),
+        Payment.created_at >= datetime.combine(start_date, datetime.min.time()),
+        Payment.created_at <= datetime.combine(end_date, datetime.max.time())
+    ).scalar() or 0
+
+    revenues = [{'name': r.name, 'balance': float(r.balance)} for r in revenue_rows]
+    if float(payment_revenue) > 0:
+        revenues.insert(0, {'name': 'Room & Booking Payments', 'balance': float(payment_revenue)})
+    total_revenue = sum(r['balance'] for r in revenues)
+
+    # Expenses: debits on Expense accounts
+    expense_rows = db.session.query(
+        ChartOfAccount.name,
+        db.func.coalesce(db.func.sum(JournalLine.debit), 0).label('balance')
+    ).join(JournalLine, JournalLine.account_id == ChartOfAccount.id
+    ).join(JournalEntry, JournalEntry.id == JournalLine.journal_entry_id
+    ).filter(
+        ChartOfAccount.hotel_id == hotel_id,
+        db.func.lower(ChartOfAccount.type) == 'expense',
+        JournalEntry.date >= start_date,
+        JournalEntry.date <= end_date,
+        JournalEntry.deleted_at.is_(None),
+        JournalLine.deleted_at.is_(None)
+    ).group_by(ChartOfAccount.name).all()
+
+    expenses = [{'name': e.name, 'balance': float(e.balance)} for e in expense_rows]
+    total_expense = sum(e['balance'] for e in expenses)
+    net_income = total_revenue - total_expense
+
+    return render_template("hms/accounting/profit_loss.html",
+                           revenues=revenues,
+                           expenses=expenses,
+                           total_revenue=total_revenue,
+                           total_expense=total_expense,
+                           net_income=net_income,
+                           start_date=start_date,
+                           end_date=end_date,
+                           period=period)
+
+
+@hms_bp.route('/accounting/trial-balance')
+@login_required
+def accounting_trial_balance():
+    """Trial Balance"""
+    hotel_id = get_current_hotel_id()
+    if not hotel_id or not can_access_module('accounting'):
+        flash("Access denied.", "danger")
+        return redirect(url_for("hms.dashboard"))
+
+    rows = db.session.query(
+        ChartOfAccount.id,
+        ChartOfAccount.name,
+        ChartOfAccount.type,
+        db.func.coalesce(db.func.sum(JournalLine.debit), 0).label('total_debits'),
+        db.func.coalesce(db.func.sum(JournalLine.credit), 0).label('total_credits'),
+    ).outerjoin(
+        JournalLine, db.and_(
+            JournalLine.account_id == ChartOfAccount.id,
+            JournalLine.deleted_at.is_(None)
+        )
+    ).filter(
+        ChartOfAccount.hotel_id == hotel_id
+    ).group_by(
+        ChartOfAccount.id, ChartOfAccount.name, ChartOfAccount.type
+    ).order_by(ChartOfAccount.type, ChartOfAccount.name).all()
+
+    accounts = []
+    for row in rows:
+        td = float(row.total_debits)
+        tc = float(row.total_credits)
+        raw = td - tc
+        balance = -raw if row.type.lower() in ('revenue', 'liability') else raw
+        accounts.append({
+            'name': row.name,
+            'type': row.type,
+            'total_debits': td,
+            'total_credits': tc,
+            'balance': balance,
+        })
+
+    return render_template("hms/accounting/trial_balance.html", accounts=accounts)
+
+
+@hms_bp.route('/accounting/reports/export')
+@login_required
+def accounting_reports_export():
+    """Export financial report as CSV"""
+    import csv, io
+    hotel_id = get_current_hotel_id()
+    if not hotel_id or not can_access_module('accounting'):
+        flash("Access denied.", "danger")
+        return redirect(url_for("hms.dashboard"))
+
+    period = request.args.get('period', 'this_month')
+    custom_start = request.args.get('start_date')
+    custom_end = request.args.get('end_date')
+    today = date.today()
+
+    if custom_start and custom_end:
+        start_date = datetime.strptime(custom_start, '%Y-%m-%d').date()
+        end_date = datetime.strptime(custom_end, '%Y-%m-%d').date()
+    elif period == 'today':
+        start_date = end_date = today
+    elif period == 'this_week':
+        start_date = today - timedelta(days=today.weekday())
+        end_date = today
+    elif period == 'last_week':
+        this_monday = today - timedelta(days=today.weekday())
+        start_date = this_monday - timedelta(days=7)
+        end_date = this_monday - timedelta(days=1)
+    elif period == 'last_month':
+        first_day = today.replace(day=1) - timedelta(days=1)
+        start_date = first_day.replace(day=1)
+        end_date = first_day.replace(day=monthrange(first_day.year, first_day.month)[1])
+    elif period == 'this_quarter':
+        quarter = (today.month - 1) // 3 + 1
+        start_date = date(today.year, (quarter - 1) * 3 + 1, 1)
+        end_date = date(today.year, quarter * 3, monthrange(today.year, quarter * 3)[1])
+    elif period == 'this_year':
+        start_date = today.replace(month=1, day=1)
+        end_date = today.replace(month=12, day=31)
+    else:
+        start_date = today.replace(day=1)
+        end_date = today.replace(day=monthrange(today.year, today.month)[1])
+
+    output = io.StringIO()
+    writer = csv.writer(output)
+
+    # Summary section
+    writer.writerow(['Financial Report', f'{start_date} to {end_date}'])
+    writer.writerow([])
+
+    payment_revenue = db.session.query(db.func.coalesce(db.func.sum(Payment.amount), 0)).filter(
+        Payment.hotel_id == hotel_id,
+        Payment.status.in_(['completed', 'confirmed']),
+        Payment.deleted_at.is_(None),
+        Payment.created_at >= datetime.combine(start_date, datetime.min.time()),
+        Payment.created_at <= datetime.combine(end_date, datetime.max.time())
+    ).scalar() or 0
+
+    total_expenses = db.session.query(db.func.coalesce(db.func.sum(JournalLine.debit), 0)).join(
+        JournalEntry, JournalEntry.id == JournalLine.journal_entry_id
+    ).join(ChartOfAccount, ChartOfAccount.id == JournalLine.account_id).filter(
+        JournalEntry.hotel_id == hotel_id,
+        JournalEntry.date >= start_date,
+        JournalEntry.date <= end_date,
+        JournalEntry.deleted_at.is_(None),
+        JournalLine.deleted_at.is_(None),
+        db.func.lower(ChartOfAccount.type) == 'expense'
+    ).scalar() or 0
+
+    writer.writerow(['SUMMARY'])
+    writer.writerow(['Metric', 'Amount'])
+    writer.writerow(['Payment Revenue', float(payment_revenue)])
+    writer.writerow(['Total Expenses', float(total_expenses)])
+    writer.writerow(['Gross Profit', float(payment_revenue) - float(total_expenses)])
+    writer.writerow([])
+
+    # Payment method breakdown
+    writer.writerow(['REVENUE BY PAYMENT METHOD'])
+    writer.writerow(['Method', 'Amount'])
+    methods = db.session.query(
+        Payment.payment_method,
+        db.func.coalesce(db.func.sum(Payment.amount), 0)
+    ).filter(
+        Payment.hotel_id == hotel_id,
+        Payment.deleted_at.is_(None),
+        Payment.status.in_(['completed', 'confirmed']),
+        Payment.created_at >= datetime.combine(start_date, datetime.min.time()),
+        Payment.created_at <= datetime.combine(end_date, datetime.max.time())
+    ).group_by(Payment.payment_method).all()
+    for m in methods:
+        writer.writerow([m[0] or 'Unknown', float(m[1])])
+    writer.writerow([])
+
+    # Expenses by account
+    writer.writerow(['EXPENSES BY ACCOUNT'])
+    writer.writerow(['Account', 'Amount'])
+    exp_cats = db.session.query(
+        ChartOfAccount.name,
+        db.func.coalesce(db.func.sum(JournalLine.debit), 0)
+    ).join(JournalLine, JournalLine.account_id == ChartOfAccount.id
+    ).join(JournalEntry, JournalEntry.id == JournalLine.journal_entry_id
+    ).filter(
+        ChartOfAccount.hotel_id == hotel_id,
+        db.func.lower(ChartOfAccount.type) == 'expense',
+        JournalEntry.date >= start_date,
+        JournalEntry.date <= end_date,
+        JournalEntry.deleted_at.is_(None),
+        JournalLine.deleted_at.is_(None)
+    ).group_by(ChartOfAccount.name).all()
+    for cat in exp_cats:
+        writer.writerow([cat[0] or 'Other', float(cat[1])])
+    writer.writerow([])
+
+    # Journal entries detail
+    writer.writerow(['JOURNAL ENTRIES'])
+    writer.writerow(['Date', 'Reference', 'Description', 'Account', 'Debit', 'Credit', 'Created By'])
+    entries = db.session.query(
+        JournalEntry.date,
+        JournalEntry.reference,
+        JournalEntry.description,
+        ChartOfAccount.name,
+        JournalLine.debit,
+        JournalLine.credit,
+        JournalEntry.created_by
+    ).join(JournalLine, JournalLine.journal_entry_id == JournalEntry.id
+    ).join(ChartOfAccount, ChartOfAccount.id == JournalLine.account_id
+    ).filter(
+        JournalEntry.hotel_id == hotel_id,
+        JournalEntry.date >= start_date,
+        JournalEntry.date <= end_date,
+        JournalEntry.deleted_at.is_(None),
+        JournalLine.deleted_at.is_(None)
+    ).order_by(JournalEntry.date, JournalEntry.id).all()
+
+    from app.models import User as _User
+    user_cache = {}
+    for e in entries:
+        if e.created_by and e.created_by not in user_cache:
+            u = _User.query.get(e.created_by)
+            user_cache[e.created_by] = u.email if u else str(e.created_by)
+        creator = user_cache.get(e.created_by, '') if e.created_by else ''
+        writer.writerow([e.date, e.reference or '', e.description or '', e.name,
+                         float(e.debit), float(e.credit), creator])
+
+    csv_data = output.getvalue()
+    output.close()
+
+    from flask import Response
+    filename = f"financial_report_{start_date}_{end_date}.csv"
+    return Response(
+        csv_data,
+        mimetype='text/csv',
+        headers={'Content-Disposition': f'attachment; filename="{filename}"'}
+    )
+
+
+@hms_bp.route('/inventory/purchase-orders/<int:po_id>/receive', methods=['POST'])
+@login_required
+def purchase_order_receive(po_id):
+    """Mark a purchase order as received and auto-post expense journal entry"""
+    hotel_id = get_current_hotel_id()
+    if not hotel_id or not can_access_module('inventory'):
+        flash("Access denied.", "danger")
+        return redirect(url_for("hms.inventory_purchase_orders"))
+
+    po = PurchaseOrder.query.filter_by(id=po_id, hotel_id=hotel_id).first_or_404()
+
+    if po.status == 'received':
+        flash("Purchase order is already marked as received.", "warning")
+        return redirect(url_for("hms.view_po", po_id=po_id))
+
+    try:
+        po.status = 'received'
+        po.received_date = datetime.utcnow()
+        po.received_by = current_user.id
+
+        # Auto-post journal entry: Debit Inventory/Expense, Credit Accounts Payable
+        expense_account = ChartOfAccount.query.filter(
+            ChartOfAccount.hotel_id == hotel_id,
+            db.or_(
+                db.func.lower(ChartOfAccount.name).like('%inventory%'),
+                db.func.lower(ChartOfAccount.name).like('%supplies%'),
+                db.func.lower(ChartOfAccount.name).like('%purchase%'),
+            ),
+            db.func.lower(ChartOfAccount.type).in_(['expense', 'asset'])
+        ).first()
+
+        payable_account = ChartOfAccount.query.filter(
+            ChartOfAccount.hotel_id == hotel_id,
+            db.or_(
+                db.func.lower(ChartOfAccount.name).like('%payable%'),
+                db.func.lower(ChartOfAccount.name).like('%accounts payable%'),
+            ),
+            db.func.lower(ChartOfAccount.type) == 'liability'
+        ).first()
+
+        if expense_account and payable_account and float(po.total_amount) > 0:
+            entry = JournalEntry(
+                hotel_id=hotel_id,
+                date=date.today(),
+                reference=po.po_number,
+                description=f"Received PO {po.po_number} from {po.supplier.name}",
+                created_by=current_user.id
+            )
+            db.session.add(entry)
+            db.session.flush()
+            db.session.add(JournalLine(
+                journal_entry_id=entry.id,
+                account_id=expense_account.id,
+                debit=float(po.total_amount),
+                credit=0
+            ))
+            db.session.add(JournalLine(
+                journal_entry_id=entry.id,
+                account_id=payable_account.id,
+                debit=0,
+                credit=float(po.total_amount)
+            ))
+            flash(f"PO received and journal entry posted (Ref: {po.po_number}).", "success")
+        else:
+            flash("PO marked received. No matching accounts found — post journal entry manually.", "warning")
+
+        db.session.commit()
+
+    except Exception as e:
+        db.session.rollback()
+        flash(f"Error receiving PO: {str(e)}", "danger")
+
+    return redirect(url_for("hms.view_po", po_id=po_id))
 
 
 @hms_bp.route('/inventory')

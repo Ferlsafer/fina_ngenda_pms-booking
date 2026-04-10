@@ -521,11 +521,14 @@ class JournalEntry(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     hotel_id = db.Column(db.Integer, db.ForeignKey("hotels.id"), nullable=False)
     reference = db.Column(db.String(100))
+    description = db.Column(db.Text, nullable=True)
     date = db.Column(db.Date, nullable=False)
+    created_by = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=True)
     created_at = db.Column(db.DateTime, server_default=db.func.now())
     deleted_at = db.Column(db.DateTime, nullable=True)
 
     lines = db.relationship("JournalLine", back_populates="journal_entry", lazy="dynamic")
+    creator = db.relationship("User", foreign_keys=[created_by])
 
 
 class JournalLine(db.Model):
