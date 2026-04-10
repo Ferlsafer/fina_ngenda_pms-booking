@@ -1,40 +1,259 @@
 {% extends "hms/layout/base.html" %}
-{% block title %}Payment - Hotel PMS{% endblock %}
+{% block title %}Payment — Booking #{{ booking.booking_reference or booking.id }}{% endblock %}
+
 {% block content %}
-<div class="page-header d-print-none">
-  <h2 class="page-title">Add payment — Booking #{{ booking.id }}</h2>
-</div>
-<div class="row">
-  <div class="col-md-6">
-    <div class="card">
-      <div class="card-body">
-        <p><strong>Guest:</strong> {{ booking.guest.name }}</p>
-        <p><strong>Invoice total:</strong> {{ invoice.total }}</p>
-        <p><strong>Paid so far:</strong> {{ paid_total }}</p>
-        <p><strong>Status:</strong> {{ invoice.status }}</p>
-      </div>
-    </div>
-    <div class="card mt-3">
-      <div class="card-body">
-        <form method="post" action="{{ url_for('hms.bookings_payment', booking_id=booking.id) }}">
-          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
-          <div class="mb-3">
-            <label class="form-label">Amount</label>
-            <input type="number" name="amount" class="form-control" step="0.01" min="0.01" required>
+{% set symbol = get_currency_symbol() %}
+{% set balance = (invoice.total|float) - (paid_total|float) %}
+{% set is_paid = balance <= 0 %}
+
+<style>
+  .pay-method-card {
+    border: 2px solid var(--tblr-border-color); border-radius: 10px;
+    padding: .875rem 1rem; cursor: pointer; background: var(--tblr-bg-surface);
+    display: flex; align-items: center; gap: .875rem;
+    transition: border-color .15s, box-shadow .15s;
+    margin-bottom: .5rem;
+  }
+  .pay-method-card:has(input:checked) { border-color: #2563eb; box-shadow: 0 0 0 3px rgba(37,99,235,.12); }
+  .pay-method-icon { width: 40px; height: 40px; border-radius: 8px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .balance-bar { height: 8px; border-radius: 4px; background: var(--tblr-border-color); overflow: hidden; }
+  .balance-fill { height: 100%; border-radius: 4px; background: linear-gradient(90deg,#2563eb,#3b82f6); transition: width .4s; }
+  .inv-row { display: flex; justify-content: space-between; padding: .45rem 0; font-size: .875rem; border-bottom: 1px solid var(--tblr-border-color-translucent); }
+  .inv-row:last-child { border-bottom: none; }
+</style>
+
+<div class="container-xl">
+  <!-- Header -->
+  <div class="page-header d-print-none mb-4">
+    <div class="row align-items-center">
+      <div class="col">
+        <div class="d-flex align-items-center gap-2">
+          <a href="{{ url_for('hms.bookings') }}" class="btn btn-sm btn-ghost-secondary">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
+          </a>
+          <div>
+            <h2 class="page-title mb-0">Record Payment</h2>
+            <div class="text-muted" style="font-size:.82rem;">
+              Booking <code>{{ booking.booking_reference or ('#' ~ booking.id) }}</code>
+              · {{ booking.guest.name }}
+            </div>
           </div>
-          <div class="mb-3">
-            <label class="form-label">Payment method</label>
-            <select name="payment_method" class="form-select">
-              <option value="Cash">Cash</option>
-              <option value="Card">Card</option>
-              <option value="Transfer">Transfer</option>
-            </select>
-          </div>
-          <button type="submit" class="btn btn-primary">Record payment</button>
-          <a href="{{ url_for('hms.bookings') }}" class="btn btn-link">Back</a>
-        </form>
+        </div>
       </div>
     </div>
   </div>
+
+  <div class="row g-4">
+
+    <!-- ── Left: Invoice + Payment Form ── -->
+    <div class="col-lg-7">
+
+      <!-- Invoice Summary -->
+      <div class="card mb-3">
+        <div class="card-header d-flex align-items-center justify-content-between">
+          <h3 class="card-title mb-0">Invoice Summary</h3>
+          <span class="badge bg-{% if is_paid %}success{% elif paid_total > 0 %}yellow{% else %}blue{% endif %}">
+            {% if is_paid %}Paid{% elif paid_total > 0 %}Partial{% else %}Unpaid{% endif %}
+          </span>
+        </div>
+        <div class="card-body">
+          <div class="inv-row">
+            <span class="text-muted">Invoice Total</span>
+            <span class="fw-600">{{ symbol }} {{ "{:,.0f}".format(invoice.total|float) }}</span>
+          </div>
+          <div class="inv-row">
+            <span class="text-muted">Amount Paid</span>
+            <span class="fw-600 text-success">{{ symbol }} {{ "{:,.0f}".format(paid_total|float) }}</span>
+          </div>
+          <div class="inv-row">
+            <span class="fw-700">Balance Due</span>
+            <span class="fw-700 {% if is_paid %}text-success{% else %}text-danger{% endif %} fs-5">
+              {{ symbol }} {{ "{:,.0f}".format(balance|abs) }}
+              {% if is_paid %} <small class="badge bg-success-lt text-success">Settled</small>{% endif %}
+            </span>
+          </div>
+
+          {% if not is_paid and invoice.total > 0 %}
+          <div class="mt-2">
+            {% set pct = ((paid_total|float / invoice.total|float) * 100)|round(0) %}
+            <div class="d-flex justify-content-between" style="font-size:.72rem;color:var(--tblr-muted);">
+              <span>{{ pct }}% paid</span>
+              <span>{{ (100 - pct) }}% remaining</span>
+            </div>
+            <div class="balance-bar mt-1">
+              <div class="balance-fill" style="width:{{ pct }}%;"></div>
+            </div>
+          </div>
+          {% endif %}
+        </div>
+      </div>
+
+      <!-- Payment Form -->
+      {% if not is_paid %}
+      <div class="card">
+        <div class="card-header">
+          <h3 class="card-title mb-0">Add Payment</h3>
+        </div>
+        <div class="card-body">
+          <form method="post" action="{{ url_for('hms.bookings_payment', booking_id=booking.id) }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+
+            <!-- Amount -->
+            <div class="mb-4">
+              <label class="form-label required">Amount to Pay</label>
+              <div class="input-group input-group-flat">
+                <span class="input-group-text">{{ symbol }}</span>
+                <input type="number" name="amount" id="payAmount" class="form-control"
+                       step="0.01" min="0.01" max="{{ balance }}"
+                       value="{{ "%.0f"|format(balance) }}" required>
+              </div>
+              <div class="d-flex gap-2 mt-2">
+                <button type="button" class="btn btn-sm btn-outline-secondary" onclick="setAmt({{ "%.0f"|format(balance) }})">Full Balance</button>
+                <button type="button" class="btn btn-sm btn-outline-secondary" onclick="setAmt({{ "%.0f"|format(balance / 2) }})">Half</button>
+              </div>
+            </div>
+
+            <!-- Payment Method -->
+            <div class="mb-4">
+              <label class="form-label required">Payment Method</label>
+              <label class="pay-method-card">
+                <input type="radio" name="payment_method" value="Cash" checked style="accent-color:#2563eb;">
+                <div class="pay-method-icon bg-green-lt">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#2fb344" stroke-width="2"><rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="12" cy="12" r="3"/><path d="M6 12h.01M18 12h.01"/></svg>
+                </div>
+                <div><div class="fw-600" style="font-size:.875rem;">Cash</div><div class="text-muted" style="font-size:.75rem;">Physical cash payment at front desk</div></div>
+              </label>
+              <label class="pay-method-card">
+                <input type="radio" name="payment_method" value="Card" style="accent-color:#2563eb;">
+                <div class="pay-method-icon bg-blue-lt">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="2"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/><line x1="6" y1="15" x2="6.01" y2="15"/><line x1="10" y1="15" x2="12" y2="15"/></svg>
+                </div>
+                <div><div class="fw-600" style="font-size:.875rem;">Card</div><div class="text-muted" style="font-size:.75rem;">Visa, Mastercard or debit card</div></div>
+              </label>
+              <label class="pay-method-card">
+                <input type="radio" name="payment_method" value="Transfer" style="accent-color:#2563eb;">
+                <div class="pay-method-icon bg-purple-lt">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#6f42c1" stroke-width="2"><path d="M7 7h10M7 12h10M7 17h10"/></svg>
+                </div>
+                <div><div class="fw-600" style="font-size:.875rem;">Bank Transfer</div><div class="text-muted" style="font-size:.75rem;">Mobile money or bank transfer</div></div>
+              </label>
+            </div>
+
+            <button type="submit" class="btn btn-primary btn-lg w-100">
+              <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12l5 5l10-10"/></svg>
+              Record Payment
+            </button>
+          </form>
+        </div>
+      </div>
+      {% else %}
+      <div class="card">
+        <div class="card-body text-center py-4">
+          <div class="mb-3">
+            <span class="avatar avatar-xl bg-success-lt" style="border-radius:50%;">
+              <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#2fb344" stroke-width="2"><path d="M20 6l-11 11-5-5"/></svg>
+            </span>
+          </div>
+          <h4 class="text-success">Fully Paid</h4>
+          <p class="text-muted">This booking has been settled in full.</p>
+          <a href="{{ url_for('hms.bookings') }}" class="btn btn-secondary">Back to Bookings</a>
+        </div>
+      </div>
+      {% endif %}
+    </div>
+
+    <!-- ── Right: Booking Details ── -->
+    <div class="col-lg-5">
+      <div class="card">
+        <div class="card-header">
+          <h3 class="card-title mb-0">Booking Details</h3>
+        </div>
+        <div class="card-body">
+          <div class="inv-row">
+            <span class="text-muted">Guest</span>
+            <span class="fw-600">{{ booking.guest.name }}</span>
+          </div>
+          {% if booking.guest.phone %}
+          <div class="inv-row">
+            <span class="text-muted">Phone</span>
+            <span>{{ booking.guest.phone }}</span>
+          </div>
+          {% endif %}
+          <div class="inv-row">
+            <span class="text-muted">Room</span>
+            <span class="fw-600">{{ booking.room.room_number }}
+              {% if booking.room.room_type %}
+              <span class="text-muted fw-normal">· {{ booking.room.room_type.name }}</span>
+              {% endif %}
+            </span>
+          </div>
+          <div class="inv-row">
+            <span class="text-muted">Check-in</span>
+            <span>{{ booking.check_in_date.strftime('%b %d, %Y') if booking.check_in_date else '-' }}</span>
+          </div>
+          <div class="inv-row">
+            <span class="text-muted">Check-out</span>
+            <span>{{ booking.check_out_date.strftime('%b %d, %Y') if booking.check_out_date else '-' }}</span>
+          </div>
+          {% if booking.check_in_date and booking.check_out_date %}
+          <div class="inv-row">
+            <span class="text-muted">Duration</span>
+            <span>{{ (booking.check_out_date - booking.check_in_date).days }} nights</span>
+          </div>
+          {% endif %}
+          <div class="inv-row">
+            <span class="text-muted">Status</span>
+            <span class="badge bg-{% if booking.status == 'CheckedIn' %}success{% elif booking.status == 'Reserved' %}blue{% elif booking.status in ['cancelled','Cancelled'] %}red{% else %}secondary{% endif %}-lt text-{% if booking.status == 'CheckedIn' %}success{% elif booking.status == 'Reserved' %}blue{% elif booking.status in ['cancelled','Cancelled'] %}danger{% else %}muted{% endif %}">
+              {{ booking.status|replace('CheckedIn','Checked In')|replace('CheckedOut','Checked Out') }}
+            </span>
+          </div>
+          {% if booking.adults %}
+          <div class="inv-row">
+            <span class="text-muted">Guests</span>
+            <span>{{ booking.adults }} adult{{ 's' if booking.adults > 1 else '' }}{% if booking.children %}, {{ booking.children }} child{% if booking.children > 1 %}ren{% endif %}{% endif %}</span>
+          </div>
+          {% endif %}
+        </div>
+      </div>
+
+      <!-- Previous Payments -->
+      {% if invoice.payments %}
+      {% set active_payments = invoice.payments|selectattr('deleted_at','none')|list %}
+      {% if active_payments %}
+      <div class="card mt-3">
+        <div class="card-header">
+          <h3 class="card-title mb-0">Payment History</h3>
+        </div>
+        <div class="card-body p-0">
+          <div class="table-responsive">
+            <table class="table table-sm table-vcenter mb-0">
+              <thead><tr><th>Date</th><th>Method</th><th class="text-end">Amount</th></tr></thead>
+              <tbody>
+                {% for p in active_payments %}
+                <tr>
+                  <td style="font-size:.78rem;">{{ p.created_at.strftime('%b %d, %Y') if p.created_at else '-' }}</td>
+                  <td><span class="badge bg-blue-lt text-blue" style="font-size:.68rem;">{{ p.payment_method or 'Cash' }}</span></td>
+                  <td class="text-end text-success fw-600">+{{ symbol }} {{ "{:,.0f}".format(p.amount|float) }}</td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+      {% endif %}
+      {% endif %}
+    </div>
+
+  </div>
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function setAmt(val) {
+  const inp = document.getElementById('payAmount');
+  if (inp) inp.value = val;
+}
+</script>
 {% endblock %}

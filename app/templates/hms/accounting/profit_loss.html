@@ -11,7 +11,19 @@
         <div class="text-muted mt-1">Income statement for the period</div>
       </div>
       <div class="col-auto ms-auto d-print-none">
-        <a href="{{ '#' }}" class="btn btn-secondary">Back to Dashboard</a>
+        <div class="btn-list">
+          <div class="dropdown">
+            <button class="btn btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown">
+              Period: {{ period|replace('_',' ')|title }}
+            </button>
+            <div class="dropdown-menu">
+              {% for p, label in [('this_month','This Month'),('last_month','Last Month'),('this_quarter','This Quarter'),('this_year','This Year')] %}
+              <a class="dropdown-item {% if period==p %}active{% endif %}" href="?period={{ p }}">{{ label }}</a>
+              {% endfor %}
+            </div>
+          </div>
+          <a href="{{ url_for('hms.accounting') }}" class="btn btn-secondary">Back to Accounting</a>
+        </div>
       </div>
     </div>
   </div>

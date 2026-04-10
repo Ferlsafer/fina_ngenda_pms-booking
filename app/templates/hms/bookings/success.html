@@ -1,134 +1,165 @@
 {% extends "hms/layout/base.html" %}
-{% block title %}Booking Confirmed - {{ booking.booking_reference }}{% endblock %}
+{% block title %}Booking Confirmed — {{ booking.booking_reference }}{% endblock %}
 
 {% block content %}
-<div class="container-xl">
-  <div class="page-header d-print-none">
-    <div class="row align-items-center">
-      <div class="col">
-        <h1 class="page-title">Booking Confirmed!</h1>
-        <div class="text-muted mt-1">Your reservation has been successfully confirmed.</div>
-      </div>
-    </div>
-  </div>
+{% set symbol = get_currency_symbol() %}
 
-  <div class="container-xl">
-    <div class="row">
-      <div class="col-md-8">
-        <div class="card">
-          <div class="card-header">
-            <h3 class="card-title">Booking Confirmation</h3>
-          </div>
-          <div class="card-body">
-            <div class="alert alert-success mb-4">
-              <div class="d-flex align-items-center">
-                <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
-                  <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
-                  <circle cx="12" cy="12" r="9" />
-                  <path d="M9 12l2 2l4 -4" />
-                </svg>
-                <div>
-                  <h4 class="alert-heading">Success!</h4>
-                  <div class="alert-text">Your booking has been confirmed</div>
-                </div>
+<style>
+  .success-icon-wrap {
+    width: 80px; height: 80px; border-radius: 50%;
+    background: linear-gradient(135deg, #2fb344, #1a9934);
+    display: flex; align-items: center; justify-content: center;
+    box-shadow: 0 0 0 12px rgba(47,179,68,.12);
+    animation: popIn .4s cubic-bezier(.34,1.56,.64,1);
+  }
+  @keyframes popIn { from { transform: scale(0); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+
+  .confirm-row { display: flex; justify-content: space-between; padding: .5rem 0; font-size: .875rem; border-bottom: 1px solid var(--tblr-border-color-translucent); }
+  .confirm-row:last-child { border-bottom: none; }
+
+  .ref-badge {
+    display: inline-block;
+    padding: .45rem 1.25rem; border-radius: 8px;
+    background: var(--tblr-bg-surface-secondary);
+    font-family: monospace; font-size: 1.1rem; font-weight: 700;
+    letter-spacing: .08em; color: #2563eb;
+    border: 1px solid var(--tblr-border-color);
+  }
+</style>
+
+<div class="container-xl">
+  <div class="row justify-content-center">
+    <div class="col-lg-10">
+
+      <!-- Success Hero -->
+      <div class="text-center py-5">
+        <div class="success-icon-wrap mx-auto mb-4">
+          <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M20 6l-11 11-5-5"/>
+          </svg>
+        </div>
+        <h1 class="mb-1" style="font-size:1.75rem;font-weight:700;">Booking Confirmed!</h1>
+        <p class="text-muted mb-3">The reservation has been successfully created.</p>
+        <div class="ref-badge">{{ booking.booking_reference }}</div>
+      </div>
+
+      <div class="row g-4">
+        <!-- Booking Details -->
+        <div class="col-md-7">
+          <div class="card h-100">
+            <div class="card-header">
+              <h3 class="card-title mb-0">Reservation Details</h3>
+            </div>
+            <div class="card-body">
+              <div class="confirm-row">
+                <span class="text-muted">Guest</span>
+                <span class="fw-600">{{ booking.guest.name }}</span>
+              </div>
+              {% if booking.guest.phone %}
+              <div class="confirm-row">
+                <span class="text-muted">Phone</span>
+                <span>{{ booking.guest.phone }}</span>
+              </div>
+              {% endif %}
+              <div class="confirm-row">
+                <span class="text-muted">Room</span>
+                <span class="fw-600">
+                  {{ booking.room.room_number }}
+                  {% if booking.room.room_type %}
+                  <span class="text-muted fw-normal">· {{ booking.room.room_type.name }}</span>
+                  {% endif %}
+                </span>
+              </div>
+              <div class="confirm-row">
+                <span class="text-muted">Check-in</span>
+                <span>{{ booking.check_in_date.strftime('%A, %B %d, %Y') }}
+                  {% if booking.check_in_time %}<span class="text-muted"> · {{ booking.check_in_time }}</span>{% endif %}
+                </span>
+              </div>
+              <div class="confirm-row">
+                <span class="text-muted">Check-out</span>
+                <span>{{ booking.check_out_date.strftime('%A, %B %d, %Y') }}
+                  {% if booking.check_out_time %}<span class="text-muted"> · {{ booking.check_out_time }}</span>{% endif %}
+                </span>
+              </div>
+              {% if booking.check_in_date and booking.check_out_date %}
+              <div class="confirm-row">
+                <span class="text-muted">Duration</span>
+                <span>{{ (booking.check_out_date - booking.check_in_date).days }} nights</span>
+              </div>
+              {% endif %}
+              <div class="confirm-row">
+                <span class="text-muted">Guests</span>
+                <span>{{ booking.adults or 1 }} Adult{{ 's' if (booking.adults or 1) > 1 else '' }}
+                  {% if booking.children %}, {{ booking.children }} Child{% if booking.children > 1 %}ren{% endif %}{% endif %}
+                </span>
+              </div>
+              <div class="confirm-row">
+                <span class="text-muted">Status</span>
+                <span class="badge bg-success">{{ booking.status|replace('_',' ')|title }}</span>
+              </div>
+              <div class="confirm-row">
+                <span class="fw-700">Total Amount</span>
+                <span class="fw-700 fs-5 text-blue">{{ symbol }} {{ "{:,}".format(booking.total_amount|int) }}</span>
               </div>
             </div>
-            
-            <div class="table-responsive">
-              <table class="table table-bordered">
-                <tbody>
-                  <tr>
-                    <td><strong>Booking Reference:</strong></td>
-                    <td>{{ booking.booking_reference }}</td>
-                  </tr>
-                  <tr>
-                    <td><strong>Guest:</strong></td>
-                    <td>{{ booking.guest.name }}</td>
-                  </tr>
-                  <tr>
-                    <td><strong>Room:</strong></td>
-                    <td>{{ booking.room.room_type.name }}</td>
-                  </tr>
-                  <tr>
-                    <td><strong>Check-in:</strong></td>
-                    <td>{{ booking.check_in_date.strftime('%B %d, %Y') }} ({{ booking.check_in_time }})</td>
-                  </tr>
-                  <tr>
-                    <td><strong>Check-out:</strong></td>
-                    <td>{{ booking.check_out_date.strftime('%B %d, %Y') }} ({{ booking.check_out_time }})</td>
-                  </tr>
-                  <tr>
-                    <td><strong>Guests:</strong></td>
-                    <td>{{ booking.adults }} Adults{% if booking.children %}, {{ booking.children }} Children{% endif %}</td>
-                  </tr>
-                  <tr>
-                    <td><strong>Total Amount:</strong></td>
-                    <td>{{ "{:,}".format(int(booking.total_amount)) }} {{ booking.hotel.currency }}</td>
-                  </tr>
-                  <tr>
-                    <td><strong>Status:</strong></td>
-                    <td><span class="badge bg-success">{{ booking.status.title() }}</span></td>
-                  </tr>
-                </tbody>
-              </table>
+          </div>
+        </div>
+
+        <!-- Hotel Info + Actions -->
+        <div class="col-md-5">
+          <div class="card mb-3">
+            <div class="card-header">
+              <h3 class="card-title mb-0">Hotel Information</h3>
             </div>
-            
-            <div class="mt-4">
-              <h5>What's Next?</h5>
-              <div class="row g-3">
-                <div class="col-md-6">
-                  <a href="/dashboard" class="btn btn-primary w-100">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
-                      <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
-                      <path d="M3 9l5 5l10 -10" />
-                    </svg>
-                    Go to Dashboard
-                  </a>
-                </div>
-                <div class="col-md-6">
-                  <a href="/bookings" class="btn btn-outline-primary w-100">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
-                      <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
-                      <path d="M12 2l2 2l4 -4" />
-                    </svg>
-                    Make Another Booking
-                  </a>
-                </div>
+            <div class="card-body">
+              <div class="fw-600 mb-1">{{ booking.hotel.display_name or booking.hotel.name }}</div>
+              {% if booking.hotel.address %}
+              <div class="text-muted" style="font-size:.82rem;">{{ booking.hotel.address }}</div>
+              {% endif %}
+              {% if booking.hotel.city %}
+              <div class="text-muted" style="font-size:.82rem;">{{ booking.hotel.city }}{% if booking.hotel.country %}, {{ booking.hotel.country }}{% endif %}</div>
+              {% endif %}
+              {% if booking.hotel.phone %}
+              <div class="mt-2 text-muted" style="font-size:.82rem;">
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="me-1"><path d="M5 4h4l2 5l-2.5 1.5a11 11 0 0 0 5 5l1.5-2.5l5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2"/></svg>
+                {{ booking.hotel.phone }}
+              </div>
+              {% endif %}
+              {% if booking.hotel.check_in_time or booking.hotel.check_out_time %}
+              <div class="mt-3 pt-2 border-top">
+                {% if booking.hotel.check_in_time %}
+                <div style="font-size:.82rem;"><span class="text-muted">Check-in from:</span> <strong>{{ booking.hotel.check_in_time }}</strong></div>
+                {% endif %}
+                {% if booking.hotel.check_out_time %}
+                <div style="font-size:.82rem;"><span class="text-muted">Check-out by:</span> <strong>{{ booking.hotel.check_out_time }}</strong></div>
+                {% endif %}
+              </div>
+              {% endif %}
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-body">
+              <h5 class="mb-3">What's Next?</h5>
+              <div class="d-grid gap-2">
+                <a href="{{ url_for('hms.bookings_payment', booking_id=booking.id) }}" class="btn btn-primary">
+                  <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>
+                  Record Payment
+                </a>
+                <a href="{{ url_for('hms.bookings_new') }}" class="btn btn-outline-primary">
+                  <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                  New Booking
+                </a>
+                <a href="{{ url_for('hms.bookings') }}" class="btn btn-ghost-secondary">
+                  View All Bookings
+                </a>
               </div>
             </div>
           </div>
         </div>
       </div>
-      
-      <div class="col-md-4">
-        <div class="card">
-          <div class="card-header">
-            <h5 class="card-title">Hotel Information</h5>
-          </div>
-          <div class="card-body">
-            <h6>{{ booking.hotel.display_name or booking.hotel.name }}</h6>
-            <p class="text-muted">{{ booking.hotel.address }}</p>
-            <p class="text-muted">{{ booking.hotel.city }}, {{ booking.hotel.country }}</p>
-            <p class="text-muted">Phone: {{ booking.hotel.phone }}</p>
-            <p class="text-muted">Email: {{ booking.hotel.email }}</p>
-            
-            {% if booking.hotel.website_url %}
-            <p class="mt-3">
-              <strong>Website:</strong> 
-              <a href="{{ booking.hotel.website_url }}" target="_blank">{{ booking.hotel.website_url }}</a>
-            </p>
-            {% endif %}
-            
-            <div class="mt-4">
-              <h6>Check-in Information</h6>
-              <p><strong>Check-in Time:</strong> {{ booking.hotel.check_in_time }}</p>
-              <p><strong>Check-out Time:</strong> {{ booking.hotel.check_out_time }}</p>
-              <p><strong>Payment Policy:</strong></p>
-              <p>{{ booking.hotel.payment_policy or 'Payment due upon arrival' }}</p>
-            </div>
-          </div>
-        </div>
-      </div>
+
     </div>
   </div>
 </div>

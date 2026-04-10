@@ -45,9 +45,9 @@ BOOKING_STATUS_TRANSITIONS = {
 
 # Cancellation fee policy (days before check-in)
 CANCELLATION_POLICY = [
-    {'days_before': 7, 'fee_percent': 0.0},    # Free cancellation 7+ days
-    {'days_before': 3, 'fee_percent': 0.5},    # 50% fee 3-6 days
-    {'days_before': 0, 'fee_percent': 1.0},    # 100% fee 0-2 days
+    {'days_before': 7, 'fee_percent': 0.2},    # 20% fee for cancellations 7+ days before
+    {'days_before': 3, 'fee_percent': 0.3},    # 30% fee for cancellations 3-6 days before
+    {'days_before': 0, 'fee_percent': 0.5},    # 50% fee for cancellations 0-2 days before
 ]
 
 # No-show fee (typically 1 night)

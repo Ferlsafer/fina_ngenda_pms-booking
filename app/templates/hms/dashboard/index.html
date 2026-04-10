@@ -1,588 +1,464 @@
 {% extends "hms/layout/base.html" %}
-{% block title %}Dashboard - Ngenda Hotel{% endblock %}
+{% block title %}Dashboard — {{ get_current_hotel().name if get_current_hotel() else 'Ngenda Hotel' }}{% endblock %}
 
 {% block content %}
+{% set hotel = get_current_hotel() %}
+{% set symbol = get_currency_symbol() %}
+
+<style>
+  /* ── KPI Cards ─────────────────────────────────────────────── */
+  .kpi-card {
+    border: 1px solid var(--tblr-border-color);
+    border-radius: 10px;
+    padding: 1.25rem 1.5rem;
+    background: var(--tblr-bg-surface);
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    transition: box-shadow 0.15s;
+  }
+  .kpi-card:hover { box-shadow: 0 4px 20px rgba(0,0,0,.08); }
+  .kpi-label { font-size: 0.72rem; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--tblr-muted); }
+  .kpi-value { font-size: 2rem; font-weight: 700; line-height: 1; color: var(--tblr-body-color); }
+  .kpi-sub { font-size: 0.78rem; color: var(--tblr-muted); margin-top: 0.2rem; }
+  .kpi-icon { width: 38px; height: 38px; border-radius: 9px; display: flex; align-items: center; justify-content: center; margin-bottom: 0.75rem; }
+
+  /* ── Occupancy bar ─────────────────────────────────────────── */
+  .occ-bar { height: 6px; border-radius: 3px; background: var(--tblr-border-color); overflow: hidden; margin-top: 0.6rem; }
+  .occ-fill { height: 100%; border-radius: 3px; background: linear-gradient(90deg, #2563eb, #3b82f6); transition: width .5s ease; }
+
+  /* ── Chart card ────────────────────────────────────────────── */
+  .chart-card { border-radius: 10px; border: 1px solid var(--tblr-border-color); background: var(--tblr-bg-surface); }
+
+  /* ── Room status pills ─────────────────────────────────────── */
+  .room-pill {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 0.7rem 1rem;
+    border-radius: 8px;
+    border: 1px solid var(--tblr-border-color);
+    background: var(--tblr-bg-surface);
+  }
+  .room-pill-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+  .room-pill-label { font-size: 0.82rem; color: var(--tblr-muted); margin-left: 0.5rem; }
+  .room-pill-count { font-size: 1.25rem; font-weight: 700; }
+
+  /* ── Arrival / departure row ───────────────────────────────── */
+  .guest-row { display: flex; align-items: center; gap: 0.75rem; padding: 0.65rem 0; border-bottom: 1px solid var(--tblr-border-color-translucent); }
+  .guest-row:last-child { border-bottom: none; }
+  .guest-avatar { width: 34px; height: 34px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 0.85rem; flex-shrink: 0; }
+  .guest-name { font-size: 0.875rem; font-weight: 600; }
+  .guest-meta { font-size: 0.75rem; color: var(--tblr-muted); }
+
+  /* ── Tab nav ────────────────────────────────────────────────── */
+  .dash-tabs { display: flex; gap: 0.25rem; border-bottom: 1px solid var(--tblr-border-color); margin-bottom: 1rem; }
+  .dash-tab { padding: 0.5rem 0.875rem; font-size: 0.82rem; font-weight: 600; cursor: pointer; border: none; background: none; color: var(--tblr-muted); border-bottom: 2px solid transparent; margin-bottom: -1px; transition: color .15s, border-color .15s; }
+  .dash-tab.active { color: #2563eb; border-bottom-color: #2563eb; }
+
+  /* ── Alert bar ──────────────────────────────────────────────── */
+  .alert-row { display: flex; align-items: flex-start; gap: 0.75rem; padding: 0.75rem 1rem; border-radius: 8px; font-size: 0.82rem; }
+  .alert-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; margin-top: 0.25rem; }
+</style>
+
 <div class="container-xl">
-  <!-- Welcome Banner -->
-  <div class="page-header d-print-none mb-3">
+
+  <!-- ════ HEADER ════ -->
+  <div class="page-header d-print-none mb-4">
     <div class="row align-items-center">
       <div class="col">
-        <div class="row g-3">
-          <div class="col-auto">
-            <span class="avatar avatar-xl" style="background-color: #206bc4; color: white; font-size: 1.5rem;">
-              {{ current_user.email[0]|upper }}
-            </span>
-          </div>
-          <div class="col">
-            <h2 class="page-title">Welcome back, {{ current_user.name or current_user.email.split('@')[0]|title }}</h2>
-            <div class="text-muted">
-              {% set _role = current_user.role.lower() if current_user.role else 'staff' %}
-              {% if current_user.is_superadmin %}{% set _role = 'superadmin' %}{% endif %}
-              Role: <span class="badge bg-{{ 'red' if _role == 'superadmin' else 'blue' if _role == 'manager' else 'green' if _role == 'receptionist' else 'orange' if _role in ['housekeeping', 'kitchen'] else 'purple' }}">{{ _role|title }}</span>
-              {% set _hotel = get_current_hotel() %}
-              {% if _hotel %}
-                • Hotel: {{ _hotel.name }}
-              {% endif %}
+        <div class="d-flex align-items-center gap-3">
+          <span class="avatar avatar-lg" style="background:linear-gradient(135deg,#2563eb,#1d4ed8);color:#fff;font-size:1.2rem;border-radius:12px;">
+            {{ current_user.email[0]|upper }}
+          </span>
+          <div>
+            <h2 class="page-title mb-0">
+              Good {% set hr = today.strftime('%H')|int %}{% if hr < 12 %}morning{% elif hr < 17 %}afternoon{% else %}evening{% endif %},
+              {{ current_user.name or current_user.email.split('@')[0]|title }}
+            </h2>
+            <div class="text-muted" style="font-size:.82rem;">
+              {{ today.strftime('%A, %B %d, %Y') }}
+              {% if hotel %} · <strong>{{ hotel.name }}</strong>{% endif %}
+              · <span class="badge bg-blue-lt text-blue ms-1">{{ (current_user.role or 'staff')|title }}</span>
             </div>
           </div>
         </div>
       </div>
-      <div class="col-auto ms-auto d-print-none">
+      <div class="col-auto ms-auto">
         <div class="btn-list">
-          {% if quick_actions %}
-            {% for action in quick_actions[:1] %}
-            <a href="{{ action.url }}" class="btn btn-{{ action.color }} d-none d-sm-inline-block">
-              <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
-                <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
-                <line x1="12" y1="5" x2="12" y2="19" />
-                <line x1="5" y1="12" x2="19" y2="12" />
-              </svg>
-              {{ action.label }}
-            </a>
-            {% endfor %}
-          {% else %}
-          <a href="{{ url_for('hms.bookings_new') }}" class="btn btn-primary d-none d-sm-inline-block">
-            <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
-              <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
-              <line x1="12" y1="5" x2="12" y2="19" />
-              <line x1="5" y1="12" x2="19" y2="12" />
-            </svg>
+          <a href="{{ url_for('hms.bookings_new') }}" class="btn btn-primary">
+            <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
             New Booking
           </a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ════ KPI STRIP ════ -->
+  <div class="row g-3 mb-4">
+
+    <!-- Occupancy -->
+    <div class="col-sm-6 col-xl">
+      <div class="kpi-card">
+        <div class="kpi-icon bg-blue-lt">
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18"/><path d="M5 21v-14l8-4v18"/><path d="M19 21v-10l-6-4"/><path d="M9 9v.01"/><path d="M9 12v.01"/></svg>
+        </div>
+        <div class="kpi-label">Occupancy Rate</div>
+        <div class="kpi-value">{{ stats.occupancy_rate }}<span style="font-size:1.1rem;font-weight:500">%</span></div>
+        <div class="occ-bar"><div class="occ-fill" style="width:{{ stats.occupancy_rate }}%"></div></div>
+        <div class="kpi-sub">{{ stats.occupied_rooms }} of {{ stats.total_rooms }} rooms occupied</div>
+      </div>
+    </div>
+
+    <!-- Today's Revenue -->
+    <div class="col-sm-6 col-xl">
+      <div class="kpi-card">
+        <div class="kpi-icon bg-green-lt">
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#2fb344" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+        </div>
+        <div class="kpi-label">Revenue Today</div>
+        <div class="kpi-value" style="font-size:1.6rem;">{{ symbol }} {{ "{:,.0f}".format(stats.revenue_today) }}</div>
+        {% if stats.revenue_yesterday > 0 %}
+          {% set diff_pct = ((stats.revenue_today - stats.revenue_yesterday) / stats.revenue_yesterday * 100)|round(1) %}
+          <div class="kpi-sub">
+            <span class="text-{{ 'green' if diff_pct >= 0 else 'red' }}">
+              {{ '+' if diff_pct >= 0 else '' }}{{ diff_pct }}%
+            </span> vs yesterday
+          </div>
+        {% else %}
+          <div class="kpi-sub">MTD: {{ symbol }} {{ "{:,.0f}".format(stats.revenue_mtd) }}</div>
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- MTD Revenue -->
+    <div class="col-sm-6 col-xl">
+      <div class="kpi-card">
+        <div class="kpi-icon bg-azure-lt">
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#4299e1" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+        </div>
+        <div class="kpi-label">Month-to-Date</div>
+        <div class="kpi-value" style="font-size:1.6rem;">{{ symbol }} {{ "{:,.0f}".format(stats.revenue_mtd) }}</div>
+        <div class="kpi-sub">{{ today.strftime('%B') }} revenue</div>
+      </div>
+    </div>
+
+    <!-- Check-ins / Check-outs -->
+    <div class="col-sm-6 col-xl">
+      <div class="kpi-card">
+        <div class="kpi-icon bg-orange-lt">
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#f76707" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>
+        </div>
+        <div class="kpi-label">Today's Arrivals</div>
+        <div class="kpi-value">{{ stats.check_ins_today }}</div>
+        <div class="kpi-sub">{{ stats.check_outs_today }} departures due</div>
+      </div>
+    </div>
+
+    <!-- Available rooms -->
+    <div class="col-sm-6 col-xl">
+      <div class="kpi-card">
+        <div class="kpi-icon bg-teal-lt" style="background:rgba(32,201,151,.12)">
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#20c997" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 11h14a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2z"/><path d="M12 3v3"/><path d="M10 7v-2a2 2 0 1 1 4 0v2"/></svg>
+        </div>
+        <div class="kpi-label">Available Rooms</div>
+        <div class="kpi-value">{{ stats.available_rooms }}</div>
+        <div class="kpi-sub">{{ stats.dirty_rooms }} dirty · {{ stats.maintenance_rooms }} maintenance</div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ════ MAIN GRID ════ -->
+  <div class="row g-3 mb-3">
+
+    <!-- Left — Chart + Arrivals/Departures -->
+    <div class="col-lg-8 d-flex flex-column gap-3">
+
+      <!-- Revenue Chart -->
+      <div class="chart-card p-3">
+        <div class="d-flex align-items-center justify-content-between mb-3">
+          <div>
+            <div style="font-size:.72rem;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--tblr-muted);">Revenue Trend</div>
+            <div style="font-size:1rem;font-weight:600;">Last 14 Days</div>
+          </div>
+          <a href="{{ url_for('hms.accounting_reports') }}" class="btn btn-sm btn-outline-secondary">View Reports</a>
+        </div>
+        <div id="revenue-chart" style="height:220px;"></div>
+      </div>
+
+      <!-- Arrivals / Departures Tabs -->
+      <div class="chart-card p-3">
+        <div class="dash-tabs">
+          <button class="dash-tab active" onclick="showTab('arrivals', this)">
+            Arrivals Today
+            <span class="badge bg-blue ms-1" style="font-size:.65rem;">{{ stats.check_ins_today }}</span>
+          </button>
+          <button class="dash-tab" onclick="showTab('departures', this)">
+            Departures Today
+            <span class="badge bg-orange ms-1" style="font-size:.65rem;">{{ stats.check_outs_today }}</span>
+          </button>
+        </div>
+
+        <div id="tab-arrivals">
+          {% if todays_arrivals %}
+            {% for b in todays_arrivals %}
+            <div class="guest-row">
+              <div class="guest-avatar bg-blue-lt text-blue">{{ b.guest.name[0]|upper if b.guest else 'G' }}</div>
+              <div class="flex-fill">
+                <div class="guest-name">{{ b.guest.name if b.guest else 'Guest' }}</div>
+                <div class="guest-meta">Room {{ b.room.room_number if b.room else '—' }} · {{ b.check_in_date.strftime('%b %d') }} → {{ b.check_out_date.strftime('%b %d') }}</div>
+              </div>
+              <div class="d-flex align-items-center gap-2">
+                <span class="badge bg-{{ 'green' if b.status == 'confirmed' else 'yellow' }}-lt text-{{ 'green' if b.status == 'confirmed' else 'yellow' }}">{{ b.status|title }}</span>
+                <a href="{{ url_for('hms.booking_detail', booking_id=b.id) }}" class="btn btn-sm btn-ghost-secondary py-0 px-2">View</a>
+              </div>
+            </div>
+            {% endfor %}
+          {% else %}
+            <div class="text-center py-4 text-muted">
+              <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="mb-2 opacity-50"><path d="M8 7a4 4 0 1 0 8 0a4 4 0 0 0 -8 0"/><path d="M6 21v-2a4 4 0 0 1 4 -4h4a4 4 0 0 1 4 4v2"/></svg>
+              <div style="font-size:.82rem;">No arrivals scheduled for today</div>
+            </div>
+          {% endif %}
+        </div>
+
+        <div id="tab-departures" style="display:none">
+          {% if todays_departures %}
+            {% for b in todays_departures %}
+            <div class="guest-row">
+              <div class="guest-avatar bg-orange-lt text-orange">{{ b.guest.name[0]|upper if b.guest else 'G' }}</div>
+              <div class="flex-fill">
+                <div class="guest-name">{{ b.guest.name if b.guest else 'Guest' }}</div>
+                <div class="guest-meta">Room {{ b.room.room_number if b.room else '—' }} · Checking out today</div>
+              </div>
+              <div class="d-flex align-items-center gap-2">
+                <span class="badge bg-orange-lt text-orange">Due Out</span>
+                <a href="{{ url_for('hms.booking_detail', booking_id=b.id) }}" class="btn btn-sm btn-ghost-secondary py-0 px-2">View</a>
+              </div>
+            </div>
+            {% endfor %}
+          {% else %}
+            <div class="text-center py-4 text-muted">
+              <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="mb-2 opacity-50"><path d="M8 7a4 4 0 1 0 8 0a4 4 0 0 0 -8 0"/><path d="M6 21v-2a4 4 0 0 1 4 -4h4a4 4 0 0 1 4 4v2"/></svg>
+              <div style="font-size:.82rem;">No departures scheduled for today</div>
+            </div>
           {% endif %}
         </div>
       </div>
-    </div>
-  </div>
 
-  <!-- Role-Based Quick Actions -->
-  {% if quick_actions %}
-  <div class="card mb-3">
-    <div class="card-header">
-      <h3 class="card-title">Quick Actions</h3>
-      <div class="card-actions">
-        <span class="badge bg-{{ 'red' if user_role == 'superadmin' else 'blue' if user_role == 'manager' else 'green' if user_role == 'receptionist' else 'orange' }}">{{ user_role|title }} Menu</span>
-      </div>
-    </div>
-    <div class="card-body">
-      <div class="row g-3">
-        {% for action in quick_actions %}
-        <div class="col-6 col-md-4 col-lg-2">
-          <a href="{{ action.url }}" class="card card-sm card-link text-decoration-none hover-shadow">
-            <div class="card-body">
-              <div class="d-flex align-items-center">
-                <span class="avatar avatar-lg bg-{{ action.color }}-lt text-{{ action.color }}">
-                  <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
-                    <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
-                    {% if action.icon == 'calendar-plus' %}<line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" />
-                    {% elif action.icon == 'login' %}<path d="M14 3v4a1 1 0 0 0 1 1h4" /><path d="M17 21h-10a2 2 0 0 1 -2 -2v-14a2 2 0 0 1 2 -2h7l5 5v11a2 2 0 0 1 -2 2z" /><path d="M9 17l3 3l3 -3" />
-                    {% elif action.icon == 'users' %}<path d="M9 7m-4 0a4 4 0 1 0 8 0a4 4 0 1 0 -8 0" /><path d="M3 21v-2a4 4 0 0 1 4 -4h4a4 4 0 0 1 4 4v2" /><path d="M16 3.13a4 4 0 0 1 0 7.75" /><path d="M21 21v-2a4 4 0 0 0 -3 -3.85" />
-                    {% elif action.icon == 'settings' %}<path d="M10.325 4.317c.426 -1.756 2.924 -1.756 3.35 0a1.724 1.724 0 0 0 2.573 1.066c1.543 -.94 3.31 .826 2.37 2.37a1.724 1.724 0 0 0 1.065 2.572c1.756 .426 1.756 2.924 0 3.35a1.724 1.724 0 0 0 -1.066 2.573c.94 1.543 -.826 3.31 -2.37 2.37a1.724 1.724 0 0 0 -2.572 1.065c-.426 1.756 -2.924 1.756 -3.35 0a1.724 1.724 0 0 0 -2.573 -1.066c-1.543 .94 -3.31 -.826 -2.37 -2.37a1.724 1.724 0 0 0 -1.065 -2.572c-1.756 -.426 -1.756 -2.924 0 -3.35a1.724 1.724 0 0 0 1.066 -2.573c-.94 -1.543 .826 -3.31 2.37 -2.37c1 .608 2.296 .07 2.572 -1.065z" /><path d="M9 12a3 3 0 1 0 6 0a3 3 0 0 0 -6 0" />
-                    {% elif action.icon == 'chart' %}<path d="M9 5h10a2 2 0 0 1 2 2v12a2 2 0 0 1 -2 2h-10a2 2 0 0 1 -2 -2v-12a2 2 0 0 1 2 -2z" /><path d="M9 12l2 2l4 -4" />
-                    {% elif action.icon == 'broom' %}<path d="M19 11l-8 -8l-8.5 8.5a2.5 2.5 0 1 0 3.5 3.5l8.5 -8.5" /><path d="M12 3l8 8" />
-                    {% elif action.icon == 'restaurant' %}<path d="M3 3h18v18h-18z" /><path d="M9 9l6 6" /><path d="M15 9l-6 6" />
-                    {% elif action.icon == 'logout' %}<path d="M14 3v4a1 1 0 0 0 1 1h4" /><path d="M17 21h-10a2 2 0 0 1 -2 -2v-14a2 2 0 0 1 2 -2h7l5 5v11a2 2 0 0 1 -2 2z" /><path d="M9 17l-3 -3l3 -3" />
-                    {% elif action.icon == 'tasks' %}<path d="M9 5h10a2 2 0 0 1 2 2v12a2 2 0 0 1 -2 2h-10a2 2 0 0 1 -2 -2v-12a2 2 0 0 1 2 -2z" /><path d="M9 12l2 2l4 -4" /><path d="M9 7h6" /><path d="M9 17h6" />
-                    {% elif action.icon == 'door' %}<path d="M14 3v4a1 1 0 0 0 1 1h4" /><path d="M17 21h-10a2 2 0 0 1 -2 -2v-14a2 2 0 0 1 2 -2h7l5 5v11a2 2 0 0 1 -2 2z" /><path d="M12 12m-1 0a1 1 0 1 0 2 0a1 1 0 1 0 -2 0" />
-                    {% elif action.icon == 'alert' %}<path d="M12 9v2m0 4v.01" /><path d="M5 19h14a2 2 0 0 0 1.84 -2.75l-7.1 -12.25a2 2 0 0 0 -3.5 0l-7.1 12.25a2 2 0 0 0 1.75 2.75" />
-                    {% elif action.icon == 'box' %}<path d="M12 3l8 4.5l0 9l-8 4.5l-8 -4.5l0 -9l8 -4.5" /><path d="M12 12l8 -4.5" /><path d="M12 12l0 9" /><path d="M12 12l-8 -4.5" /><path d="M16 5.25l-8 4.5" />
-                    {% elif action.icon == 'check' %}<path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M5 12l5 5l10 -10" />
-                    {% elif action.icon == 'calendar' %}<path d="M12 3l8 4.5l0 9l-8 4.5l-8 -4.5l0 -9l8 -4.5" /><path d="M12 12l8 -4.5" /><path d="M12 12l0 9" /><path d="M12 12l-8 -4.5" /><path d="M16 5.25l-8 4.5" />
-                    {% elif action.icon == 'kitchen' %}<path d="M3 21h18" /><path d="M5 21v-14l8 -4v18" /><path d="M19 21v-10l-6 -4" />
-                    {% elif action.icon == 'list' %}<path d="M9 6l11 0" /><path d="M9 12l11 0" /><path d="M9 18l11 0" /><path d="M5 6l0 .01" /><path d="M5 12l0 .01" /><path d="M5 18l0 .01" />
-                    {% elif action.icon == 'clipboard' %}<path d="M9 5h6a2 2 0 0 1 2 2v14a2 2 0 0 1 -2 2h-6a2 2 0 0 1 -2 -2v-14a2 2 0 0 1 2 -2" /><path d="M9 3h6v4h-6z" /><path d="M9 12l2 0" /><path d="M9 16l2 0" />
-                    {% elif action.icon == 'cash' %}<path d="M12 12m-9 0a9 9 0 1 0 18 0a9 9 0 1 0 -18 0" /><path d="M12 12m-3 0a3 3 0 1 0 6 0a3 3 0 1 0 -6 0" /><path d="M12 10v4" />
-                    {% elif action.icon == 'menu' %}<path d="M4 6l16 0" /><path d="M4 12l16 0" /><path d="M4 18l16 0" />
-                    {% elif action.icon == 'home' %}<path d="M5 12l-2 0l9 -9l9 9l-2 0" /><path d="M5 12l6 0l6 -6" /><path d="M5 12l6 0l6 6" />
-                    {% else %}<circle cx="12" cy="12" r="9" />
-                    {% endif %}
-                  </svg>
-                </span>
-                <div class="ms-3">
-                  <div class="text-muted" style="font-size: 0.75rem;">Quick Action</div>
-                  <div class="text-reset" style="font-weight: 500;">{{ action.label }}</div>
-                </div>
-              </div>
-            </div>
-          </a>
-        </div>
-        {% endfor %}
-      </div>
-    </div>
-  </div>
-  {% endif %}
-
-  <!-- Hotel Selector -->
-  {% if hotels_for_selector %}
-  <div class="card mb-3">
-    <div class="card-body">
-      <div class="row align-items-center">
-        <div class="col-auto">
-          <svg xmlns="http://www.w3.org/2000/svg" class="icon text-blue" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
-            <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
-            <path d="M3 21h18" />
-            <path d="M5 21v-14l8 -4v18" />
-            <path d="M19 21v-10l-6 -4" />
-          </svg>
-        </div>
-        <div class="col">
-          <h3 class="card-title">Select Hotel</h3>
-          <div class="text-muted">Choose which property to manage</div>
-        </div>
-        <div class="col-auto">
-          <a href="{{ '#' }}" class="btn btn-outline-primary btn-sm">View All</a>
-          {% for h in hotels_for_selector %}
-          <a href="{{ url_for('core.set_hotel', hotel_id=h.id) }}" class="btn {% if active_hotel_id == h.id %}btn-primary{% else %}btn-outline-secondary{% endif %} btn-sm ms-1">{{ h.name }}</a>
-          {% endfor %}
-        </div>
-      </div>
-    </div>
-  </div>
-  {% endif %}
-
-  <!-- Quick Stats Cards -->
-  <div class="row row-deck row-cards mb-3">
-    <div class="col-sm-6 col-lg-3">
-      <div class="card card-sm">
-        <div class="card-body">
-          <div class="row align-items-center">
-            <div class="col-auto">
-              <span class="bg-blue text-white avatar">
-                <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
-                  <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
-                  <path d="M5 11h14a2 2 0 0 1 2 2v7a2 2 0 0 1 -2 2h-14a2 2 0 0 1 -2 -2v-7a2 2 0 0 1 2 -2z" />
-                  <path d="M12 3v3" />
-                  <path d="M10 7v-2a2 2 0 1 1 4 0v2" />
-                </svg>
-              </span>
-            </div>
-            <div class="col">
-              <div class="font-weight-medium">Total Rooms</div>
-              <div class="text-muted">{{ stats.total_rooms }}</div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-    <div class="col-sm-6 col-lg-3">
-      <div class="card card-sm">
-        <div class="card-body">
-          <div class="row align-items-center">
-            <div class="col-auto">
-              <span class="bg-green text-white avatar">
-                <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
-                  <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
-                  <path d="M5 11h14a2 2 0 0 1 2 2v7a2 2 0 0 1 -2 2h-14a2 2 0 0 1 -2 -2v-7a2 2 0 0 1 2 -2z" />
-                  <path d="M12 3v3" />
-                  <path d="M10 7v-2a2 2 0 1 1 4 0v2" />
-                  <path d="M8 14v-2" />
-                  <path d="M16 14v-2" />
-                  <path d="M10 14v-2" />
-                  <path d="M14 14v-2" />
-                </svg>
-              </span>
-            </div>
-            <div class="col">
-              <div class="font-weight-medium">Occupied</div>
-              <div class="text-muted">{{ stats.occupied_rooms }}</div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-    <div class="col-sm-6 col-lg-3">
-      <div class="card card-sm">
-        <div class="card-body">
-          <div class="row align-items-center">
-            <div class="col-auto">
-              <span class="bg-orange text-white avatar">
-                <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
-                  <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
-                  <path d="M14 3v4a1 1 0 0 0 1 1h4" />
-                  <path d="M17 21h-10a2 2 0 0 1 -2 -2v-14a2 2 0 0 1 2 -2h7l5 5v11a2 2 0 0 1 -2 2z" />
-                  <path d="M9 7l1 1l1 -1m-2 1l1 1l1 -1" />
-                  <path d="M9 11l1 1l1 -1m-2 1l1 1l1 -1" />
-                  <path d="M9 15l1 1l1 -1" />
-                </svg>
-              </span>
-            </div>
-            <div class="col">
-              <div class="font-weight-medium">Today's Revenue</div>
-              <div class="text-muted">${{ "%.2f"|format(stats.revenue_today) }}</div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-    <div class="col-sm-6 col-lg-3">
-      <div class="card card-sm">
-        <div class="card-body">
-          <div class="row align-items-center">
-            <div class="col-auto">
-              <span class="bg-purple text-white avatar">
-                <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
-                  <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
-                  <path d="M10.325 4.317c.426 -1.756 2.924 -1.756 3.35 0a1.724 1.724 0 0 0 2.573 1.066c1.543 -.94 3.31 .826 2.37 2.37a1.724 1.724 0 0 0 1.065 2.572c1.756 .426 1.756 2.924 0 3.35a1.724 1.724 0 0 0 -1.066 2.573c.94 1.543 -.826 3.31 -2.37 2.37a1.724 1.724 0 0 0 -2.572 1.065c-.426 1.756 -2.924 1.756 -3.35 0a1.724 1.724 0 0 0 -2.573 -1.066c-1.543 .94 -3.31 -.826 -2.37 -2.37a1.724 1.724 0 0 0 -1.065 -2.572c-1.756 -.426 -1.756 -2.924 0 3.35a1.724 1.724 0 0 0 1.066 2.573c-.94 1.543 .826 -3.31 2.37 -2.37c1 .608 2.296 .07 2.572 -1.065z" />
-                  <path d="M9 12a3 3 0 1 0 6 0a3 3 0 0 0 -6 0" />
-                </svg>
-              </span>
-            </div>
-            <div class="col">
-              <div class="font-weight-medium">Total Bookings</div>
-              <div class="text-muted">{{ stats.total_bookings }}</div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- Main Content Grid -->
-  <div class="row row-deck row-cards">
-    <!-- Left Column - Charts -->
-    <div class="col-lg-8">
-      <!-- Revenue Chart -->
-      <div class="card">
-        <div class="card-header">
-          <h3 class="card-title">Revenue Overview</h3>
-          <div class="card-actions">
-            <div class="dropdown">
-              <a href="#" class="dropdown-toggle" data-bs-toggle="dropdown">Last 30 Days</a>
-              <div class="dropdown-menu dropdown-menu-end">
-                <a class="dropdown-item" href="#">Last 7 Days</a>
-                <a class="dropdown-item" href="#">Last 30 Days</a>
-                <a class="dropdown-item" href="#">Last 90 Days</a>
-              </div>
-            </div>
-          </div>
-        </div>
-        <div class="card-body">
-          <div id="revenue-chart" style="height: 300px;"></div>
-        </div>
-      </div>
-
-      <!-- Quick Actions -->
-      <div class="card mt-3">
-        <div class="card-header">
-          <h3 class="card-title">Quick Actions</h3>
-        </div>
-        <div class="card-body">
-          <div class="row row-cards">
-            <div class="col-sm-6 col-lg-3">
-              <a href="{{ url_for('hms.bookings_new') }}" class="text-decoration-none">
-                <div class="card card-sm bg-blue-lt">
-                  <div class="card-body text-center">
-                    <div class="mb-3">
-                      <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-lg text-blue" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
-                        <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
-                        <line x1="12" y1="5" x2="12" y2="19" />
-                        <line x1="5" y1="12" x2="19" y2="12" />
-                      </svg>
-                    </div>
-                    <h4 class="m-0">New Booking</h4>
-                    <div class="text-muted">Create reservation</div>
-                  </div>
-                </div>
-              </a>
-            </div>
-            <div class="col-sm-6 col-lg-3">
-              <a href="{{ url_for('hms.rooms') }}" class="text-decoration-none">
-                <div class="card card-sm bg-green-lt">
-                  <div class="card-body text-center">
-                    <div class="mb-3">
-                      <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-lg text-green" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
-                        <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
-                        <path d="M5 11h14a2 2 0 0 1 2 2v7a2 2 0 0 1 -2 2h-14a2 2 0 0 1 -2 -2v-7a2 2 0 0 1 2 -2z" />
-                        <path d="M12 3v3" />
-                        <path d="M10 7v-2a2 2 0 1 1 4 0v2" />
-                      </svg>
-                    </div>
-                    <h4 class="m-0">Room Status</h4>
-                    <div class="text-muted">View room status</div>
-                  </div>
-                </div>
-              </a>
-            </div>
-            <div class="col-sm-6 col-lg-3">
-              <a href="{{ url_for('hms.housekeeping') }}" class="text-decoration-none">
-                <div class="card card-sm bg-orange-lt">
-                  <div class="card-body text-center">
-                    <div class="mb-3">
-                      <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-lg text-orange" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
-                        <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
-                        <path d="M14 3v4a1 1 0 0 0 1 1h4" />
-                        <path d="M17 21h-10a2 2 0 0 1 -2 -2v-14a2 2 0 0 1 2 -2h7l5 5v11a2 2 0 0 1 -2 2z" />
-                        <path d="M9 7l1 1l1 -1m-2 1l1 1l1 -1" />
-                        <path d="M9 11l1 1l1 -1m-2 1l1 1l1 -1" />
-                        <path d="M9 15l1 1l1 -1" />
-                      </svg>
-                    </div>
-                    <h4 class="m-0">Housekeeping</h4>
-                    <div class="text-muted">Manage tasks</div>
-                  </div>
-                </div>
-              </a>
-            </div>
-            <div class="col-sm-6 col-lg-3">
-              <a href="{{ url_for('hms.accounting') }}" class="text-decoration-none">
-                <div class="card card-sm bg-purple-lt">
-                  <div class="card-body text-center">
-                    <div class="mb-3">
-                      <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-lg text-purple" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
-                        <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
-                        <path d="M10.325 4.317c.426 -1.756 2.924 -1.756 3.35 0a1.724 1.724 0 0 0 2.573 1.066c1.543 -.94 3.31 .826 2.37 2.37a1.724 1.724 0 0 0 1.065 2.572c1.756 .426 1.756 2.924 0 3.35a1.724 1.724 0 0 0 -1.066 2.573c.94 1.543 -.826 3.31 -2.37 2.37a1.724 1.724 0 0 0 -2.572 1.065c-.426 1.756 -2.924 1.756 -3.35 0a1.724 1.724 0 0 0 -2.573 -1.066c-1.543 .94 -3.31 -.826 -2.37 -2.37a1.724 1.724 0 0 0 -1.065 -2.572c-1.756 -.426 -1.756 -2.924 0 3.35a1.724 1.724 0 0 0 1.066 2.573c-.94 1.543 .826 -3.31 2.37 -2.37c1 .608 2.296 .07 2.572 -1.065z" />
-                        <path d="M9 12a3 3 0 1 0 6 0a3 3 0 0 0 -6 0" />
-                      </svg>
-                    </div>
-                    <h4 class="m-0">Financials</h4>
-                    <div class="text-muted">View reports</div>
-                  </div>
-                </div>
-              </a>
-            </div>
-          </div>
-        </div>
-      </div>
     </div>
 
-    <!-- Right Column - Stats and Recent Activity -->
-    <div class="col-lg-4">
-      <!-- Today's Stats -->
-      <div class="card">
-        <div class="card-header">
-          <h3 class="card-title">Today's Activity</h3>
-        </div>
-        <div class="list-group list-group-flush">
-          <div class="list-group-item">
-            <div class="row align-items-center">
-              <div class="col-auto">
-                <span class="bg-blue text-white avatar">
-                  <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
-                    <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
-                    <path d="M12 12m-9 0a9 9 0 1 0 18 0a9 9 0 1 0 -18 0" />
-                    <path d="M12 8v4l2 2" />
-                  </svg>
-                </span>
-              </div>
-              <div class="col">
-                <div>Check-ins</div>
-                <div class="text-muted">{{ stats.check_ins_today }}</div>
-              </div>
+    <!-- Right — Room Status + Recent Bookings -->
+    <div class="col-lg-4 d-flex flex-column gap-3">
+
+      <!-- Room Status -->
+      <div class="chart-card p-3">
+        <div style="font-size:.72rem;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--tblr-muted);margin-bottom:.75rem;">Room Status</div>
+        <div id="room-donut" style="height:160px;"></div>
+        <div class="d-flex flex-column gap-2 mt-3">
+          <div class="room-pill">
+            <div class="d-flex align-items-center gap-2">
+              <div class="room-pill-dot" style="background:#20c997;"></div>
+              <span class="room-pill-label">Available</span>
             </div>
+            <span class="room-pill-count text-teal">{{ stats.available_rooms }}</span>
           </div>
-          <div class="list-group-item">
-            <div class="row align-items-center">
-              <div class="col-auto">
-                <span class="bg-green text-white avatar">
-                  <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
-                    <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
-                    <path d="M12 12m-9 0a9 9 0 1 0 18 0a9 9 0 1 0 -18 0" />
-                    <path d="M12 8v4l2 2" />
-                  </svg>
-                </span>
-              </div>
-              <div class="col">
-                <div>Check-outs</div>
-                <div class="text-muted">{{ stats.check_outs_today }}</div>
-              </div>
+          <div class="room-pill">
+            <div class="d-flex align-items-center gap-2">
+              <div class="room-pill-dot" style="background:#2563eb;"></div>
+              <span class="room-pill-label">Occupied</span>
             </div>
+            <span class="room-pill-count text-blue">{{ stats.occupied_rooms }}</span>
           </div>
-          <div class="list-group-item">
-            <div class="row align-items-center">
-              <div class="col-auto">
-                <span class="bg-orange text-white avatar">
-                  <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
-                    <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
-                    <path d="M12 12m-9 0a9 9 0 1 0 18 0a9 9 0 1 0 -18 0" />
-                    <path d="M12 8v4l2 2" />
-                  </svg>
-                </span>
-              </div>
-              <div class="col">
-                <div>Occupancy Rate</div>
-                <div class="text-muted">{{ stats.occupancy_rate }}%</div>
-              </div>
+          <div class="room-pill">
+            <div class="d-flex align-items-center gap-2">
+              <div class="room-pill-dot" style="background:#f76707;"></div>
+              <span class="room-pill-label">Dirty / Cleaning</span>
             </div>
+            <span class="room-pill-count text-orange">{{ stats.dirty_rooms }}</span>
           </div>
+          {% if stats.maintenance_rooms > 0 %}
+          <div class="room-pill">
+            <div class="d-flex align-items-center gap-2">
+              <div class="room-pill-dot" style="background:#d63939;"></div>
+              <span class="room-pill-label">Maintenance</span>
+            </div>
+            <span class="room-pill-count text-red">{{ stats.maintenance_rooms }}</span>
+          </div>
+          {% endif %}
         </div>
       </div>
 
       <!-- Recent Bookings -->
-      <div class="card mt-3">
-        <div class="card-header">
-          <h3 class="card-title">Recent Bookings</h3>
-          <div class="card-actions">
-            <a href="{{ url_for('hms.bookings') }}" class="btn btn-outline-primary btn-sm">View All</a>
-          </div>
+      <div class="chart-card p-3" style="flex:1">
+        <div class="d-flex align-items-center justify-content-between mb-3">
+          <div style="font-size:.72rem;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--tblr-muted);">Recent Bookings</div>
+          <a href="{{ url_for('hms.bookings') }}" style="font-size:.78rem;color:#2563eb;text-decoration:none;">View all →</a>
         </div>
-        <div class="list-group list-group-flush">
-          {% for booking in recent_bookings %}
-          <div class="list-group-item">
-            <div class="row align-items-center">
-              <div class="col-auto">
-                <span class="bg-blue text-white avatar">
-                  {{ booking.guest.name[0]|upper if booking.guest else 'G' }}
-                </span>
-              </div>
-              <div class="col">
-                <div class="font-weight-medium">{{ booking.guest.name if booking.guest else 'Unknown' }}</div>
-                <div class="text-muted">{{ booking.room.room_number if booking.room else 'N/A' }} • {{ booking.check_in_date.strftime('%b %d') }} - {{ booking.check_out_date.strftime('%b %d') }}</div>
-              </div>
-              <div class="col-auto">
-                <span class="badge bg-{{ 'green' if booking.status == 'confirmed' else 'blue' if booking.status == 'pending' else 'red' }}-lt">{{ booking.status|title }}</span>
-              </div>
-            </div>
+        {% for b in recent_bookings %}
+        <div class="guest-row">
+          <div class="guest-avatar" style="background:{{ ['#dbeafe','#dcfce7','#ffedd5','#f3e8ff','#fef9c3'][loop.index0 % 5] }};color:#333">
+            {{ b.guest.name[0]|upper if b.guest else 'G' }}
           </div>
-          {% else %}
-          <div class="list-group-item text-center">
-            <div class="text-muted">No recent bookings</div>
+          <div class="flex-fill" style="min-width:0">
+            <div class="guest-name text-truncate">{{ b.guest.name if b.guest else 'Guest' }}</div>
+            <div class="guest-meta">Room {{ b.room.room_number if b.room else '—' }} · {{ b.check_in_date.strftime('%b %d') }}</div>
           </div>
-          {% endfor %}
+          <span class="badge bg-{{ 'green' if b.status == 'confirmed' else 'blue' if b.status == 'checked_in' else 'orange' if b.status == 'pending' else 'red' }}-lt" style="font-size:.65rem;flex-shrink:0">
+            {{ b.status|replace('_',' ')|title }}
+          </span>
         </div>
+        {% else %}
+        <div class="text-center text-muted py-3" style="font-size:.82rem;">No bookings yet</div>
+        {% endfor %}
       </div>
+
     </div>
   </div>
 
-  <!-- Bottom Row - Upcoming Events and Alerts -->
-  <div class="row row-deck row-cards mt-3">
-    <!-- Upcoming Events -->
-    <div class="col-lg-6">
-      <div class="card">
-        <div class="card-header">
-          <h3 class="card-title">Upcoming Events</h3>
-        </div>
-        <div class="list-group list-group-flush">
-          {% for event in upcoming_events %}
-          <div class="list-group-item">
-            <div class="row align-items-center">
-              <div class="col-auto">
-                <span class="bg-blue text-white avatar">
-                  {{ event.date.strftime('%d') }}
-                </span>
-              </div>
-              <div class="col">
-                <div class="font-weight-medium">{{ event.title }}</div>
-                <div class="text-muted">{{ event.date.strftime('%B %d, %Y') }} • {{ event.description }}</div>
-              </div>
-              <div class="col-auto">
-                <span class="badge bg-blue-lt">{{ event.type|title }}</span>
-              </div>
-            </div>
-          </div>
-          {% else %}
-          <div class="list-group-item text-center">
-            <div class="text-muted">No upcoming events</div>
-          </div>
-          {% endfor %}
-        </div>
-      </div>
-    </div>
+  <!-- ════ OPERATIONS ROW ════ -->
+  <div class="row g-3 mb-3">
 
-    <!-- Alerts & Notifications -->
-    <div class="col-lg-6">
-      <div class="card">
-        <div class="card-header">
-          <h3 class="card-title">Alerts & Notifications</h3>
-        </div>
-        <div class="list-group list-group-flush">
-          {% for alert in alerts %}
-          <div class="list-group-item">
-            <div class="row align-items-center">
-              <div class="col-auto">
-                <span class="bg-{{ alert.level }} text-white avatar">
-                  {% if alert.type == 'low_stock' %}
-                  <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
-                    <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
-                    <path d="M12 17.5l-7 -4.5v-9l7 4.5l7 -4.5v9l-7 4.5z" />
-                    <path d="M4 12l7 4.5l7 -4.5" />
-                  </svg>
-                  {% elif alert.type == 'maintenance' %}
-                  <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
-                    <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
-                    <path d="M10.325 4.317c.426 -1.756 2.924 -1.756 3.35 0a1.724 1.724 0 0 0 2.573 1.066c1.543 -.94 3.31 .826 2.37 2.37a1.724 1.724 0 0 0 1.065 2.572c1.756 .426 1.756 2.924 0 3.35a1.724 1.724 0 0 0 -1.066 2.573c.94 1.543 -.826 3.31 -2.37 2.37a1.724 1.724 0 0 0 -2.572 1.065c-.426 1.756 -2.924 1.756 -3.35 0a1.724 1.724 0 0 0 -2.573 -1.066c-1.543 .94 -3.31 -.826 -2.37 -2.37a1.724 1.724 0 0 0 -1.065 -2.572c-1.756 -.426 -1.756 -2.924 0 3.35a1.724 1.724 0 0 0 1.066 2.573c-.94 1.543 .826 -3.31 2.37 -2.37c1 .608 2.296 .07 2.572 -1.065z" />
-                    <path d="M9 12a3 3 0 1 0 6 0a3 3 0 0 0 -6 0" />
-                  </svg>
-                  {% else %}
-                  <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
-                    <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
-                    <circle cx="12" cy="12" r="9" />
-                    <line x1="12" y1="8" x2="12" y2="12" />
-                    <line x1="12" y1="16" x2="12.01" y2="16" />
-                  </svg>
-                  {% endif %}
-                </span>
+    <!-- Housekeeping + Low Stock alerts -->
+    {% if stats.pending_housekeeping > 0 or stats.low_stock_count > 0 %}
+    <div class="col-12">
+      <div class="chart-card p-3">
+        <div style="font-size:.72rem;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--tblr-muted);margin-bottom:.75rem;">Operations Alerts</div>
+        <div class="row g-2">
+          {% if stats.pending_housekeeping > 0 %}
+          <div class="col-sm-6 col-lg-3">
+            <a href="{{ url_for('hms.housekeeping') }}" class="text-decoration-none">
+              <div class="alert-row" style="background:rgba(247,103,7,.07);border:1px solid rgba(247,103,7,.2);">
+                <div class="alert-dot" style="background:#f76707;margin-top:.35rem;"></div>
+                <div>
+                  <div style="font-weight:600;color:#f76707;">{{ stats.pending_housekeeping }} Pending Tasks</div>
+                  <div style="color:var(--tblr-muted);font-size:.75rem;">Housekeeping queue</div>
+                </div>
               </div>
-              <div class="col">
-                <div class="font-weight-medium">{{ alert.title }}</div>
-                <div class="text-muted">{{ alert.message }}</div>
-              </div>
-              <div class="col-auto">
-                <span class="badge bg-{{ alert.level }}-lt">{{ alert.severity|title }}</span>
-              </div>
-            </div>
+            </a>
           </div>
-          {% else %}
-          <div class="list-group-item text-center">
-            <div class="text-muted">No alerts</div>
+          {% endif %}
+          {% if stats.low_stock_count > 0 %}
+          <div class="col-sm-6 col-lg-3">
+            <a href="{{ url_for('hms.inventory') }}" class="text-decoration-none">
+              <div class="alert-row" style="background:rgba(214,57,57,.07);border:1px solid rgba(214,57,57,.2);">
+                <div class="alert-dot" style="background:#d63939;margin-top:.35rem;"></div>
+                <div>
+                  <div style="font-weight:600;color:#d63939;">{{ stats.low_stock_count }} Low Stock Items</div>
+                  <div style="color:var(--tblr-muted);font-size:.75rem;">Reorder needed</div>
+                </div>
+              </div>
+            </a>
           </div>
-          {% endfor %}
+          {% endif %}
         </div>
       </div>
     </div>
+    {% endif %}
+
+    <!-- Notification alerts -->
+    {% for alert in alerts[:4] %}
+    <div class="col-sm-6 col-lg-3">
+      <div class="alert-row chart-card" style="border-left:3px solid var(--tblr-{{ alert.level or 'info' }});">
+        <div class="alert-dot" style="background:var(--tblr-{{ alert.level or 'info' }});"></div>
+        <div>
+          <div style="font-weight:600;font-size:.82rem;">{{ alert.title }}</div>
+          <div class="text-muted" style="font-size:.75rem;">{{ alert.message }}</div>
+        </div>
+      </div>
+    </div>
+    {% endfor %}
+
   </div>
+
+  <!-- ════ SHORTCUTS ════ -->
+  <div class="row g-2 mb-4">
+    {% set shortcuts = [
+      ('hms.bookings', 'Bookings', '#2563eb', 'M4 6l16 0 M4 12l16 0 M4 18l16 0'),
+      ('hms.rooms', 'Rooms', '#20c997', 'M5 11h14a2 2 0 0 1 2 2v7a2 2 0 0 1 -2 2H5a2 2 0 0 1 -2 -2v-7a2 2 0 0 1 2 -2z M12 3v3 M10 7v-2a2 2 0 1 1 4 0v2'),
+      ('hms.housekeeping', 'Housekeeping', '#f76707', 'M19 11l-8 -8l-8.5 8.5a2.5 2.5 0 1 0 3.5 3.5l8.5 -8.5 M12 3l8 8'),
+      ('hms.accounting', 'Accounting', '#ae3ec9', 'M12 1v22 M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6'),
+      ('hms.inventory', 'Inventory', '#4299e1', 'M12 3l8 4.5l0 9l-8 4.5l-8 -4.5l0 -9l8 -4.5 M12 12l8 -4.5 M12 12l0 9 M12 12l-8 -4.5'),
+      ('hms.accounting_reports', 'Reports', '#2fb344', 'M9 5H7a2 2 0 0 0 -2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2 -2V7a2 2 0 0 0 -2 -2h-2 M9 12l2 2l4 -4'),
+    ] %}
+    {% for endpoint, label, color, path in shortcuts %}
+    <div class="col-4 col-md-2">
+      <a href="{{ url_for(endpoint) }}" class="text-decoration-none">
+        <div class="chart-card p-3 text-center" style="transition:transform .15s,box-shadow .15s;" onmouseover="this.style.transform='translateY(-2px)';this.style.boxShadow='0 6px 20px rgba(0,0,0,.1)'" onmouseout="this.style.transform='';this.style.boxShadow=''">
+          <div style="width:38px;height:38px;border-radius:9px;background:{{ color }}1a;display:flex;align-items:center;justify-content:center;margin:0 auto .6rem;">
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="{{ color }}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="{{ path }}"/></svg>
+          </div>
+          <div style="font-size:.78rem;font-weight:600;">{{ label }}</div>
+        </div>
+      </a>
+    </div>
+    {% endfor %}
+  </div>
+
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
 <script>
-// Initialize charts
-document.addEventListener('DOMContentLoaded', function() {
-  // Revenue Chart
-  var revenueChartOptions = {
-    chart: {
-      type: 'area',
-      height: 300,
-      toolbar: {
-        show: false
-      }
-    },
-    series: [{
-      name: 'Revenue',
-      data: {{ revenue_data|tojson }}
-    }],
-    xaxis: {
-      categories: {{ revenue_labels|tojson }}
-    },
-    colors: ['#206bc4'],
-    fill: {
-      type: 'gradient',
-      gradient: {
-        shadeIntensity: 1,
-        opacityFrom: 0.7,
-        opacityTo: 0.1,
-        stops: [0, 100]
-      }
-    },
-    tooltip: {
-      x: {
-        format: 'dd/MM/yy HH:mm'
-      },
-      y: {
-        formatter: function (val) {
-          return "$" + val
-        }
-      }
-    },
-    dataLabels: {
-      enabled: false
-    },
-    stroke: {
-      curve: 'smooth',
-      width: 2
-    }
-  };
+// Tab switching
+function showTab(name, btn) {
+  document.getElementById('tab-arrivals').style.display = name === 'arrivals' ? '' : 'none';
+  document.getElementById('tab-departures').style.display = name === 'departures' ? '' : 'none';
+  document.querySelectorAll('.dash-tab').forEach(t => t.classList.remove('active'));
+  btn.classList.add('active');
+}
 
-  var revenueChart = new ApexCharts(document.querySelector("#revenue-chart"), revenueChartOptions);
-  revenueChart.render();
+document.addEventListener('DOMContentLoaded', function () {
+  // Detect dark mode
+  const isDark = document.documentElement.getAttribute('data-bs-theme') === 'dark'
+              || document.body.classList.contains('theme-dark');
+  const textColor = isDark ? '#8c98a4' : '#667382';
+  const gridColor = isDark ? '#2a2e3a' : '#f0f2f5';
+  const bgColor   = isDark ? '#1c2030' : '#fff';
+
+  // Revenue Chart
+  new ApexCharts(document.querySelector('#revenue-chart'), {
+    chart: { type: 'area', height: 220, toolbar: { show: false }, background: 'transparent', sparkline: { enabled: false } },
+    series: [{ name: 'Revenue', data: {{ revenue_data|tojson }} }],
+    xaxis: {
+      categories: {{ revenue_labels|tojson }},
+      labels: { style: { colors: textColor, fontSize: '11px' } },
+      axisBorder: { show: false }, axisTicks: { show: false },
+    },
+    yaxis: {
+      labels: {
+        style: { colors: textColor, fontSize: '11px' },
+        formatter: v => '{{ symbol }} ' + (v >= 1000 ? (v/1000).toFixed(0)+'k' : v.toFixed(0))
+      }
+    },
+    grid: { borderColor: gridColor, strokeDashArray: 4 },
+    colors: ['#2563eb'],
+    fill: { type: 'gradient', gradient: { shadeIntensity: 1, opacityFrom: 0.4, opacityTo: 0.02, stops: [0, 95] } },
+    stroke: { curve: 'smooth', width: 2.5 },
+    dataLabels: { enabled: false },
+    tooltip: { y: { formatter: v => '{{ symbol }} ' + v.toLocaleString() }, theme: isDark ? 'dark' : 'light' },
+    markers: { size: 3, colors: ['#2563eb'], strokeWidth: 0 },
+  }).render();
+
+  // Room donut
+  const available = {{ stats.available_rooms }};
+  const occupied  = {{ stats.occupied_rooms }};
+  const dirty     = {{ stats.dirty_rooms }};
+  const maint     = {{ stats.maintenance_rooms }};
+  new ApexCharts(document.querySelector('#room-donut'), {
+    chart: { type: 'donut', height: 160, background: 'transparent', toolbar: { show: false } },
+    series: [available, occupied, dirty, maint].filter((v,i) => [available,occupied,dirty,maint][i] > 0 || i < 2),
+    labels: ['Available', 'Occupied', 'Dirty', 'Maintenance'],
+    colors: ['#20c997', '#2563eb', '#f76707', '#d63939'],
+    legend: { show: false },
+    dataLabels: { enabled: false },
+    plotOptions: { pie: { donut: { size: '70%', labels: {
+      show: true,
+      total: { show: true, label: 'Total', color: textColor, fontSize: '11px',
+               formatter: () => '{{ stats.total_rooms }}' }
+    } } } },
+    tooltip: { theme: isDark ? 'dark' : 'light' },
+    stroke: { width: 0 },
+  }).render();
 });
 </script>
 {% endblock %}

@@ -168,31 +168,30 @@
                             </div>
 
                             <!-- Contact Nav -->                            
-                         	<div class="contact-slide-hide">
+                         	<div class="contact-slide-hide"> 
                                 <div class="contact-nav">
                                      <a href="javascript:void(0)" class="contact_close">&times;</a>
                                      <div class="contact-nav-form p-a30">
-                            			<form class="cons-contact-form" method="post" action="{{ url_for('booking.contact') }}">
-                                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            			<form class="cons-contact-form" method="post" action="form-handler.php">
                                             <div class="contact-one m-b30">
-
+                                            
                                                 <!-- TITLE START -->
                                                 <div class="section-head text-center">
                                                     <h2 class="m-b5" data-title="Form">Get In Touch</h2>
                                                 </div>
-                                                <!-- TITLE END -->
+                                                <!-- TITLE END -->  
                                                  <div class="row">
-                                                     <div class="col-md-6">
+                                                     <div class="col-md-6">                               
                                                         <div class="form-group wt-inputicon-box">
                                                             <input name="username" type="text" required class="form-control" placeholder="Name">
                                                             <i class="fs-input-icon sl-icon-user"></i>
                                                         </div>
                                                     </div>
                                                      <div class="col-md-6">
-                                                        <div class="form-group wt-inputicon-box">
-                                                            <input name="email" type="email" class="form-control" required placeholder="Email">
+                                                        <div class="form-group wt-inputicon-box"> 
+                                                            <input name="email" type="text" class="form-control" required placeholder="Email">
                                                             <i class="fs-input-icon sl-icon-envolope-letter"></i>
-                                                        </div>
+                                                        </div>                                                    
                                                     </div>
                                                      <div class="col-md-12">
                                                         <div class="form-group wt-inputicon-box">
@@ -232,7 +231,7 @@
                                                         <div class="icon-md m-b20"><i class="sl-icon-envolope-letter"></i></div>
                                                         <div class="icon-content">
                                                             <h5 class="m-t0 font-weight-500">Email address</h5>
-                                                            <p>info@ngendahotel.co.tz</p>
+                                                            <p>hotels@ngendagroup.africa</p>
                                                         </div>
                                                     </div>
                                                 </li>
@@ -253,13 +252,13 @@
                                 </div> 
                             </div>                               
                             <!-- SITE Search -->
-                            <div id="search">
+                            <div id="search"> 
                                 <span class="close"></span>
-                                <form role="search" id="searchform" action="{{ url_for('booking.rooms') }}" method="get" class="radius-xl">
+                                <form role="search" id="searchform" action="/search" method="get" class="radius-xl">
                                     <div class="input-group">
-                                        <input value="" name="q" type="search" placeholder="Search rooms..."/>
+                                        <input value="" name="q" type="search" placeholder="Type to search"/>
                                         <span class="input-group-btn"><button type="button" class="search-btn"><i class="fa fa-search"></i></button></span>
-                                    </div>
+                                    </div>   
                                 </form>
                             </div>                                                                                                          
                             

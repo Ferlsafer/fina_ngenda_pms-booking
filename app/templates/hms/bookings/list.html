@@ -1,78 +1,294 @@
 {% extends "hms/layout/base.html" %}
-{% block title %}Bookings - Hotel PMS{% endblock %}
+{% block title %}Bookings — Hotel PMS{% endblock %}
+
 {% block content %}
-<div class="page-header d-print-none">
-  <div class="row align-items-center">
-    <div class="col">
-      <h2 class="page-title">Bookings</h2>
-    </div>
-    <div class="col-auto">
-      <a href="{{ url_for('hms.bookings_new') }}" class="btn btn-primary">New booking</a>
+{% set symbol = get_currency_symbol() %}
+
+<style>
+  .status-badge {
+    display: inline-flex; align-items: center; gap: 0.35rem;
+    padding: 0.28rem 0.7rem; border-radius: 20px;
+    font-size: 0.72rem; font-weight: 600; letter-spacing: .04em;
+  }
+  .status-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+
+  .filter-tab {
+    padding: 0.4rem 1rem; border-radius: 20px; border: 1px solid var(--tblr-border-color);
+    font-size: 0.78rem; font-weight: 600; cursor: pointer;
+    background: var(--tblr-bg-surface); color: var(--tblr-muted);
+    transition: all .15s; text-decoration: none;
+  }
+  .filter-tab:hover, .filter-tab.active {
+    background: #2563eb; border-color: #2563eb; color: #fff;
+  }
+
+  .booking-row td { vertical-align: middle; }
+  .guest-init {
+    width: 34px; height: 34px; border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 700; font-size: 0.82rem; flex-shrink: 0;
+    color: #fff;
+  }
+
+  .kpi-mini {
+    padding: 1rem 1.25rem; border-radius: 10px;
+    border: 1px solid var(--tblr-border-color);
+    background: var(--tblr-bg-surface);
+  }
+  .kpi-mini-label { font-size: 0.68rem; font-weight: 600; text-transform: uppercase; letter-spacing: .06em; color: var(--tblr-muted); }
+  .kpi-mini-value { font-size: 1.75rem; font-weight: 700; line-height: 1.1; }
+</style>
+
+<div class="container-xl">
+
+  <!-- ── Header ── -->
+  <div class="page-header d-print-none mb-4">
+    <div class="row align-items-center">
+      <div class="col">
+        <h2 class="page-title mb-0">Bookings</h2>
+        <div class="text-muted" style="font-size:.82rem;">Manage all guest reservations</div>
+      </div>
+      <div class="col-auto ms-auto">
+        <a href="{{ url_for('hms.bookings_new') }}" class="btn btn-primary">
+          <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          New Booking
+        </a>
+      </div>
     </div>
   </div>
-</div>
-<div class="card">
-  <div class="table-responsive">
-    <table class="table table-vcenter card-table table-striped">
-      <thead>
-        <tr>
-          <th>Guest</th>
-          <th>Room</th>
-          <th>Check-in</th>
-          <th>Check-out</th>
-          <th>Status</th>
-          <th>Total</th>
-          <th>Actions</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for b in bookings %}
-        <tr>
-          <td>{{ b.guest.name }}</td>
-          <td>{{ b.room.room_number }}</td>
-          <td>{{ b.check_in_date }}</td>
-          <td>{{ b.check_out_date }}</td>
-          <td><span class="badge bg-{% if b.status == 'Reserved' %}warning{% elif b.status == 'CheckedIn' %}success{% elif b.status == 'CheckedOut' %}secondary{% elif b.status == 'Cancelled' %}danger{% else %}info{% endif %}">{{ b.status }}</span></td>
-          <td>{{ b.total_amount }}</td>
-          <td>
-            {% if b.status == 'Reserved' %}
-            <div class="btn-group" role="group">
-              <form method="post" action="{{ url_for('hms.bookings_check_in', booking_id=b.id) }}" class="d-inline">
-                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
-                <button type="submit" class="btn btn-sm btn-primary">Check in</button>
-              </form>
-              <button type="button" class="btn btn-sm btn-outline-danger dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
-                More
-              </button>
-              <ul class="dropdown-menu">
-                <li>
-                  <form method="post" action="{{ url_for('hms.bookings_cancel', booking_id=b.id) }}" class="d-inline w-100">
-                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
-                    <input type="hidden" name="cancellation_reason" value="Guest requested cancellation"/>
-                    <button type="submit" class="dropdown-item">Cancel Booking</button>
-                  </form>
-                </li>
-                <li><hr class="dropdown-divider"/></li>
-                <li>
-                  <form method="post" action="{{ url_for('hms.bookings_no_show', booking_id=b.id) }}" class="d-inline w-100">
-                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
-                    <button type="submit" class="dropdown-item">Mark No-Show</button>
-                  </form>
-                </li>
-              </ul>
-            </div>
-            {% endif %}
-            {% if b.status == 'CheckedIn' %}
-            <form method="post" action="{{ url_for('hms.bookings_check_out', booking_id=b.id) }}" class="d-inline"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/><button type="submit" class="btn btn-sm btn-success">Check out</button></form>
-            {% endif %}
-            <a href="{{ url_for('hms.bookings_payment', booking_id=b.id) }}" class="btn btn-sm btn-outline-secondary">Payment</a>
-          </td>
-        </tr>
-        {% else %}
-        <tr><td colspan="7" class="text-muted">No bookings.</td></tr>
-        {% endfor %}
-      </tbody>
-    </table>
+
+  <!-- ── KPI Mini Strip ── -->
+  {% set total_b = bookings|length %}
+  {% set checked_in = bookings|selectattr('status','equalto','CheckedIn')|list|length %}
+  {% set confirmed = bookings|selectattr('status','equalto','Reserved')|list|length %}
+  {% set cancelled = bookings|selectattr('status','in',['cancelled','Cancelled','no_show'])|list|length %}
+
+  <div class="row g-3 mb-4">
+    <div class="col-6 col-lg-3">
+      <div class="kpi-mini">
+        <div class="kpi-mini-label">Total Bookings</div>
+        <div class="kpi-mini-value">{{ total_b }}</div>
+      </div>
+    </div>
+    <div class="col-6 col-lg-3">
+      <div class="kpi-mini">
+        <div class="kpi-mini-label text-success">Checked In</div>
+        <div class="kpi-mini-value text-success">{{ checked_in }}</div>
+      </div>
+    </div>
+    <div class="col-6 col-lg-3">
+      <div class="kpi-mini">
+        <div class="kpi-mini-label text-blue">Confirmed</div>
+        <div class="kpi-mini-value text-blue">{{ confirmed }}</div>
+      </div>
+    </div>
+    <div class="col-6 col-lg-3">
+      <div class="kpi-mini">
+        <div class="kpi-mini-label text-danger">Cancelled</div>
+        <div class="kpi-mini-value text-danger">{{ cancelled }}</div>
+      </div>
+    </div>
   </div>
+
+  <!-- ── Filter + Search Bar ── -->
+  <div class="card mb-3">
+    <div class="card-body py-2">
+      <div class="d-flex flex-wrap align-items-center gap-2">
+        <div class="me-auto d-flex flex-wrap gap-2">
+          <a href="?status=" class="filter-tab {% if not request.args.get('status') %}active{% endif %}">All</a>
+          <a href="?status=Reserved" class="filter-tab {% if request.args.get('status')=='Reserved' %}active{% endif %}">Reserved</a>
+          <a href="?status=CheckedIn" class="filter-tab {% if request.args.get('status')=='CheckedIn' %}active{% endif %}">Checked In</a>
+          <a href="?status=CheckedOut" class="filter-tab {% if request.args.get('status')=='CheckedOut' %}active{% endif %}">Checked Out</a>
+          <a href="?status=cancelled" class="filter-tab {% if request.args.get('status')=='cancelled' %}active{% endif %}">Cancelled</a>
+        </div>
+        <div style="width:220px;">
+          <input type="text" id="bookingSearch" class="form-control form-control-sm" placeholder="Search guest, room, ref…">
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Bookings Table ── -->
+  <div class="card">
+    <div class="table-responsive">
+      <table class="table table-vcenter card-table" id="bookingsTable">
+        <thead>
+          <tr>
+            <th>Guest</th>
+            <th>Ref</th>
+            <th>Room</th>
+            <th>Check-in</th>
+            <th>Check-out</th>
+            <th>Nights</th>
+            <th>Total</th>
+            <th>Status</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for b in bookings %}
+          {% set status_filter = request.args.get('status','') %}
+          {% if not status_filter or b.status == status_filter %}
+          <tr class="booking-row" data-search="{{ b.guest.name|lower }} {{ b.room.room_number|lower }} {{ (b.booking_reference or '')|lower }}">
+            <!-- Guest -->
+            <td>
+              <div class="d-flex align-items-center gap-2">
+                <div class="guest-init" style="background:{{ ['#2563eb','#7c3aed','#059669','#d97706','#dc2626','#0891b2']|random }};">
+                  {{ b.guest.name[0]|upper }}
+                </div>
+                <div>
+                  <div style="font-weight:600;font-size:.875rem;">{{ b.guest.name }}</div>
+                  <div class="text-muted" style="font-size:.75rem;">{{ b.guest.phone or b.guest.email or '' }}</div>
+                </div>
+              </div>
+            </td>
+            <!-- Reference -->
+            <td>
+              <span class="text-muted" style="font-size:.78rem;font-family:monospace;">
+                {{ b.booking_reference or ('#' ~ b.id) }}
+              </span>
+            </td>
+            <!-- Room -->
+            <td>
+              <div style="font-weight:600;">{{ b.room.room_number }}</div>
+              {% if b.room.room_type %}
+              <div class="text-muted" style="font-size:.75rem;">{{ b.room.room_type.name }}</div>
+              {% endif %}
+            </td>
+            <!-- Check-in -->
+            <td style="font-size:.875rem;">{{ b.check_in_date.strftime('%b %d, %Y') if b.check_in_date else '-' }}</td>
+            <!-- Check-out -->
+            <td style="font-size:.875rem;">{{ b.check_out_date.strftime('%b %d, %Y') if b.check_out_date else '-' }}</td>
+            <!-- Nights -->
+            <td>
+              {% if b.check_in_date and b.check_out_date %}
+                {% set nights = (b.check_out_date - b.check_in_date).days %}
+                <span class="badge bg-blue-lt text-blue">{{ nights }}n</span>
+              {% else %}-{% endif %}
+            </td>
+            <!-- Total -->
+            <td style="font-weight:600;">{{ symbol }} {{ "{:,.0f}".format(b.total_amount|float) }}</td>
+            <!-- Status -->
+            <td>
+              {% if b.status == 'Reserved' %}
+                <span class="status-badge bg-blue-lt text-blue">
+                  <span class="status-dot bg-blue"></span>Reserved
+                </span>
+              {% elif b.status == 'CheckedIn' %}
+                <span class="status-badge bg-green-lt text-green">
+                  <span class="status-dot bg-green"></span>Checked In
+                </span>
+              {% elif b.status == 'CheckedOut' %}
+                <span class="status-badge bg-secondary-lt text-muted">
+                  <span class="status-dot" style="background:#adb5bd;"></span>Checked Out
+                </span>
+              {% elif b.status in ['cancelled', 'Cancelled'] %}
+                <span class="status-badge bg-red-lt text-red">
+                  <span class="status-dot bg-red"></span>Cancelled
+                </span>
+              {% elif b.status == 'no_show' %}
+                <span class="status-badge bg-orange-lt text-orange">
+                  <span class="status-dot bg-orange"></span>No Show
+                </span>
+              {% else %}
+                <span class="status-badge" style="background:var(--tblr-border-color);">{{ b.status }}</span>
+              {% endif %}
+            </td>
+            <!-- Actions -->
+            <td>
+              <div class="d-flex gap-1 flex-wrap">
+                {% if b.status == 'Reserved' %}
+                  <form method="post" action="{{ url_for('hms.bookings_check_in', booking_id=b.id) }}" class="d-inline">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                    <button type="submit" class="btn btn-sm btn-success" title="Check In">
+                      <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-sm" width="16" height="16" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1 -2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>
+                      Check In
+                    </button>
+                  </form>
+                {% endif %}
+                {% if b.status == 'CheckedIn' %}
+                  <form method="post" action="{{ url_for('hms.bookings_check_out', booking_id=b.id) }}" class="d-inline">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                    <button type="submit" class="btn btn-sm btn-primary" title="Check Out">
+                      <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-sm" width="16" height="16" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M9 21h-4a2 2 0 0 1 -2 -2v-14a2 2 0 0 1 2 -2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+                      Check Out
+                    </button>
+                  </form>
+                {% endif %}
+                <a href="{{ url_for('hms.bookings_payment', booking_id=b.id) }}" class="btn btn-sm btn-outline-secondary" title="Payment">
+                  <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-sm" width="16" height="16" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><rect x="3" y="5" width="18" height="14" rx="2"/><line x1="3" y1="10" x2="21" y2="10"/><line x1="7" y1="15" x2="7.01" y2="15"/><line x1="11" y1="15" x2="13" y2="15"/></svg>
+                  Pay
+                </a>
+                {% if b.status == 'Reserved' %}
+                <div class="dropdown">
+                  <button class="btn btn-sm btn-ghost-secondary dropdown-toggle" data-bs-toggle="dropdown">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-sm" width="16" height="16" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none"><circle cx="12" cy="5" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="12" cy="19" r="1"/></svg>
+                  </button>
+                  <ul class="dropdown-menu dropdown-menu-end">
+                    <li>
+                      <form method="post" action="{{ url_for('hms.bookings_cancel', booking_id=b.id) }}">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                        <input type="hidden" name="cancellation_reason" value="Guest requested cancellation"/>
+                        <button type="submit" class="dropdown-item text-danger">
+                          <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-sm me-1" width="16" height="16" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none"><path d="M18 6l-12 12"/><path d="M6 6l12 12"/></svg>
+                          Cancel Booking
+                        </button>
+                      </form>
+                    </li>
+                    <li>
+                      <form method="post" action="{{ url_for('hms.bookings_no_show', booking_id=b.id) }}">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                        <button type="submit" class="dropdown-item text-orange">
+                          <svg xmlns="http://www.w3.org/2000/svg" class="icon icon-sm me-1" width="16" height="16" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none"><path d="M3 12a9 9 0 1 0 18 0a9 9 0 0 0 -18 0"/><path d="M12 8v4"/><path d="M12 16v.01"/></svg>
+                          Mark No-Show
+                        </button>
+                      </form>
+                    </li>
+                  </ul>
+                </div>
+                {% endif %}
+              </div>
+            </td>
+          </tr>
+          {% endif %}
+          {% else %}
+          <tr>
+            <td colspan="9" class="text-center py-5">
+              <div style="opacity:.5;">
+                <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                <p class="mt-2 mb-0 fw-600">No bookings found</p>
+                <p class="text-muted" style="font-size:.82rem;">Create your first booking to get started.</p>
+              </div>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Live search
+const searchInput = document.getElementById('bookingSearch');
+if (searchInput) {
+  searchInput.addEventListener('input', function() {
+    const q = this.value.toLowerCase().trim();
+    document.querySelectorAll('#bookingsTable tbody tr.booking-row').forEach(row => {
+      const text = row.dataset.search || '';
+      row.style.display = q && !text.includes(q) ? 'none' : '';
+    });
+  });
+}
+
+// Randomize avatar colors deterministically by guest name
+document.querySelectorAll('.guest-init').forEach(el => {
+  const colors = ['#2563eb','#7c3aed','#059669','#d97706','#0891b2','#be185d'];
+  const letter = el.textContent.trim();
+  el.style.background = colors[letter.charCodeAt(0) % colors.length];
+});
+</script>
 {% endblock %}

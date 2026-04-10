@@ -1,184 +1,331 @@
 {% extends "hms/layout/base.html" %}
-{% block title %}Housekeeping{% endblock %}
+{% block title %}Housekeeping — Hotel PMS{% endblock %}
 
 {% block content %}
+<style>
+  /* ── KPI tiles ── */
+  .hk-tile {
+    border-radius: 10px; padding: 1rem 1.25rem;
+    border: 1px solid var(--tblr-border-color);
+    background: var(--tblr-bg-surface);
+    cursor: pointer; transition: box-shadow .15s, border-color .15s;
+  }
+  .hk-tile:hover { box-shadow: 0 4px 14px rgba(0,0,0,.08); }
+  .hk-tile.active { border-color: var(--tile-color); box-shadow: 0 0 0 3px color-mix(in srgb, var(--tile-color) 15%, transparent); }
+  .hk-tile-label { font-size: .68rem; font-weight: 600; text-transform: uppercase; letter-spacing: .06em; color: var(--tblr-muted); }
+  .hk-tile-value { font-size: 2rem; font-weight: 700; line-height: 1; color: var(--tile-color); }
+
+  /* ── Task cards ── */
+  .task-card {
+    border-radius: 8px; padding: .75rem 1rem;
+    border: 1px solid var(--tblr-border-color);
+    background: var(--tblr-bg-surface);
+    margin-bottom: .5rem;
+  }
+  .task-card:last-child { margin-bottom: 0; }
+  .priority-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+
+  /* ── Room status badge ── */
+  .rs-badge {
+    display: inline-flex; align-items: center; gap: .3rem;
+    padding: .2rem .6rem; border-radius: 20px; font-size: .72rem; font-weight: 600;
+  }
+  .rs-dot { width: 6px; height: 6px; border-radius: 50%; }
+
+  /* ── Filter tabs ── */
+  .hk-tab {
+    padding: .3rem .85rem; border-radius: 20px;
+    border: 1px solid var(--tblr-border-color); background: var(--tblr-bg-surface);
+    font-size: .78rem; font-weight: 600; cursor: pointer; color: var(--tblr-muted);
+    transition: all .15s; text-decoration: none;
+  }
+  .hk-tab:hover, .hk-tab.active { background: #2563eb; border-color: #2563eb; color: #fff; }
+</style>
+
 <div class="container-xl">
-  <div class="page-header d-print-none">
+
+  <!-- ── Header ── -->
+  <div class="page-header d-print-none mb-4">
     <div class="row align-items-center">
       <div class="col">
-        <h2 class="page-title">Housekeeping</h2>
-        <div class="text-muted mt-1">Manage room cleaning tasks and maintenance</div>
+        <h2 class="page-title mb-0">Housekeeping</h2>
+        <div class="text-muted" style="font-size:.82rem;">Room cleaning tasks and floor status</div>
+      </div>
+      <div class="col-auto ms-auto">
+        <a href="{{ url_for('hms.housekeeping_dashboard') }}" class="btn btn-outline-secondary">
+          <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+          Dashboard
+        </a>
       </div>
     </div>
   </div>
 
-  <!-- Status Overview -->
-  <div class="row mb-4">
-    <div class="col-md-3">
-      <div class="card card-sm">
-        <div class="card-body">
-          <div class="row align-items-center">
-            <div class="col-auto"><span class="bg-green text-white avatar"><svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M5 12l5 5l10 -10" /></svg></span></div>
-            <div class="col"><div class="font-weight-medium">{{ status_counts.Vacant }} Vacant</div><div class="text-muted small">Ready for guests</div></div>
-          </div>
+  <!-- ── KPI Tiles ── -->
+  <div class="row g-3 mb-4">
+    <div class="col-6 col-md-4 col-lg-2">
+      <div class="hk-tile active" style="--tile-color:#6b7280;" onclick="filterRooms('all',this)" id="tile-all">
+        <div class="hk-tile-label mb-2">All</div>
+        <div class="hk-tile-value" style="color:var(--tblr-body-color);">
+          {{ status_counts.Vacant + status_counts.Occupied + status_counts.Dirty + (status_counts.Reserved or 0) }}
         </div>
       </div>
     </div>
-    <div class="col-md-3">
-      <div class="card card-sm">
-        <div class="card-body">
-          <div class="row align-items-center">
-            <div class="col-auto"><span class="bg-blue text-white avatar"><svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M15 12m-1 0a1 1 0 1 0 2 0a1 1 0 1 0 -2 0" /><path d="M12 3a9 9 0 0 1 9 9a9 9 0 0 1 -9 9a9 9 0 0 1 -9 -9a9 9 0 0 1 9 -9z" /></svg></span></div>
-            <div class="col"><div class="font-weight-medium">{{ status_counts.Occupied }} Occupied</div><div class="text-muted small">Guests in room</div></div>
-          </div>
-        </div>
+    <div class="col-6 col-md-4 col-lg-2">
+      <div class="hk-tile" style="--tile-color:#059669;" onclick="filterRooms('Vacant',this)" id="tile-vacant">
+        <div class="hk-tile-label mb-2">Vacant</div>
+        <div class="hk-tile-value">{{ status_counts.Vacant }}</div>
+        <div style="font-size:.72rem;color:var(--tblr-muted);">Ready</div>
       </div>
     </div>
-    <div class="col-md-3">
-      <div class="card card-sm">
-        <div class="card-body">
-          <div class="row align-items-center">
-            <div class="col-auto"><span class="bg-yellow text-white avatar"><svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M12 9v2m0 4v.01" /><path d="M5 19h14a2 2 0 0 0 1.84 -2.75l-7.1 -12.25a2 2 0 0 0 -3.5 0l-7.1 12.25a2 2 0 0 0 1.75 2.75" /></svg></span></div>
-            <div class="col"><div class="font-weight-medium">{{ status_counts.Dirty }} Dirty</div><div class="text-muted small">Needs cleaning</div></div>
-          </div>
-        </div>
+    <div class="col-6 col-md-4 col-lg-2">
+      <div class="hk-tile" style="--tile-color:#2563eb;" onclick="filterRooms('Occupied',this)" id="tile-occupied">
+        <div class="hk-tile-label mb-2">Occupied</div>
+        <div class="hk-tile-value">{{ status_counts.Occupied }}</div>
+        <div style="font-size:.72rem;color:var(--tblr-muted);">Guests in</div>
       </div>
     </div>
-    <div class="col-md-3">
-      <div class="card card-sm">
-        <div class="card-body">
-          <div class="row align-items-center">
-            <div class="col-auto"><span class="bg-purple text-white avatar"><svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M4 4h16v16h-16z" /></svg></span></div>
-            <div class="col"><div class="font-weight-medium">{{ status_counts.Reserved }} Reserved</div><div class="text-muted small">Booked rooms</div></div>
-          </div>
-        </div>
+    <div class="col-6 col-md-4 col-lg-2">
+      <div class="hk-tile" style="--tile-color:#d97706;" onclick="filterRooms('Dirty',this)" id="tile-dirty">
+        <div class="hk-tile-label mb-2">Dirty</div>
+        <div class="hk-tile-value">{{ status_counts.Dirty }}</div>
+        <div style="font-size:.72rem;color:var(--tblr-muted);">Needs clean</div>
+      </div>
+    </div>
+    <div class="col-6 col-md-4 col-lg-2">
+      <div class="hk-tile" style="--tile-color:#7c3aed;" onclick="filterRooms('Maintenance',this)" id="tile-maintenance">
+        <div class="hk-tile-label mb-2">Maintenance</div>
+        <div class="hk-tile-value">{{ status_counts.get('Maintenance', 0) }}</div>
+        <div style="font-size:.72rem;color:var(--tblr-muted);">Out of order</div>
+      </div>
+    </div>
+    <div class="col-6 col-md-4 col-lg-2">
+      <div class="hk-tile" style="--tile-color:#059669;cursor:default;">
+        <div class="hk-tile-label mb-2">Done Today</div>
+        <div class="hk-tile-value">{{ completed_today }}</div>
+        <div style="font-size:.72rem;color:var(--tblr-muted);">Tasks done</div>
       </div>
     </div>
   </div>
 
-  <!-- Tasks Section -->
-  <div class="row mb-4">
+  <!-- ── Task Board ── -->
+  <div class="row g-3 mb-4">
+    <!-- Pending Tasks -->
     <div class="col-md-6">
-      <div class="card">
-        <div class="card-header"><h3 class="card-title">Pending Tasks ({{ pending_tasks|length }})</h3></div>
-        <div class="card-body">
+      <div class="card h-100">
+        <div class="card-header d-flex align-items-center justify-content-between">
+          <h3 class="card-title mb-0">Pending Tasks</h3>
+          <span class="badge bg-warning-lt text-warning fw-600">{{ pending_tasks|length }}</span>
+        </div>
+        <div class="card-body" style="max-height:340px;overflow-y:auto;">
           {% if pending_tasks %}
-          {% for task in pending_tasks %}
-          <div class="card mb-2">
-            <div class="card-body">
-              <div class="d-flex justify-content-between align-items-center">
-                <div>
-                  <strong>Room {{ task.room.room_number if task.room else 'N/A' }}</strong>
-                  <span class="badge bg-{{ 'warning' if task.priority == 'high' else 'info' }}">{{ task.task_type }}</span>
+            {% for task in pending_tasks %}
+            <div class="task-card">
+              <div class="d-flex align-items-start justify-content-between gap-2">
+                <div class="d-flex align-items-center gap-2">
+                  <div class="priority-dot"
+                       style="background:{% if task.priority == 'urgent' %}#dc2626{% elif task.priority == 'high' %}#d97706{% elif task.priority == 'normal' or task.priority == 'medium' %}#2563eb{% else %}#6b7280{% endif %};margin-top:3px;"></div>
+                  <div>
+                    <div style="font-weight:700;font-size:.875rem;">Room {{ task.room.room_number if task.room else '—' }}</div>
+                    <div class="text-muted" style="font-size:.75rem;">{{ task.task_type|replace('_',' ')|title }}</div>
+                    {% if task.notes %}
+                    <div class="text-muted" style="font-size:.72rem;margin-top:.15rem;">{{ task.notes|truncate(60) }}</div>
+                    {% endif %}
+                  </div>
                 </div>
-                <div>
-                  <form method="post" action="{{ url_for('hms.housekeeping_start_task', task_id=task.id) }}" class="d-inline">
-                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
-                    <button class="btn btn-sm btn-primary">Start</button>
-                  </form>
-                </div>
+                <form method="post" action="{{ url_for('hms.housekeeping_start_task', task_id=task.id) }}" class="flex-shrink-0">
+                  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                  <button class="btn btn-sm btn-primary">Start</button>
+                </form>
               </div>
-              <small class="text-muted">{{ task.created_at.strftime('%H:%M') }} - {{ task.notes or 'No notes' }}</small>
+              <div class="d-flex align-items-center gap-2 mt-2" style="font-size:.72rem;color:var(--tblr-muted);">
+                <span>{{ task.created_at.strftime('%H:%M') }}</span>
+                <span class="badge badge-sm
+                  {% if task.priority == 'urgent' %}bg-red-lt text-red
+                  {% elif task.priority == 'high' %}bg-orange-lt text-orange
+                  {% else %}bg-secondary-lt text-secondary{% endif %}">
+                  {{ task.priority|title }}
+                </span>
+              </div>
             </div>
-          </div>
-          {% endfor %}
+            {% endfor %}
           {% else %}
-          <p class="text-muted">No pending tasks</p>
+          <div class="text-center py-4" style="opacity:.5;">
+            <svg xmlns="http://www.w3.org/2000/svg" width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="2"/><path d="M9 12l2 2 4-4"/></svg>
+            <p class="mt-2 mb-0 text-muted" style="font-size:.82rem;">No pending tasks</p>
+          </div>
           {% endif %}
         </div>
       </div>
     </div>
+
+    <!-- In Progress -->
     <div class="col-md-6">
-      <div class="card">
-        <div class="card-header"><h3 class="card-title">In Progress ({{ in_progress_tasks|length }})</h3></div>
-        <div class="card-body">
+      <div class="card h-100">
+        <div class="card-header d-flex align-items-center justify-content-between">
+          <h3 class="card-title mb-0">In Progress</h3>
+          <span class="badge bg-blue-lt text-blue fw-600">{{ in_progress_tasks|length }}</span>
+        </div>
+        <div class="card-body" style="max-height:340px;overflow-y:auto;">
           {% if in_progress_tasks %}
-          {% for task in in_progress_tasks %}
-          <div class="card mb-2">
-            <div class="card-body">
-              <div class="d-flex justify-content-between align-items-center">
+            {% for task in in_progress_tasks %}
+            <div class="task-card">
+              <div class="d-flex align-items-start justify-content-between gap-2">
                 <div>
-                  <strong>Room {{ task.room.room_number if task.room else 'N/A' }}</strong>
-                  <span class="badge bg-primary">{{ task.task_type }}</span>
+                  <div style="font-weight:700;font-size:.875rem;">Room {{ task.room.room_number if task.room else '—' }}</div>
+                  <div class="text-muted" style="font-size:.75rem;">{{ task.task_type|replace('_',' ')|title }}</div>
+                  {% if task.started_at %}
+                  <div class="text-muted" style="font-size:.72rem;">Started {{ task.started_at.strftime('%H:%M') }}</div>
+                  {% endif %}
                 </div>
-                <form method="post" action="{{ url_for('hms.housekeeping_complete_task', task_id=task.id) }}" class="d-inline">
+                <form method="post" action="{{ url_for('hms.housekeeping_complete_task', task_id=task.id) }}" class="flex-shrink-0">
                   <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                   <button class="btn btn-sm btn-success">Complete</button>
                 </form>
               </div>
             </div>
-          </div>
-          {% endfor %}
+            {% endfor %}
           {% else %}
-          <p class="text-muted">No tasks in progress</p>
+          <div class="text-center py-4" style="opacity:.5;">
+            <svg xmlns="http://www.w3.org/2000/svg" width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+            <p class="mt-2 mb-0 text-muted" style="font-size:.82rem;">No tasks in progress</p>
+          </div>
           {% endif %}
         </div>
       </div>
     </div>
   </div>
 
-  <!-- Rooms Table -->
+  <!-- ── Rooms Table ── -->
   <div class="card">
-    <div class="card-header">
-      <h3 class="card-title">Rooms by Floor & Status</h3>
-    </div>
-    <div class="card-body">
-      <div class="table-responsive">
-        <table class="table table-vcenter card-table table-hover">
-          <thead>
-            <tr>
-              <th>Floor</th>
-              <th>Room Number</th>
-              <th>Room Type</th>
-              <th>Status</th>
-              <th>Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {% for room in rooms %}
-            <tr>
-              <td>{% if room.floor %}<span class="badge bg-azure-lt">Floor {{ room.floor }}</span>{% else %}<span class="text-muted">N/A</span>{% endif %}</td>
-              <td><strong>{{ room.room_number }}</strong></td>
-              <td>{{ room.room_type.name }}</td>
-              <td><span class="badge bg-{{ 'green' if room.status == 'Vacant' else 'blue' if room.status == 'Occupied' else 'yellow' if room.status == 'Dirty' else 'purple' }}-lt">{{ room.status }}</span></td>
-              <td>
-                {% if room.status == 'Dirty' %}
-                <form method="post" action="{{ url_for('hms.housekeeping_clean_room', room_id=room.id) }}" class="d-inline">
-                  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
-                  <button type="submit" class="btn btn-sm btn-success">Mark Clean</button>
-                </form>
-                <form method="post" action="{{ url_for('hms.housekeeping_create_task', room_id=room.id) }}" class="d-inline ms-2">
-                  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
-                  <input type="hidden" name="task_type" value="regular_clean"/>
-                  <button type="submit" class="btn btn-sm btn-primary">Create Task</button>
-                </form>
-                {% elif room.status == 'Occupied' %}
-                <form method="post" action="{{ url_for('hms.housekeeping_create_task', room_id=room.id) }}" class="d-inline">
-                  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
-                  <input type="hidden" name="task_type" value="service"/>
-                  <button type="submit" class="btn btn-sm btn-info">Service Request</button>
-                </form>
-                <button type="button" class="btn btn-sm btn-warning" disabled>Guest In Room</button>
-                {% elif room.status == 'Vacant' %}
-                <form method="post" action="{{ url_for('hms.housekeeping_dirty_room', room_id=room.id) }}" class="d-inline">
-                  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
-                  <button type="submit" class="btn btn-sm btn-warning">Mark Dirty</button>
-                </form>
-                <button type="button" class="btn btn-sm btn-success" disabled>Ready</button>
-                {% else %}
-                <form method="post" action="{{ url_for('hms.housekeeping_create_task', room_id=room.id) }}" class="d-inline">
-                  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
-                  <input type="hidden" name="task_type" value="inspection"/>
-                  <button type="submit" class="btn btn-sm btn-primary">Create Task</button>
-                </form>
-                {% endif %}
-              </td>
-            </tr>
-            {% endfor %}
-          </tbody>
-        </table>
+    <div class="card-header d-flex align-items-center gap-2 flex-wrap">
+      <h3 class="card-title mb-0 me-auto">Rooms by Floor</h3>
+      <div class="d-flex flex-wrap gap-1 align-items-center">
+        <a href="#" class="hk-tab active" onclick="filterRows('all',this);return false;">All</a>
+        <a href="#" class="hk-tab" onclick="filterRows('Vacant',this);return false;">Vacant</a>
+        <a href="#" class="hk-tab" onclick="filterRows('Occupied',this);return false;">Occupied</a>
+        <a href="#" class="hk-tab" onclick="filterRows('Dirty',this);return false;">Dirty</a>
+        <a href="#" class="hk-tab" onclick="filterRows('Maintenance',this);return false;">Maintenance</a>
       </div>
+      <input type="text" id="roomSearch" class="form-control form-control-sm" placeholder="Search room…" style="width:150px;">
+    </div>
+    <div class="table-responsive">
+      <table class="table table-vcenter card-table" id="hkTable">
+        <thead>
+          <tr>
+            <th>Floor</th>
+            <th>Room</th>
+            <th>Type</th>
+            <th>Status</th>
+            <th class="w-1">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for room in rooms %}
+          <tr class="hk-row" data-status="{{ room.status }}"
+              data-search="{{ room.room_number|lower }} {{ room.room_type.name|lower if room.room_type else '' }}">
+            <td>
+              {% if room.floor %}
+              <span class="badge bg-azure-lt text-azure">Floor {{ room.floor }}</span>
+              {% else %}
+              <span class="text-muted">—</span>
+              {% endif %}
+            </td>
+            <td>
+              <div style="font-weight:700;">{{ room.room_number }}</div>
+            </td>
+            <td class="text-muted" style="font-size:.82rem;">{{ room.room_type.name if room.room_type else '—' }}</td>
+            <td>
+              {% if room.status == 'Vacant' %}
+                <span class="rs-badge bg-green-lt text-green"><span class="rs-dot bg-green"></span>Vacant</span>
+              {% elif room.status == 'Occupied' %}
+                <span class="rs-badge bg-blue-lt text-blue"><span class="rs-dot bg-blue"></span>Occupied</span>
+              {% elif room.status == 'Dirty' %}
+                <span class="rs-badge bg-yellow-lt text-yellow"><span class="rs-dot bg-yellow"></span>Dirty</span>
+              {% elif room.status == 'Maintenance' %}
+                <span class="rs-badge bg-red-lt text-red"><span class="rs-dot bg-red"></span>Maintenance</span>
+              {% else %}
+                <span class="rs-badge bg-purple-lt text-purple"><span class="rs-dot bg-purple"></span>{{ room.status }}</span>
+              {% endif %}
+            </td>
+            <td>
+              <div class="d-flex gap-1 flex-wrap">
+                {% if room.status == 'Dirty' %}
+                  <form method="post" action="{{ url_for('hms.housekeeping_clean_room', room_id=room.id) }}" class="d-inline">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                    <button type="submit" class="btn btn-sm btn-success">Mark Clean</button>
+                  </form>
+                  <form method="post" action="{{ url_for('hms.housekeeping_create_task', room_id=room.id) }}" class="d-inline">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                    <input type="hidden" name="task_type" value="regular_clean"/>
+                    <button type="submit" class="btn btn-sm btn-outline-primary">+ Task</button>
+                  </form>
+                {% elif room.status == 'Occupied' %}
+                  <form method="post" action="{{ url_for('hms.housekeeping_create_task', room_id=room.id) }}" class="d-inline">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                    <input type="hidden" name="task_type" value="service"/>
+                    <button type="submit" class="btn btn-sm btn-outline-info">Service</button>
+                  </form>
+                {% elif room.status == 'Vacant' %}
+                  <form method="post" action="{{ url_for('hms.housekeeping_dirty_room', room_id=room.id) }}" class="d-inline">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                    <button type="submit" class="btn btn-sm btn-outline-warning">Mark Dirty</button>
+                  </form>
+                {% else %}
+                  <form method="post" action="{{ url_for('hms.housekeeping_create_task', room_id=room.id) }}" class="d-inline">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                    <input type="hidden" name="task_type" value="inspection"/>
+                    <button type="submit" class="btn btn-sm btn-outline-secondary">Inspect</button>
+                  </form>
+                {% endif %}
+              </div>
+            </td>
+          </tr>
+          {% else %}
+          <tr>
+            <td colspan="5" class="text-center py-5 text-muted">No rooms found.</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
     </div>
   </div>
+
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function filterRows(status, btn) {
+  document.querySelectorAll('.hk-tab').forEach(t => t.classList.remove('active'));
+  if (btn) btn.classList.add('active');
+  document.querySelectorAll('.hk-row').forEach(row => {
+    row.style.display = (status === 'all' || row.dataset.status === status) ? '' : 'none';
+  });
+}
+
+function filterRooms(status, tile) {
+  document.querySelectorAll('.hk-tile').forEach(t => t.classList.remove('active'));
+  if (tile) tile.classList.add('active');
+  // also sync the table filter tab
+  const tabMap = { all: 'All', Vacant: 'Vacant', Occupied: 'Occupied', Dirty: 'Dirty', Maintenance: 'Maintenance' };
+  document.querySelectorAll('.hk-tab').forEach(t => {
+    if (t.textContent.trim() === (tabMap[status] || 'All')) t.classList.add('active');
+    else t.classList.remove('active');
+  });
+  document.querySelectorAll('.hk-row').forEach(row => {
+    row.style.display = (status === 'all' || row.dataset.status === status) ? '' : 'none';
+  });
+  document.getElementById('hkTable')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+const searchInput = document.getElementById('roomSearch');
+if (searchInput) {
+  searchInput.addEventListener('input', function() {
+    const q = this.value.toLowerCase().trim();
+    document.querySelectorAll('.hk-row').forEach(row => {
+      row.style.display = !q || (row.dataset.search || '').includes(q) ? '' : 'none';
+    });
+  });
+}
+</script>
 {% endblock %}

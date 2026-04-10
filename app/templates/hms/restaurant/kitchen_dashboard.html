@@ -1,147 +1,90 @@
 {% extends "hms/layout/base.html" %}
-{% block title %}Kitchen Dashboard - Hotel PMS{% endblock %}
+{% block title %}Kitchen Dashboard — Hotel PMS{% endblock %}
 
 {% block content %}
+<style>
+  .kd-kpi { border-radius:10px; padding:1.1rem 1.25rem; border:1px solid var(--tblr-border-color); background:var(--tblr-bg-surface); }
+  .kd-kpi-label { font-size:.68rem; font-weight:600; text-transform:uppercase; letter-spacing:.06em; color:var(--tblr-muted); }
+  .kd-kpi-value { font-size:2.2rem; font-weight:800; line-height:1; }
+</style>
+
 <div class="container-xl">
-  <!-- Page Header -->
-  <div class="page-header d-print-none">
+
+  <!-- ── Header ── -->
+  <div class="page-header d-print-none mb-4">
     <div class="row align-items-center">
       <div class="col">
-        <h2 class="page-title">Kitchen Dashboard</h2>
-        <div class="text-muted mt-1">Manage room service and restaurant orders</div>
+        <h2 class="page-title mb-0">Kitchen Dashboard</h2>
+        <div class="text-muted" style="font-size:.82rem;">Manage room service and restaurant orders</div>
+      </div>
+      <div class="col-auto ms-auto">
+        <a href="{{ url_for('hms.restaurant_kitchen') }}" class="btn btn-primary">
+          <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 2v6a6 6 0 0 0 12 0V2"/><path d="M6 2h12"/><path d="M12 14v8"/><path d="M9 22h6"/></svg>
+          Kitchen Display
+        </a>
       </div>
     </div>
   </div>
 
-  <!-- Order Status Cards -->
-  <div class="row row-deck row-cards mb-4">
-    <div class="col-sm-6 col-lg-3">
-      <div class="card card-sm">
-        <div class="card-body">
-          <div class="row align-items-center">
-            <div class="col-auto">
-              <span class="bg-warning text-white avatar avatar-lg">
-                <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none">
-                  <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
-                  <circle cx="12" cy="12" r="9" />
-                  <line x1="12" y1="8" x2="12" y2="12" />
-                  <line x1="12" y1="16" x2="12.01" y2="16" />
-                </svg>
-              </span>
-            </div>
-            <div class="col">
-              <div class="font-weight-medium">{{ stats.pending_orders }}</div>
-              <div class="text-muted">Pending Orders</div>
-            </div>
-          </div>
-        </div>
+  <!-- ── KPI Tiles ── -->
+  <div class="row g-3 mb-4">
+    <div class="col-6 col-lg-3">
+      <div class="kd-kpi">
+        <div class="kd-kpi-label mb-2">Pending Orders</div>
+        <div class="kd-kpi-value" style="color:#d97706;">{{ stats.pending_orders }}</div>
+        <div class="text-muted mt-1" style="font-size:.75rem;">Awaiting start</div>
       </div>
     </div>
-
-    <div class="col-sm-6 col-lg-3">
-      <div class="card card-sm">
-        <div class="card-body">
-          <div class="row align-items-center">
-            <div class="col-auto">
-              <span class="bg-primary text-white avatar avatar-lg">
-                <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none">
-                  <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
-                  <path d="M12 9v2m0 4v.01" />
-                </svg>
-              </span>
-            </div>
-            <div class="col">
-              <div class="font-weight-medium">{{ stats.preparing_orders }}</div>
-              <div class="text-muted">Preparing</div>
-            </div>
-          </div>
-        </div>
+    <div class="col-6 col-lg-3">
+      <div class="kd-kpi">
+        <div class="kd-kpi-label mb-2">Preparing</div>
+        <div class="kd-kpi-value" style="color:#2563eb;">{{ stats.preparing_orders }}</div>
+        <div class="text-muted mt-1" style="font-size:.75rem;">In kitchen now</div>
       </div>
     </div>
-
-    <div class="col-sm-6 col-lg-3">
-      <div class="card card-sm">
-        <div class="card-body">
-          <div class="row align-items-center">
-            <div class="col-auto">
-              <span class="bg-info text-white avatar avatar-lg">
-                <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none">
-                  <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
-                  <path d="M5 12l5 5l10 -10" />
-                </svg>
-              </span>
-            </div>
-            <div class="col">
-              <div class="font-weight-medium">{{ stats.ready_orders }}</div>
-              <div class="text-muted">Ready for Delivery</div>
-            </div>
-          </div>
-        </div>
+    <div class="col-6 col-lg-3">
+      <div class="kd-kpi">
+        <div class="kd-kpi-label mb-2">Ready</div>
+        <div class="kd-kpi-value" style="color:#059669;">{{ stats.ready_orders }}</div>
+        <div class="text-muted mt-1" style="font-size:.75rem;">For delivery</div>
       </div>
     </div>
-
-    <div class="col-sm-6 col-lg-3">
-      <div class="card card-sm">
-        <div class="card-body">
-          <div class="row align-items-center">
-            <div class="col-auto">
-              <span class="bg-success text-white avatar avatar-lg">
-                <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none">
-                  <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
-                  <path d="M12 5v14" />
-                  <path d="M5 12h14" />
-                </svg>
-              </span>
-            </div>
-            <div class="col">
-              <div class="font-weight-medium">{{ stats.delivered_today }}</div>
-              <div class="text-muted">Delivered Today</div>
-            </div>
-          </div>
-        </div>
+    <div class="col-6 col-lg-3">
+      <div class="kd-kpi">
+        <div class="kd-kpi-label mb-2">Delivered Today</div>
+        <div class="kd-kpi-value" style="color:#6366f1;">{{ stats.delivered_today }}</div>
+        <div class="text-muted mt-1" style="font-size:.75rem;">Completed</div>
       </div>
     </div>
   </div>
 
-  <!-- Quick Actions -->
-  <div class="row">
+  <!-- ── Quick Actions ── -->
+  <div class="row g-3">
     <div class="col-md-6">
       <div class="card">
-        <div class="card-header">
-          <h3 class="card-title">Room Service Orders</h3>
-        </div>
+        <div class="card-header"><h3 class="card-title mb-0">Room Service Orders</h3></div>
         <div class="card-body">
-          <p class="text-muted">View and manage room service orders from guests.</p>
+          <p class="text-muted mb-3" style="font-size:.875rem;">View and manage room service orders from hotel guests.</p>
           <a href="{{ url_for('hms.room_service_kitchen') }}" class="btn btn-primary">
-            <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="16" height="16" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none">
-              <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
-              <path d="M12 9v2m0 4v.01" />
-              <path d="M5 19h14a2 2 0 0 0 1.84 -2.75l-7.1 -12.25a2 2 0 0 0 -3.5 0l-7.1 12.25a2 2 0 0 0 1.75 2.75" />
-            </svg>
+            <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
             View Room Service
           </a>
         </div>
       </div>
     </div>
-
     <div class="col-md-6">
       <div class="card">
-        <div class="card-header">
-          <h3 class="card-title">Restaurant Orders</h3>
-        </div>
+        <div class="card-header"><h3 class="card-title mb-0">Restaurant Orders</h3></div>
         <div class="card-body">
-          <p class="text-muted">View and manage restaurant dining orders.</p>
+          <p class="text-muted mb-3" style="font-size:.875rem;">View and manage restaurant dining orders from the floor.</p>
           <a href="{{ url_for('hms.restaurant_kitchen') }}" class="btn btn-success">
-            <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="16" height="16" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none">
-              <path stroke="none" d="M0 0h24v24H0z" fill="none"/>
-              <path d="M12 9v2m0 4v.01" />
-              <path d="M5 19h14a2 2 0 0 0 1.84 -2.75l-7.1 -12.25a2 2 0 0 0 -3.5 0l-7.1 12.25a2 2 0 0 0 1.75 2.75" />
-            </svg>
+            <svg xmlns="http://www.w3.org/2000/svg" class="icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 2v6a6 6 0 0 0 12 0V2"/><path d="M6 2h12"/><path d="M12 14v8"/><path d="M9 22h6"/></svg>
             View Restaurant Orders
           </a>
         </div>
       </div>
     </div>
   </div>
+
 </div>
 {% endblock %}
